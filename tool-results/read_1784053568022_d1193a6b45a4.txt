@@ -1,0 +1,325 @@
+     1→# 06 — Native Modules, Packaging, Installer & Update Mechanism
+     2→
+     3→**Target:** October Desktop v1.0.30 — Wega Labs, Inc. ("October")
+     4→**App package:** `october-desktop` (`/tmp/october_work/app/asar_extracted/package.json`)
+     5→**Shipped runtime:** Electron app at `app/` (October.exe + `resources/app.asar` + `resources/app.asar.unpacked/`)
+     6→**Installer:** NSIS `October-x64.exe` (extracted to `/tmp/october_work/app/`)
+     7→**Subsystem owner:** Native modules, packaging, installer, update mechanism
+     8→
+     9→---
+    10→
+    11→## 0. Executive Summary
+    12→
+    13→- **Native / platform modules** are kept *outside* the asar in `resources/app.asar.unpacked/node_modules/` so their `.node` addons and `.dll`s are on disk (not packed) — this is the standard electron-builder `asarUnpack` behavior. The same modules also appear inside `app.asar` (the asar_extracted view) but the live copies used at runtime are the unpacked ones.
+    14→- **Core native stack:** `node-pty` (terminals), `onnxruntime-node` + `sherpa-onnx-node`/`sherpa-onnx-win-x64` (local speech/ASR/TTS), `sharp`/`@img/sharp-win32-x64` (image processing), `@openai/codex-win32-x64` (bundled Codex CLI binary), `@agentclientprotocol/*` (ACP agent bridge).
+    15→- **Auto-update:** `electron-updater@6.8.9`, **GitHub provider** via `resources/app-update.yml`. Owner `harshsaver`, repo `october-desktop-releases`. Update metadata is fetched from GitHub Releases; a *minimum-version enforcement* policy is additionally pulled from a Supabase table `desktop_release_policy` (forces update when current < minimum).
+    16→- **Update server URL:** `https://github.com/harshsaver/october-desktop-releases/releases` (electron-updater builds `latest.yml` / `*.yml` + asset URLs from this).
+    17→- **Installer:** NSIS 3.04 Unicode. Embeds the entire Electron app as `app-64.7z` (extracted via `nsis7z.dll`). Uses `UAC.dll` (elevation), `WinShell.dll` (shortcuts/shell), `nsDialogs.dll` (custom pages), `StdUtils.dll`, `System.dll`, `nsExec.dll`. Ships `Uninstall October.exe` and a `modern-wizard.bmp` Modern UI banner.
+    18→- **elevate.exe:** Kai Liu's `elevate` utility (a tiny console tool that re-launches a child process elevated via `ShellExecuteEx` + `runas`). Used by the running app to perform privileged operations on demand (not by the installer).
+    19→- **Runtime:** Electron **42.4.0** (Chromium **148.0.7778.254**, bundled Node ~22.x). Entry: `main: ./out/main/index.js`. Renderer loaded from `out/renderer/index.html`. Preload: `out/preload/index.js`. Deep-link / protocol: `october://`. Custom scheme: `october-wallpaper://`.
+    20→
+    21→---
+    22→
+    23→## 1. Native Modules Inventory
+    24→
+    25→Native modules = N-API/C++ addons (`.node`), prebuilt binaries, or platform-specific DLL/binary bundles. These **cannot** live inside a packed asar, so electron-builder unpacks them (see §3).
+    26→
+    27→### 1.1 In `resources/app.asar.unpacked/node_modules/` (the live, on-disk copies)
+    28→
+    29→| Module | Version | Type | Purpose |
+    30→|---|---|---|---|
+    31→| `node-pty` | 1.1.0 | Prebuilt N-API `.node` (pty/conpty) | Pseudoterminal for in-app terminal / agent shells. Prebuilds for win32-x64, win32-arm64, darwin-x64, darwin-arm64. Files: `prebuilds/win32-x64/{pty,conpty,conpty_console_list}.node`. |
+    32→| `onnxruntime-node` | 1.21.0 | N-API `.node` + native libs | ONNX Runtime inference engine (local ML). `bin/napi-v3/{win32,linux,darwin}/{x64,arm64}/onnxruntime_binding.node`. |
+    33→| `sherpa-onnx-node` | 1.13.3 | JS wrapper around native addon | Speech toolkit (ASR / TTS / VAD / speaker id / diarization). Loads `sherpa-onnx.node`. |
+    34→| `sherpa-onnx-win-x64` | 1.13.3 | Native DLLs + `.node` | Windows x64 binary bundle: `sherpa-onnx.node`, `sherpa-onnx-c-api.dll`, `sherpa-onnx-cxx-api.dll`, `onnxruntime.dll`, `onnxruntime_providers_shared.dll`. This is the actual native payload for sherpa-onnx on Windows. |
+    35→| `@img/sharp-win32-x64` | 0.34.5 | N-API `.node` | Prebuilt libvips for `sharp` on Windows x64 (`lib/sharp-win32-x64.node`). |
+    36→| `@openai/codex-win32-x64` | 0.142.5 | Platform binary bundle | Bundled OpenAI Codex CLI for Windows x64 (native executable under `vendor/`). |
+    37→| `@openai/codex-sdk` | 0.142.5 | Pure JS SDK | TypeScript SDK wrapping the Codex CLI binary. |
+    38→| `@agentclientprotocol/codex-acp` | 1.1.0 | Pure JS (transpiled, 1 MB `dist/index.js`) | ACP adapter that bridges Codex into the Agent Client Protocol. |
+    39→| `@agentclientprotocol/sdk` | 1.1.0 | Pure JS + JSON schema | Core Agent Client Protocol SDK/types used to talk to agent runtimes (Codex, Claude, etc.). |
+    40→
+    41→### 1.2 In `asar_extracted/node_modules/` (the asar copy; same versions)
+    42→
+    43→These mirror the unpacked set (asar includes them, but the *used* binaries are the unpacked ones):
+    44→
+    45→- `node-pty@1.1.0` (has both `prebuilds/` and a `build/Release/*.node` compiled fallback)
+    46→- `onnxruntime-node@1.21.0` (with `bin/napi-v3/.../onnxruntime_binding.node` for win/linux/darwin, x64+arm64)
+    47→- `sherpa-onnx-node@1.13.3`, `sherpa-onnx-win-x64@1.13.3`
+    48→- `sharp@0.34.5` + `@img/colour@1.1.0`, `@img/sharp-win32-x64@0.34.5`
+    49→- `onnxruntime-common@1.21.0` (JS shim shared with `onnxruntime-web@1.22.0-dev...` used by `@huggingface/transformers`)
+    50→- `@openai/codex-win32-x64@0.142.5`, `@openai/codex-sdk@0.142.5`, `@openai/codex@0.142.5`
+    51→- `@agentclientprotocol/codex-acp@1.1.0`, `@agentclientprotocol/sdk@1.1.0`
+    52→
+    53→### 1.3 Important native modules — detail
+    54→
+    55→- **sherpa-onnx-node / sherpa-onnx-win-x64** (`1.13.3`): Offline speech. Provides `sherpa-onnx.js`, `non-streaming-asr.js`, `streaming-asr.js`, `non-streaming-tts.js`, `vad.js`, `speaker-identification.js`, `spoken-language-identification.js`, `keyword-spotter.js`, `audio-tagg.js`, `resampler.js`, `punctuation.js`, `addon.js`. The Windows implementation resolves to `sherpa-onnx-win-x64` for the compiled addon + DLLs. Model weights are downloaded at runtime from `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models` (see `RELEASE` const at `out/main/index.js:5364`).
+    56→- **onnxruntime-node** (`1.21.0`): ONNX inference. Paired with `@huggingface/transformers@3.8.1` which uses `onnxruntime-web` (WASM) for in-renderer models; `onnxruntime-node` is used from the main process for heavier local ML.
+    57→- **node-pty** (`1.1.0`): terminal emulation powered by xterm (`@xterm/xterm@5.5.0` + addons fit/search/unicode11/web-links/webgl).
+    58→- **@agentclientprotocol/*** (`1.1.0`): ACP — lets the desktop host drive external agents (Codex, Claude, etc.) over a standardized protocol. `codex-acp` specifically wraps the Codex CLI as an ACP server.
+    59→- **@openai/codex-win32-x64** (`0.142.5`): ships the actual Codex executable so it runs without a separate install.
+    60→- **@supabase/supabase-js** (`2.108.1`): not native, but a key backend client — used for auth, Realtime, Storage, Postgres (`pg` is also present for direct DB). Supabase URL `https://latwxiqjgvluiddckvmj.supabase.co` (`out/main/index.js:5797`). Supabase also serves the **update policy** (§4).
+    61→- **@img/sharp-win32-x64 + sharp**: native image processing (thumbnails, wallpaper handling, avatar/DP generation).
+    62→- **@modelcontextprotocol/sdk** (`1.29.0`): MCP client/server SDK (agents expose tools over MCP; ACP bus exposes `http://127.0.0.1:<port>/mcp`).
+    63→
+    64→---
+    65→
+    66→## 2. Full Dependency Inventory
+    67→
+    68→Source: `asar_extracted/package.json` (only `dependencies` — **no `devDependencies` and no `scripts`**; build tooling lives in an external build repo, not shipped with the app). All 44 entries below are **runtime** dependencies.
+    69→
+    70→| # | Package | Version | Role |
+    71→|---|---|---|---|
+    72→| 1 | `@agentclientprotocol/codex-acp` | ^1.1.0 | ACP adapter for Codex |
+    73→| 2 | `@agentclientprotocol/sdk` | ^1.1.0 | Agent Client Protocol SDK |
+    74→| 3 | `@anthropic-ai/claude-agent-sdk` | ^0.3.175 | Claude agent SDK |
+    75→| 4 | `@ghostery/adblocker-electron` | ^2.18.0 | YouTube/MV3 ad-blocking in `<webview>` |
+    76→| 5 | `@huggingface/transformers` | ^3.8.1 | In-app ONNX transformers (WASM runtime) |
+    77→| 6 | `@liveblocks/client` | ^3.19.5 | Realtime collaboration client |
+    78→| 7 | `@liveblocks/react` | ^3.19.5 | React bindings for Liveblocks |
+    79→| 8 | `@modelcontextprotocol/sdk` | ^1.29.0 | MCP SDK |
+    80→| 9 | `@monaco-editor/react` | ^4.7.0 | Code editor (React) |
+    81→| 10 | `@openai/codex-sdk` | ^0.142.5 | Codex SDK |
+    82→| 11 | `@supabase/supabase-js` | ^2.108.1 | Backend auth/DB/realtime/storage |
+    83→| 12 | `@types/qrcode` | ^1.5.6 | Types (dev-ish but shipped) |
+    84→| 13 | `@xterm/addon-fit` | ^0.10.0 | xterm fit addon |
+    85→| 14 | `@xterm/addon-search` | ^0.15.0 | xterm search addon |
+    86→| 15 | `@xterm/addon-unicode11` | ^0.8.0 | xterm unicode addon |
+    87→| 16 | `@xterm/addon-web-links` | ^0.11.0 | xterm web-links addon |
+    88→| 17 | `@xterm/addon-webgl` | ^0.18.0 | xterm webgl addon |
+    89→| 18 | `@xterm/xterm` | ^5.5.0 | Terminal emulator |
+    90→| 19 | `@xyflow/react` | ^12.11.0 | React Flow (node graph UI) |
+    91→| 20 | `cross-spawn` | ^7.0.6 | Cross-platform process spawn |
+    92→| 21 | `defuddle` | ^0.19.0 | Article/content extraction |
+    93→| 22 | `electron-updater` | ^6.8.9 | Auto-update (GitHub provider) |
+    94→| 23 | `highlight.js` | ^11.11.1 | Syntax highlighting |
+    95→| 24 | `lucide-react` | ^1.18.0 | Icons |
+    96→| 25 | `monaco-editor` | ^0.54.0 | Editor core |
+    97→| 26 | `node-pty` | ^1.1.0 | Native pseudoterminal |
+    98→| 27 | `pg` | ^8.21.0 | Postgres client (direct DB) |
+    99→| 28 | `qrcode` | ^1.5.4 | QR code generation (login flows) |
+   100→| 29 | `react` | ^19.2.7 | UI framework |
+   101→| 30 | `react-dom` | ^19.2.7 | React DOM |
+   102→| 31 | `react-markdown` | ^9.1.0 | Markdown rendering |
+   103→| 32 | `rehype-highlight` | ^7.0.2 | Markdown code highlighting |
+   104→| 33 | `remark-gfm` | ^4.0.1 | GitHub-flavored markdown |
+   105→| 34 | `sherpa-onnx-node` | ^1.13.3 | Native speech toolkit |
+   106→| 35 | `zod` | ^4.4.3 | Schema validation |
+   107→| 36 | `zustand` | ^5.0.14 | State management |
+   108→
+   109→Transitive native/runtime deps worth noting (in `asar_extracted/node_modules`): `sharp@0.34.5`, `@img/sharp-win32-x64@0.34.5`, `@img/colour@1.1.0`, `onnxruntime-node@1.21.0`, `onnxruntime-common@1.21.0`, `onnxruntime-web@1.22.0-dev.20250409-89f8206ba4`, `node-addon-api@7.1.1`, `detect-libc@2.1.2`, `powershell-utils@0.1.0`, `wsl-utils@0.3.1`, `iceberg-js@0.8.1`, `express@5.2.1`, `hono@4.12.25`, `jose@6.2.3`, `protobufjs@7.6.4`, `tar@7.5.16`, `semver@7.8.4`, `iconv-lite`, `pngjs`, plus the full `@supabase/*` and `@ghostery/*` trees and the `micromark`/`mdast`/`hast`/`unist` markdown stack.
+   110→
+   111→> Note: `@openai/codex@0.142.5`, `onnxruntime-node`, `sherpa-onnx-*`, `node-pty`, `@img/*` are *transitive/peer* dependencies pulled in by the above declared deps; they are the real native payload.
+   112→
+   113→**Dev-only:** none are declared dev-only in this package (no `devDependencies`). Build-time tools (electron, electron-builder, @electron/*, typescript, vite, the build `publish` config) are **not present** in the extracted app — they live in the separate build project that produces this asar.
+   114→
+   115→---
+   116→
+   117→## 3. electron-updater / Auto-Update Mechanism
+   118→
+   119→### 3.1 Configuration — `resources/app-update.yml`
+   120→
+   121→```
+   122→owner: harshsaver
+   123→repo: october-desktop-releases
+   124→provider: github
+   125→updaterCacheDirName: october-desktop-updater
+   126→```
+   127→
+   128→This is the **only** electron-updater config shipped. There is **no** `autoUpdater.setFeedURL(...)`, `allowPrerelease`, `channel`, or `getUpdateConfigPath` call in `out/main/index.js` — the updater reads this file automatically (electron-updater looks for `app-update.yml` next to the asar at runtime).
+   129→
+   130→- **provider:** `github` → electron-updater queries the GitHub Releases API for the `latest.yml` / per-version `.yml` metadata and downloads the matching asset.
+   131→- **update server URL (derived):** `https://github.com/harshsaver/october-desktop-releases/releases` and the Releases API `https://api.github.com/repos/harshsaver/october-desktop-releases/releases`.
+   132→- **updaterCacheDirName:** `october-desktop-updater` → the downloaded installer is cached under `%LOCALAPPDATA%/october-desktop-updater/` (Windows) instead of the default `electron-updater` cache dir.
+   133→- **asset naming convention (electron-builder github):** expects a `October-<version>-x64.exe` (or `-x64.nsis.7z`/`.exe`) plus a `latest.yml` published with each GitHub Release. The release tag is the version (e.g. `v1.0.30`).
+   134→
+   135→### 3.2 Init & event wiring — `out/main/index.js` `initUpdater()` (lines 15072–15118)
+   136→
+   137→```js
+   138→electronUpdater.autoUpdater.autoDownload = false;        // 15079  manual download
+   139→electronUpdater.autoUpdater.autoInstallOnAppQuit = true; // 15080  install on quit
+   140→electronUpdater.autoUpdater.on("checking-for-update", ...);   // 15081
+   141→electronUpdater.autoUpdater.on("update-available", (info) => { // 15082
+   142→    setState$2({ status: "available", version: info.version });
+   143→    track("update_available", { version, forced: state$1.forced });
+   144→    if (state$1.forced) startUpdateDownload();           // forced => auto-start
+   145→});
+   146→electronUpdater.autoUpdater.on("update-not-available", ...);    // 15087
+   147→electronUpdater.autoUpdater.on("download-progress", (p) => ...); // 15094
+   148→electronUpdater.autoUpdater.on("update-downloaded", (info) => {  // 15095
+   149→    setState$2({ status: "downloaded", version: info.version });
+   150→    track("update_downloaded", { version });
+   151→});
+   152→electronUpdater.autoUpdater.on("error", (err) => ...);          // 15099
+   153→```
+   154→
+   155→- Skipped entirely when `!electron.app.isPackaged` → `setState$2({ status: "unsupported" })` (dev mode has no updater).
+   156→- On init it calls `await electronUpdater.autoUpdater.checkForUpdates()` (line 15114).
+   157→
+   158→### 3.3 Minimum-version enforcement (Supabase policy) — `getReleasePolicy()` (lines 6122–6134)
+   159→
+   160→Before checking GitHub, the app queries a Supabase Postgres table for a **forced-update floor**:
+   161→
+   162→```js
+   163→const { data, error } = await client().from("desktop_release_policy")
+   164→  .select("minimum_version,latest_version,message").eq("platform", platform).maybeSingle();
+   165→// platform = "mac" | "win"
+   166→```
+   167→
+   168→If `policy.minimumVersion` exists and `semverLt(currentVersion, minimumVersion)` → `setState$2({ forced: true, minimumVersion, message })` (line 15107). When forced, an `update-available` event auto-triggers `startUpdateDownload()`. Supabase project: `https://latwxiqjgvluiddckvmj.supabase.co` (constant at `out/main/index.js:5797`).
+   169→
+   170→### 3.4 IPC surface (renderer ↔ main) — `out/main/index.js` lines 251–254, 18641–18644
+   171→
+   172→IPC channels (from `IPC` object):
+   173→- `update:state` — `ipcMain.handle(IPC.updateState, () => getUpdateState())` (18641)
+   174→- `update:start` — `ipcMain.on(IPC.updateStart, () => startUpdateDownload())` (18642)
+   175→- `update:install` — `ipcMain.on(IPC.updateInstall, () => installUpdate())` (18643)
+   176→- `update:check` — `ipcMain.on(IPC.updateCheck, () => checkForUpdates())` (18644)
+   177→
+   178→Implementations:
+   179→- `startUpdateDownload()` (15119): guarded by `isPackaged`; calls `autoUpdater.downloadUpdate()`.
+   180→- `installUpdate()` (15124): guarded; calls `autoUpdater.quitAndInstall(false, true)` → **isSilent=false, isForceRunAfter=true**. i.e. the Squirrel/NSIS installer runs (not silent) and the app restarts after install.
+   181→- `checkForUpdates()` (15129): re-runs `autoUpdater.checkForUpdates()`.
+   182→
+   183→State object shape (`getUpdateState`): `{ status, currentVersion, forced, minimumVersion, message, version, progress, error }`. `status` values observed: `idle | checking | available | downloading | downloaded | error | unsupported`.
+   184→
+   185→### 3.5 Update flow summary
+   186→
+   187→1. App launches → `initUpdater()` (called at `19705` inside `app.whenReady`).
+   188→2. Fetches `desktop_release_policy` from Supabase; may set `forced`.
+   189→3. `autoUpdater.checkForUpdates()` hits GitHub Releases for `harshsaver/october-desktop-releases`.
+   190→4. If a newer version exists → renderer shows prompt (`update:state` = `available`). User clicks "Update" → `update:start` → `downloadUpdate()`.
+   191→5. `download-progress` streams percentage; on `update-downloaded` → `update:install` → `quitAndInstall(false, true)` runs the NSIS installer (the new `October-x64.exe` from the release) and relaunches.
+   192→6. `autoInstallOnAppQuit=true` means even if the user ignores it, the download (if started) installs on quit.
+   193→
+   194→---
+   195→
+   196→## 4. The NSIS Installer (`October-x64.exe`)
+   197→
+   198→### 4.1 Format & toolchain
+   199→
+   200→- **Nullsoft Install System v3.04** (Unicode), confirmed in the installer manifest: `description>Nullsoft Install System v3.04` and `SubType = NSIS-3 Unicode` (from the 7z listing of the exe).
+   201→- Manifest `requestedExecutionLevel = asInvoker` (does **not** force admin at launch — elevation is requested on demand via `UAC.dll`/elevation plugin).
+   202→- The installer is a **self-extracting 7z archive wrapper**: the bulk of the payload is `app-64.7z` (315,488,971 bytes, `Type = 7z`, method `ARM64 LZMA2:20 LZMA:20 BCJ2`, solid, 453 files / 105 folders, expanded ~1.3 GB). 7z extracted it to `/tmp/october_work/app/` (the `October.exe` + `resources/` we analyzed).
+   203→
+   204→### 4.2 Plugins (from `$PLUGINSDIR`)
+   205→
+   206→| Plugin | Size | Role in this installer |
+   207→|---|---|---|
+   208→| `nsis7z.dll` | 434,176 | Decompresses the embedded `app-64.7z` payload into `$INSTDIR` (the Electron app tree). |
+   209→| `UAC.dll` | 14,848 | User Account Control handling — elevates specific install steps (e.g. writing to Program Files / creating machine-wide registry/shortcuts) without forcing the whole installer to run as admin. |
+   210→| `nsDialogs.dll` | 9,728 | Builds custom Modern UI wizard pages (e.g. options / "installing..." progress). |
+   211→| `StdUtils.dll` | 102,400 | Helper functions (GetParameters, shell helpers, etc.). |
+   212→| `System.dll` | 12,288 | Calls into Windows APIs directly (e.g. registry, shell). |
+   213→| `nsExec.dll` | 6,656 | Runs external commands silently (post-install steps — e.g. registering a URI scheme, refreshing the shell, running a one-time setup). |
+   214→| `WinShell.dll` | 3,072 | Creates Start Menu / Desktop shortcuts, refresh shell, optionally file associations. |
+   215→| `modern-wizard.bmp` | 154,544 | Modern UI left-side banner graphic (the wizard chrome). |
+   216→
+   217→### 4.3 Inferred install flow
+   218→
+   219→1. **NSIS stub runs** (asInvoker). Loads `UAC.dll`; if the chosen install path requires admin (default `Program Files`), it elevates the file-extraction/registration steps via UAC.
+   220→2. **Extract payload:** `nsis7z.dll` unpacks `app-64.7z` into `$INSTDIR` → produces `October.exe`, `resources/` (with `app.asar`, `app.asar.unpacked/`, `app-update.yml`, `elevate.exe`, `fonts/`), and the Electron runtime DLLs/paks (`chrome_*.pak`, `d3dcompiler_47.dll`, `ffmpeg.dll`, `icudtl.dat`, `libEGL/libGLESv2`, `locales/`, `resources.pak`, `snapshot_blob.bin`, `v8_context_snapshot.bin`, `vk_swiftshader*`, `vulkan-1.dll`, `LICENSE.electron.txt`, `LICENSES.chromium.html`).
+   221→3. **Custom pages:** `nsDialogs.dll` renders the Modern UI (banner = `modern-wizard.bmp`), possibly an install-location page and a finish page.
+   222→4. **Shortcuts:** `WinShell.dll` (or standard NSIS `CreateShortCut`) creates a **Start Menu** entry "October" and likely a **Desktop** shortcut pointing at `$INSTDIR\October.exe`.
+   223→5. **Post-install (nsExec.dll / System.dll):** silently registers the `october://` protocol handler (so `october://` deep links launch `October.exe`; the app calls `setAsDefaultProtocolClient("october", ...)` at `out/main/index.js:19404-19406`) and refreshes the shell/icon cache.
+   224→6. **Uninstaller:** the extracted `Uninstall October.exe` (`/tmp/october_work/$R0/Uninstall October.exe`, 278 KB) is written to `$INSTDIR`/`$APPDATA`; a `Software\Microsoft\Windows\CurrentVersion\Uninstall\October` registry key is created (product name "October Desktop", publisher "Wega Labs, Inc.", version `1.0.30`, strings confirmed in the exe: `October Desktop `, `Wega Labs, Inc.`, `1.0.30`, `Software\Microsoft\Windows\CurrentVersion`).
+   225→
+   226→### 4.4 Recovered string evidence from the installer exe
+   227→
+   228→- `Nullsoft Install System v3.04`, `NSIS-3 Unicode`
+   229→- `October`, `October Desktop `, `Wega Labs, Inc.`, ` 2026 Wega Labs, Inc.` (legal copyright), `1.0.30`
+   230→- `http://nsis.sf.net/NSIS_Error` (standard NSIS error page)
+   231→- `Software\Microsoft\Windows\CurrentVersion` (uninstall registry root)
+   232→- `app-64.7z` payload + plugin set listed in §4.2
+   233→
+   234→The precise NSIS `.nsi` script text is **not** recoverable (compiled/compressed into the exe); the above flow is reconstructed from the plugin set, the `app-64.7z` payload, the Modern-UI bitmap, the uninstaller artifact, and the recovered strings.
+   235→
+   236→---
+   237→
+   238→## 5. elevate.exe and UAC
+   239→
+   240→### 5.1 elevate.exe (`resources/elevate.exe`, 107,520 bytes)
+   241→
+   242→- PE32 console executable, Intel i386. PDB path inside: `C:\Dev\elevate\bin\x86\Release\Elevate.pdb` → this is **Kai Liu's `elevate`** (a well-known ~100 KB open-source helper), **not** a Wega-built binary.
+   243→- Purpose: re-launch a target process **elevated** (admin) using `ShellExecuteExW` with the `runas` verb (`requestedPrivileges` block present in its manifest). It does **not** do UAC prompting itself beyond delegating to Windows.
+   244→- Role in October: at runtime the app shells out to `elevate.exe <command>` when it needs admin rights for a one-off privileged action (e.g. installing a CLI into a system location, modifying PATH, writing a machine-wide registry key, or performing a privileged update step). It is **distinct from** the installer's `UAC.dll` (which handles elevation *during installation*). On Windows it sits at `resources/elevate.exe` next to `app.asar`.
+   245→
+   246→### 5.2 UAC.dll (installer plugin)
+   247→
+   248→- Handles the installer's own privilege elevation (per-step, via the UAC plugin's `UAC::` macros) so the installer can write to protected locations while still launching as `asInvoker`.
+   249→
+   250→---
+   251→
+   252→## 6. Build / Runtime Hints
+   253→
+   254→### 6.1 Versions (recovered from `October.exe` strings)
+   255→
+   256→- **Electron:** `42.4.0` (`Electron v42.4.0` string in the binary).
+   257→- **Chromium / Chrome:** `Chrome/148.0.7778.254` (renderer/user-agent string).
+   258→- **Node.js (bundled by Electron 42):** ~**22.x** (Electron 42 ships Node 22.14.0). NOTE: a stray `node v10.12.0` string exists in the binary but is a V8/legacy false-positive, not the runtime version.
+   259→- **App version:** `1.0.30` (package.json + installer strings).
+   260→- **electron-updater:** `6.8.9` (with `builder-util-runtime@9.7.0`).
+   261→- **NSIS:** `3.04` Unicode (installer).
+   262→
+   263→### 6.2 app.asar layout (electron-builder output)
+   264→
+   265→```
+   266→resources/
+   267→  app.asar                 (310 MB — the packed app; contains out/ + node_modules JS)
+   268→  app.asar.unpacked/       (native modules on disk, see §1.1)
+   269→    node_modules/{node-pty, onnxruntime-node, sherpa-onnx-node,
+   270→                  sherpa-onnx-win-x64, @img, @openai, @agentclientprotocol}/...
+   271→  app-update.yml           (electron-updater GitHub config, §3.1)
+   272→  elevate.exe              (privilege helper, §5.1)
+   273→  fonts/Inter-Bold.ttf     (bundled Inter font, OFL license present)
+   274→  LICENSE-Inter-OFL.txt
+   275→October.exe               (Electron main executable = the app host)
+   276→chrome_100/200_percent.pak, d3dcompiler_47.dll, dxcompiler.dll, dxil.dll,
+   277→ffmpeg.dll, icudtl.dat, libEGL.dll, libGLESv2.dll, locales/, resources.pak,
+   278→snapshot_blob.bin, v8_context_snapshot.bin, vk_swiftshader.dll,
+   279→vk_swiftshader_icd.json, vulkan-1.dll, LICENSE.electron.txt, LICENSES.chromium.html
+   280→```
+   281→
+   282→### 6.3 Launch behavior — `out/main/index.js`
+   283→
+   284→- Entry `main: ./out/main/index.js` (`package.json:5`). On `app.whenReady()` (line 19656):
+   285→  - `initSessionLog`, `hydratePathFromLoginShell`, `initRuntime`, reaps orphaned servers/STT/guest clones.
+   286→  - Sets permission handler (allows `media`, `clipboard-read/-sanitized-write`).
+   287→  - Strips `X-Frame-Options`/`frame-ancestors` for `localhost`/`127.0.0.1` responses (so local preview iframes work).
+   288→  - `enableYouTubeAdblock()` (uses `@ghostery/adblocker-electron`), `setupBrowserSession`, `registerWallpaperProtocol` (`october-wallpaper://`, `out/main/index.js:316,19652`), `setAppMenu`, `createWindow`, `registerIpc`, `startSupervisor`, `startBus` (local ACP/MCP bus on `127.0.0.1:<port>`, exposes `http://127.0.0.1:<port>/mcp`), `initUpdater`.
+   289→- **BrowserWindow** (`createWindow`, 19582): `minWidth:980, minHeight:640`, `show:false`, `backgroundColor:"#181310"`, `titleBarStyle:"hidden"` (mac) / `default` (win), `trafficLightPosition:{x:16,y:14}`. WebPreferences: `preload: ../preload/index.js`, `contextIsolation:true`, `nodeIntegration:false`, `sandbox:true`, `webviewTag:true`. Reveals on `ready-to-show` (8 s fallback). Loads `process.env.ELECTRON_RENDERER_URL` if set else `../renderer/index.html`.
+   290→- **Preload:** `out/preload/index.js` (contextBridge + ipcRenderer only, compatible with the OS sandbox).
+   291→- **Deep links / protocol:** `october://` (`PROTOCOL="october"`, `out/main/index.js:19368`); `setAsDefaultProtocolClient("october", process.execPath, [...])` at lines 19404–19406. On Windows this requires the installer to write the `HKCU\Software\Classes\october` registry keys (the nsExec/System post-install step).
+   292→- **Remote debugging:** `app.commandLine.appendSwitch("remote-debugging-port","0")` and `remote-debugging-address 127.0.0.1` (lines 19518–19519) — debug port chosen randomly, bound to localhost only.
+   293→- **Icons / splash:** the window itself does not set an explicit `icon` (Windows uses the `October.exe` embedded icon resource). There is **no separate native splash window** — the renderer shows its own loading UI (`out/renderer/index.html` → `assets/index-*.js`); the window is hidden until `ready-to-show` then revealed (or after 8 s). Bundled brand assets: `out/renderer/logo.webp`, `out/renderer/index.html` title "October", wallpapers under `out/renderer/wallpapers/`, user DPs under `out/renderer/october-user-dp/`, harness logos under `out/renderer/harness/` (cursor, claude-code, codex, gemini, grok, etc.).
+   294→
+   295→---
+   296→
+   297→## 7. How to Replicate the Build
+   298→
+   299→To produce an equivalent `October-x64.exe` + `app.asar` you need (in the **external build repo**, not shipped here):
+   300→
+   301→1. **Toolchain:** Electron `42.4.0` + `electron-builder` (NSIS target, x64) + `electron-updater@6.8.9`. TypeScript/React frontend bundled into `out/renderer` (Vite/etc.), main process compiled to `out/main/index.js`.
+   302→2. **dependencies:** install exactly the 36 declared deps in §2 (plus their transitive native deps: `sharp`, `@img/*`, `onnxruntime-node`, `sherpa-onnx-*`, `@openai/codex*`, `node-pty`, `node-addon-api`).
+   303→3. **asar + asarUnpack:** pack `out/` and `node_modules` into `app.asar`, but configure electron-builder to **unpack the native modules** (`node-pty`, `onnxruntime-node`, `sherpa-onnx-node`, `sherpa-onnx-win-x64`, `@img/sharp-win32-x64`, `@openai/codex-win32-x64`) into `app.asar.unpacked/node_modules/`. electron-builder does this automatically for any dep containing `.node`/`.dll`, which is why we see them duplicated in both locations.
+   304→4. **app-update.yml:** place `owner: harshsaver / repo: october-desktop-releases / provider: github / updaterCacheDirName: october-desktop-updater` in `resources/`. Set `publish: [{ provider: "github" }]` in the electron-builder config so each release publishes `latest.yml` + `October-<version>-x64.exe` to the GitHub repo; electron-updater then auto-discovers them.
+   305→5. **NSIS installer:** use electron-builder's `nsis` target with `oneClick:false` (or a custom `.nsi` using `nsis7z`, `UAC`, `nsDialogs`, `WinShell`, `StdUtils`, `System`, `nsExec` plugins). Embed the app as `app-64.7z`. Include `modern-wizard.bmp` as the MUI banner. Write the `october://` protocol registration (per-user `HKCU\Software\Classes\october`) in the install section. Generate `Uninstall October.exe`.
+   306→6. **elevate.exe:** drop Kai Liu's `elevate.exe` into `resources/` so the running app can self-elevate for privileged actions.
+   307→7. **Runtime policy:** populate the Supabase `desktop_release_policy` table (`platform`, `minimum_version`, `latest_version`, `message`) so `initUpdater()` can force mandatory upgrades.
+   308→
+   309→### Key file/line references
+   310→
+   311→- `asar_extracted/package.json:1-46` — deps + `main`.
+   312→- `resources/app-update.yml` — updater config (§3.1).
+   313→- `out/main/index.js:15072-15132` — `initUpdater` + `startUpdateDownload`/`installUpdate`/`checkForUpdates`.
+   314→- `out/main/index.js:6122-6134` — `getReleasePolicy` (Supabase forced-update).
+   315→- `out/main/index.js:251-254, 18641-18644` — IPC update channels.
+   316→- `out/main/index.js:19582-19711` — `createWindow` + `app.whenReady` launch sequence.
+   317→- `out/main/index.js:19404-19406` — `october://` protocol registration.
+   318→- `out/main/index.js:19368, 19652` — `PROTOCOL="october"`, `october-wallpaper://` scheme.
+   319→- `out/main/index.js:5797` — Supabase URL.
+   320→- `out/main/index.js:5364` — sherpa-onnx model release URL.
+   321→- `app/resources/elevate.exe` — privilege helper.
+   322→- `app/October.exe` — Electron 42.4.0 / Chrome 148 host.
+   323→- `/tmp/october_work/$PLUGINSDIR/` — NSIS plugins + `app-64.7z`.
+   324→- `/tmp/october_work/$R0/Uninstall October.exe` — uninstaller artifact.
+   325→

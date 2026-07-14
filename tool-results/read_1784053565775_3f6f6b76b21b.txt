@@ -1,0 +1,310 @@
+     1→# October Desktop — Renderer (React UI) Reverse-Engineering Notes
+     2→
+     3→**Subsystem:** THE RENDERER (React UI) — architecture, state management, components, IPC.
+     4→**App version:** 1.0.30 (Wega Labs)
+     5→**Rendered:** from `/tmp/october_work/app/asar_extracted/out/renderer/`
+     6→**Preload:** `/tmp/october_work/app/asar_extracted/out/preload/index.js`
+     7→
+     8→Renderer bundles are Vite-built and **minified**. Identifiers were recovered with `grep`/`read` of the asset chunks. Line numbers point at the extracted (already-de-minified but still mangled) files.
+     9→
+    10→---
+    11→
+    12→## 1. Entry point
+    13→
+    14→`index.html` (`out/renderer/index.html`) is a minimal shell:
+    15→
+    16→```html
+    17→<script type="module" crossorigin src="./assets/index-C29xCgPS.js"></script>
+    18→<link rel="stylesheet" crossorigin href="./assets/index-Bo6j6Brx.css">
+    19→...
+    20→<div id="root"></div>
+    21→```
+    22→
+    23→- The single `<script type="module">` loads the **main entry bundle `assets/index-C29xCgPS.js`** (~1.5 MB). It contains the whole React app, the Zustand store, all shared component code, the Lucide icon set, analytics, voice intent parser, etc.
+    24→- Mount happens at `index-C29xCgPS.js:30087`:
+    25→  ```js
+    26→  ReactDOM.createRoot(document.getElementById("root")).render(
+    27→    <We.StrictMode><ErrorBoundary><App/></ErrorBoundary></We.StrictMode>
+    28→  );
+    29→  ```
+    30→- `ErrorBoundary` (`index-C29xCgPS.js:30024`) catches React crashes and forwards them to the main process via `window.october.reportError(...)`. A global `unhandledrejection`/`error` listener (`index-C29xCgPS.js:30063`) also forwards crashes (a known xterm "dimensions" sync error is deliberately ignored).
+    31→
+    32→### Root component tree — `App()` (`index-C29xCgPS.js:29854`)
+    33→
+    34→`App()` reads `view` from the store and renders one of three screens, plus global overlays. There is **no router** — view switching is a single `view` string in the store (`"home" | "settings" | "canvas"`).
+    35→
+    36→```
+    37→<ErrorBoundary scope="react">
+    38→  <App>
+    39→    ├─ Onboarding           (first-run, iff onboardingCompletedAt not set)      index-C29xCgPS.js:29991
+    40→    ├─ ConnectAgent         (hard gate: no working agent → connect one first)  index-C29xCgPS.js:29995
+    41→    ├─ ConnectAgentSuccess  (celebration frame)                                index-C29xCgPS.js:29996
+    42→    ├─ "Checking your setup…" placeholder while auth/agents-health sample
+    43→    └─ view switch:
+    44→         view==="home"     → <Home/>            index-C29xCgPS.js:30000
+    45→         view==="settings" → <Settings/>        index-C29xCgPS.js:30001
+    46→         view==="canvas"   → <Suspense><CanvasView/></Suspense>   index-C29xCgPS.js:30013  (lazy chunk)
+    47→       + <FinderOverlay/>   (lazy chunk, iff finderOpen)            index-C29xCgPS.js:30016
+    48→       + <FeedbackModal/>                                         index-C29xCgPS.js:30017
+    49→       + <UpdateTab/>                                             index-C29xCgPS.js:30018
+    50→  </App>
+    51→  <NoticeToast/>            index-C29xCgPS.js:30020
+    52→  <UpdateRequiredGate/>     index-C29xCgPS.js:30021
+    53→</ErrorBoundary>
+    54→```
+    55→
+    56→Key wiring inside `App`'s `useEffect`s (`index-C29xCgPS.js:29903-29989`):
+    57→- Subscribes to all main→renderer event channels: `onTask`, `onAgentQuestion`, `onCanvasCommand`, `onDevServer`, `onBackgroundStatus`, `onBackgroundReveal`, `onSimulator`, `onOpenCanvas`, `onAgentsHealth`, `onUpdate`, `onMenuReloadPreview`, `onMenuCloseSurface`, `onAnalytics`, `auth.onChanged`.
+    58→- These feed back into the store: `handleTaskEvent`, `receiveAgentQuestion`, `applyCanvasCommand`, `setDevServer`, `setBackgroundWork`, `setSimulator`, `openSharedCanvas`, `setAgentsHealth`, `setUpdate`, `menuReloadPreview`, `menuCloseSurface`, and analytics `track(e.event,e.props)`.
+    59→- Reads persisted settings once via `window.october.settings.get()` and hydrates `theme`, `defaultHarness`, `autoMergeSessions`, `skipPermissions`, `minimapVisible`, `instantTerminals`, `remoteAccess`, `wallpaper`, `onboardingCompletedAt` (`index-C29xCgPS.js:29904`).
+    60→
+    61→### Chunk loading
+    62→
+    63→The main bundle is split into lazily-imported chunks (Vite `import()` + `__vitePreload`):
+    64→
+    65→| Chunk | Loaded from | Exports / role |
+    66→|---|---|---|
+    67→| `CanvasView-CfgQSWLU.js` (~2.3 MB) | `reactExports.lazy(() => import("./CanvasView-CfgQSWLU.js")...)` `index-C29xCgPS.js:29852` | `CanvasView` — the infinite canvas (react-flow nodes/edges), terminal, chat, LiveBlocks, Monaco, xterm, qrcode, transformers |
+    68→| `FinderOverlay-DVxtG3Hk.js` | `import("./FinderOverlay-DVxtG3Hk.js")` `index-C29xCgPS.js:29853` | Whole-machine file browser overlay + AI ask |
+    69→| `FullScreenChat-BRzsWI5u.js` (~58 KB) | `reactExports.lazy(...import("./FullScreenChat-BRzsWI5u.js")...)` `CanvasView-CfgQSWLU.js:67494` | `FullScreenChat` — the "cockpit" fullscreen surface |
+    70→| `ArtifactViewer-D_4z6Zyu.js` | dep of CanvasView (`__vite__mapDeps`) | Artifact/file viewer |
+    71→| `CodePanel-m9FzbuR3.js` | dep of CanvasView | Code panel (Monaco-based) |
+    72→| `monaco-setup-BOXkfPHJ.js` (~7.1 MB) + `monaco-setup-CIUAwcg6.css` | dep of CanvasView | Full Monaco editor + workers bootstrap |
+    73→| `index-full-C2kptLKF.js` | dep of CanvasView (`mapDeps`) | Shared lib bundle: **defuddle** (article extractor) + **Temml** (TeX math) for chat markdown rendering |
+    74→| `index-Bumud3UF.js` | dep of CanvasView | Lucide icon subset (`ChevronRight`, `Eye`, `FileText`, `MessageSquarePlus`, `Search`) |
+    75→
+    76→> Note: `index.full-C2kptLKF.js` is **not** a second HTML entry — there is only `index.html`. It is a shared dependency chunk (`defuddle` + Temml) pulled in by the CanvasView chunk's `mapDeps`.
+    77→
+    78→---
+    79→
+    80→## 2. State management — single Zustand store
+    81→
+    82→There is exactly **one application store**: `useAppStore`, created with `create((set, get) => ({...}))` at `index-C29xCgPS.js:14094`, closing at `index-C29xCgPS.js:18042`. (The only other `zustand` usage in the bundle is `@xyflow/react`'s internal store inside `CanvasView-CfgQSWLU.js`.)
+    83→
+    84→It is a monolithic store holding the **entire canvas document + session + UI state + cloud/voice/bus state**. There are no slices/contexts for settings/agents/etc. — settings/auth/voice/tasks all live here as fields, with the *persistence* calls delegated to `window.october.*` IPC.
+    85→
+    86→### State shape (fields and their meaning)
+    87→
+    88→**View / navigation**
+    89→- `view: "home" | "settings" | "canvas"` (`:14095`)
+    90→- `settingsReturnView` (`:14096`), `settingsSection` (`:14238`)
+    91→- `viewport` (pan/zoom, `:14146`), `selectedNodeIds`, `nodeClipboard`, `pasteStep` (`:14147-14149`)
+    92→
+    93→**Project / workspace**
+    94→- `project` (open project object, `:14097`), `apps`, `scratchId`, `scratchName` (`:14098-14100`)
+    95→- `canvasHomePath` (`:14101`), `workspaceProjects` (per-platform map), `workspaceProjectPaths`, `devServers` (dict by path), `devServer` (`:14210-14212`)
+    96→- `screens`, `chatBoxes`, `stickies`, `analytics`, `youtube` (web browser nodes), `remotion`, `remotionStudios`, `experiments`, `terminals`, `backends`, `connections` (edges), `navLinks`, `lockedElements` (`:14133-14145`)
+    97→
+    98→**Terminal / agent sessions**
+    99→- `terminals`, `terminalHealth`, `terminalWorking`, `terminalsAwaitingCwd`, `pendingAutostart`, `lastTerminalCwd`, `autoMergeSessions`, `skipPermissions`, `instantTerminals`, `closedTerminals`, `remoteAddedTerminals`, `sessionConflict`, `terminalInbox` (`:14102-14128`)
+   100→- `agentTldr`, `autoRespond`, `autoCommGlobal`, `autoChainCap/Depth/Pending`, `autoActedCount` (`:14116-14122`)
+   101→
+   102→**Chat / streaming**
+   103→- `chatInbox`, `chatInboxPreview`, `streamingByChat`, `progressByChat`, `thinkingByChat`, `fullscreenSession`, `cockpitSeen`, `lastCompletedAt` (`:14114-14171`)
+   104→- `chatAttachIntents`, `codePanelOpen`, `codePanelFile`, `universalExpandSignal` (`:14176-14193`)
+   105→
+   106→**Cloud / collaboration / bus**
+   107→- `account`, `authStatus`, `cloudCanvasId`, `cloudBusy`, `cloudSaveError`, `busCanvasId`, `busReady`, `codeSyncStatus`, `codeSyncPreviewBaseUrl`, `pendingSharedCanvasId`, `addedSkills` (`:14181-14190, 14191-14208`)
+   108→- `remoteAccess`, `codePanelOpen` etc.
+   109→
+   110→**Voice**
+   111→- `voiceModeActive`, `voiceReady`, `voiceListenSignal`, `voiceMicDenied`, `voiceStatus`, `voiceStopSignal`, `lastVoiceUtterance`, `voicePendingAsk`, `voicePendingConfirm`, `commanderGate`, `orchestrationPlan`, `lastOrchestratorTurn` (`:14194-14206`)
+   112→
+   113→**UI / misc**
+   114→- `wallpaper`, `customWallpapers`, `theme`, `selectedTool` (`"select"|"phone"|"desktop"|...`), `defaultHarness` (default `"claude-code"`), `minimapVisible`, `notice`, `update`, `updateDismissed`, `simulator`, `agentsHealth`, `finderOpen`, `finderQuery`, `feedbackOpen`, `dirtyCounter`, `pendingTasks`, `busyVariants`, `variantModalScreenId`, `spells`, `recentActions`, `flutterMeta`, `rnNavMeta`, `projectSetupStatus`, `pendingScreenAdd`, `revealNodeId`, `terminalLocatorOpen`, `logReport` (`:14107-14180, 14159-14173, 14207+`)
+   115→
+   116→### Store actions of note
+   117→
+   118→`applyOp(op)` (`:14174`) is the **single canvas-document write seam** — it runs the pure reducer `applyCanvasOp(doc, op)` (`:13217`) and commits the minimal patch + bumps `dirtyCounter`. All node add/remove/move/update goes through it (`addScreen`, `addSticky`, `addTerminal`, `addChat`, `setScreenPreviewMode`, `setViewport`, …).
+   119→
+   120→Canvas persistence:
+   121→- `toCanvasState()` (`:18004`) serializes the document (stripping the universal "Project chat" and transient fields).
+   122→- `applyImportedCanvas(canvas)` (`:14682`) imports a file/shared doc.
+   123→- `applyRemoteCanvas(canvas)` (`:14620`) — **MERGE-PRESERVE** multiplayer pull: keeps local viewport, preserves live terminals/chats, guards against transient remote node drops (`guardRemoteNodeDrop`), re-attaches local-only fields (`LOCAL_ONLY_FIELDS`).
+   124→- `syncToCloud()` / `shareCanvas()` / `openSharedCanvas()` (`:14273-14343`) drive the cloud canvas + code-sync guest flow.
+   125→
+   126→Project lifecycle: `openProject` (`:14728`), `attachProject` (`:14874`), `closeProject` (`:14896`), `newScratchWorkspace` (`:14971`), `newStarterWorkspace`, `openScratchWorkspace` (`:15029`), `setDevServer`, `detectFlutterScreens`, `detectRNScreens`, `addScreen`/`addScreensForRoutes`.
+   127→
+   128→Chat/agent: `sendChatMessage` (`:17377`) → `window.october.tasks.canvasEdit` (`:17125`, `:17604`); `cancelTask`→`tasks.cancel` (`:17699`); `answerAgentQuestion`→`agent.answerQuestion` (`:17729`); `undo`→`tasks.undo` (`:17746`).
+   129→
+   130→Voice: `refreshVoiceReady` (`:14224`), `dispatchToOrchestrator`, `applyCanvasCommand` (`:14448`) — the voice command path (records recent actions so "do it again" works).
+   131→
+   132→A `useAppStore.subscribe(...)` (`:18045`) persists the **universal Project chat** to `localStorage` (debounced 400 ms, capped `UNIVERSAL_HISTORY_CAP`).
+   133→
+   134→---
+   135→
+   136→## 3. Component map (major screens / nodes / chunks)
+   137→
+   138→### Screens (in main bundle)
+   139→| Component | File:line | Responsibility |
+   140→|---|---|---|
+   141→| `App` | `index-C29xCgPS.js:29854` | Root: gates (Onboarding/ConnectAgent), view switch, global event wiring |
+   142→| `Home` | `index-C29xCgPS.js` (ref `:30000`) | Start/home screen — pick/create/clone project, recents, starter canvases |
+   143→| `Settings` | `index-C29xCgPS.js:30001` | Settings panels (account, agents, voice, wallpaper, …); `settingsSection` in store |
+   144→| `Onboarding` | `index-C29xCgPS.js:29991` | First-run onboarding |
+   145→| `ConnectAgent` / `ConnectAgentSuccess` | `index-C29xCgPS.js:29995-29996` | Hard gate forcing an agent connection (Claude Code / API key / etc.) |
+   146→| `FeedbackModal` | `:30017` | Feedback form |
+   147→| `UpdateTab` / `UpdateRequiredGate` / `NoticeToast` | `:30018-30021` | Updater UI + global toasts |
+   148→
+   149→### Canvas (chunk `CanvasView-CfgQSWLU.js`)
+   150→The canvas is a **react-flow** (`@xyflow/react`) surface. Confirmed symbols: `ReactFlow`, `Background`, `MiniMap`, `applyNodeChanges` (`CanvasView-CfgQSWLU.js`). Node/edge components:
+   151→
+   152→| Node component | File (CanvasView) | Responsibility |
+   153→|---|---|---|
+   154→| `ScreenNode` | `CanvasView` (ref `:`) | App screen preview (iframe of dev server URL) |
+   155→| `ChatNode` | `CanvasView` | Chat-with-agent box (streaming) |
+   156→| `TerminalNode` | `CanvasView` | xterm terminal surface |
+   157→| `StickyNode` | `CanvasView` | Draggable sticky note |
+   158→| `AnalyticsNode` | `CanvasView` | Analytics dashboard node |
+   159→| `RemotionNode` | `CanvasView` | Remotion video studio node |
+   160→| `YoutubeNode` (browser) | `CanvasView` | Web browser / article node (uses defuddle to extract markdown, `index.full` chunk) |
+   161→| `BackendNode` | `CanvasView` | Backend/service node (Supabase etc.) |
+   162→| `Dock` | `CanvasView` (7 refs) | Left/tool dock (icons live in `renderer/dock/`: analytics, chat, cursor, phone, resources, stickynotes, wallpaper, website) |
+   163→| `Wallpaper` / wallpaper picker | `CanvasView` / `index` | Background wallpaper (39 images in `renderer/wallpapers/`, custom uploads via `wallpapers.*` IPC) |
+   164→| `CodePanel` | `CanvasView` (7 refs) + chunk `CodePanel-m9FzbuR3.js` | Slide-over code editor (Monaco) |
+   165→| `ArtifactViewer` | chunk `ArtifactViewer-D_4z6Zyu.js` | Generated-file/artifact viewer |
+   166→| `FullScreenChat` | chunk `FullScreenChat-BRzsWI5u.js:539` | "Cockpit" — maximized chat/terminal surface; uses `useReactFlow().setCenter`, git branch polling via `october.git.status`, shows preview iframe |
+   167→
+   168→### Collaboration overlays (inside LiveBlocks `Presence`)
+   169→`Presence({canvasId})` (`CanvasView-CfgQSWLU.js:66123`) wraps: `MyCursorTracker`, `SelectionTracker`, `CollaboratorTracker`, `CanvasStorageSync`, `CursorsOverlay`, `SelectionOverlay`, `AvatarsPanel`.
+   170→
+   171→### Assets / branding
+   172→- `renderer/harness/` — agent brand logos: `claude-code.png`, `codex.png`, `opencode.png`, `cursor.png`, `gemini.png`, `grok.png`, `cline.png`, `hermes.png`, `pi.png`, `figma.svg`, `lovable.svg`, `manus.svg`, `canva.png`, `campfire.svg`, `browser-use.svg`, `post-bridge.webp`, `shopify.svg`, `antigravity.webp`, `shortcut.jpg` (hidden `campfire`, `qwen`, `goose`, `copilot` harnesses are wired but release-hidden — see `index-C29xCgPS.js:12806-12826`).
+   173→- `renderer/dock/` — dock icons. `renderer/wallpapers/` — 39 wallpapers. `renderer/october-user-dp/` — user avatars. `renderer/cline-brand-assets/` — Cline brand assets (the app is Cline-derived).
+   174→
+   175→---
+   176→
+   177→## 4. IPC bridge — `window.october` (preload)
+   178→
+   179→`out/preload/index.js` builds an `IPC` channel map (lines 3–262), a nested `api` object (lines 263–708), and exposes it with `electron.contextBridge.exposeInMainWorld("october", api)` (`:709`). **All calls go through `ipcRenderer.invoke`/`send`/`on`** — no `require` is leaked to the renderer.
+   180→
+   181→Channel constants live in `IPC` (`:3-262`). The renderer calls them as `window.october.<namespace>.<method>`.
+   182→
+   183→### Exposed API surface (method → underlying IPC channel)
+   184→
+   185→**settings** — `get()`, `set(patch)`, `authStatus()` → `settings:get/set/auth-status`
+   186→**wallpapers** — `list()`, `upload()`, `remove(ref)` → `wallpapers:list/upload/remove`
+   187→**auth** — `signIn`, `signUp`, `signInWithGitHub`, `resetPassword`, `resendConfirmation`, `signOut`, `status()`, `onChanged(cb)` → `auth:sign-in/sign-up/sign-in-github/reset-password/resend-confirmation/sign-out/status`, event `event:auth-changed`
+   188→**liveblocks** — `auth(room)` → `liveblocks:auth`
+   189→**voice** — `ensureMicAccess`, `openMicSettings`, `openaiRealtimeToken(opts)`, `deepgramToken`, `deleteOldModel`, `compile(input)`, `prewarmCompiler`, `intentReady`, `speak(text)`, `stopSpeak`, `mic.{start,stop,mute,unmute,onState}`, `parakeet.{status,ensureModel,start,sendAudio(samples),stop,onTranscript,onModelProgress}` → `voice:*`; events `event:voice-transcript`, `event:voice-model-progress`, `event:voice-mic-state`. (Notable: `sendAudio` copies PCM into a fresh V8 `Float32Array` before `ipcRenderer.send` to avoid the external-buffer crash — `preload:322`.)
+   190→**cloud** — `create/save/load/openShared/recentShared/forgetRecentShared/shareInfo/setShared/delete` → `cloud:*`
+   191→**skills** — `sync(roots,ids)`, `installed(roots)` → `skills:sync/installed`
+   192→**bus** — `enabled`, `registerNode`, `setEdges`, `nodeRemoved`, `octoberSend`, `installRepo`, `drainInbox`, `recentActivity`, `startCloudSync`, `stopCloudSync`, `onActivity` → `bus:*`; event `event:bus-activity`
+   193→**browser** — `register`, `unregister`, `setLinks`, `clearData`, `capture`, `onActivity` → `browser:*`; event `event:browser-activity`
+   194→**codeSync** — `startHost`, `startGuest`, `guestDir`, `stop`, `consent`, `setConsent`, `preflight`, `onStatus` → `code-sync:*`; event `event:code-sync`
+   195→**backends** — `list/create/update/remove/link/unlink/pending/approve/reject/query/schema/peek/ask/scaffoldClient/listOrgs/provision/localStart/localStop/localStatus/sync/convexAuthStatus/convexLogin/convexCreate` → `backends:*`
+   196→**nav** — `detect(projectPath, screens)` → `nav:detect`
+   197→**projects** — `pickFolder/recents/forgetRecent/open/discoverApps/flutterRoutes/rnRoutes/openIsolated/detectPreview/create/clone/scanRoutes/defaultDir/freeChildName` → `projects:*`
+   198→**thumbnails** — `capture(key,rect)`, `getMany(keys)` → `thumbnails:*`
+   199→**canvas** — `load(projectPath)`, `save(projectPath,state)`, `exportCanvas(data)`, `importCanvas()`, `commandResult(requestId,result)` → `canvas:load/save/export/import`, `canvas:command-result`; events `event:canvas-command`, `event:open-canvas`
+   200→**workspace** — `scratchList/scratchCreate/scratchLoad/scratchSave/scratchDelete` → `workspace:scratch-*`
+   201→**devServer** — `start/stop/status/lanHost/enableExpoWeb` → `devserver:*`
+   202→**app** — `toggleFullscreen()`, `appInfo()` → `app:toggle-fullscreen`, `app:info`
+   203→**agent** — `answerQuestion(questionId,answer)` → `agent:answer-question`; event `event:agent-question`
+   204→**remotion** — `create/compositions/start/stop/status/render` → `remotion:*`
+   205→**video** — `pickInput/subtitle/bgm/cancel` → `video:*`
+   206→**oauth** — `claudeLogin()` → `oauth:claude-login`
+   207→**supervisor** — `releaseProject(params)`, `agentsHealth()` → `supervisor:*`; event `event:agents-health`
+   208→**tasks** — `canvasEdit(params)`, `cancel(taskId)`, `closeChatSession(chatId)`, `closeAllChatSessions()` (send), `undo(repoPath,snapshot,files)`, `decompose(params)`, `finderAsk(params)` → `tasks:*`
+   209→**files** — `saveAttachment/list/listProjectResources/readProjectThumbnail/read/write/exists/ensureCanvasDesign/captureScreen/scaffoldScreen/listAssets/importAssets/readAssetThumbnail/materializeAssets/assetPath/listFolders/importFolder/removeFolder/addAssets/addFolders` → `files:*`
+   210→**fs** (whole-machine Finder) — `places/browse/preview/search/reveal/open/rename/move/trash/mkdir` → `fs:*`
+   211→**storage** (rclone) — `ensure/remotes/connect/cancelConnect/disconnect/list/importToLibrary` → `storage:*`
+   212→**find** — `query/candidates/rank/recent` → `find:*`
+   213→**log(scope,message)** → `log:write` (send); **reportError(kind,detail)** → `renderer:crash` (send); **diagnostics.report(note)** → `diagnostics:report`
+   214→**clipboard** — `writeText`, `readImagePath(name)`, `hasImage` → `clipboard:*`
+   215→**runtime** — `prefetch(framework)` (send), `ensureNode()`, `onProgress` → `runtime:*`, event `event:runtime-progress`
+   216→**update** — `state()`, `start()`(send), `install()`(send), `check()`(send) → `update:*`, event `event:update`
+   217→**analyticsReady()** (send) → `analytics:ready`; **events.onAnalytics(cb)** → `event:analytics`
+   218→**git** — `status/commitAll/push/openPr/addWorktree/removeWorktree` → `git:*`
+   219→**worktrees** — `isolate/merge/autoLand/drop` → `worktrees:*`
+   220→**simulator** — `start/stop/status` → `sim:*`, event `event:simulator`
+   221→**terminal** — `start(params)`, `restart(params)`, `input(id,data)`(send), `resize(id,cols,rows)`(send), `snapshot(id)`, `kill(id)`(send), `whichAgents`, `foreground`, `foregroundCached`, `peekSession`, `seedResume`, `sessionExists`, `scanExternalSessions`, `background`, `backgroundStatus`, `onData/onExit/onResumed/onAttention/onReveal` → `terminal:*`; events `event:terminal-data/exit/resumed/attention/reveal`
+   222→**events** — `onTask`, `onAgentQuestion`, `onCanvasCommand`, `onDevServer`, `onOpenCanvas`, `onSimulator`, `onAgentsHealth`, `onUpdate`, `onAnalytics`, `onBackgroundStatus`, `onBackgroundReveal`, `onMenuReloadPreview`, `onMenuCloseSurface`, `onMenuZoom` → `event:task/agent-question/canvas-command/devserver/open-canvas/simulator/agents-health/update/analytics/background-status/background-reveal/menu-reload-preview/menu-close-surface/menu-zoom`
+   223→
+   224→(Every event listener returns an unsubscribe thunk that calls `ipcRenderer.removeListener`.)
+   225→
+   226→---
+   227→
+   228→## 5. Real-time collaboration — LiveBlocks
+   229→
+   230→LiveBlocks is the realtime multiplayer layer for the canvas. The client is bundled into `CanvasView-CfgQSWLU.js` (`@liveblocks/client` + `@liveblocks/react`).
+   231→
+   232→- **Auth bridge:** `liveblocksAuth(room)` (`CanvasView-CfgQSWLU.js:66116`) simply delegates to `window.october.liveblocks.auth(room)` (IPC `liveblocks:auth`). The room id is `canvas-${canvasId}` where `canvasId = useAppStore.getState().ensureBusCanvasId()` (a `crypto.randomUUID()` persisted in the doc as `busCanvasId`).
+   233→- **Provider:** `<LiveblocksProvider authEndpoint={liveblocksAuth}>` wraps a `<RoomProvider id={"canvas-"+canvasId} initialPresence={{cursor:null,selection:[]}} initialStorage={emptyCanvasStorage()}>` (`CanvasView-CfgQSWLU.js:66123-66139`).
+   234→- **Storage model** is built from the canvas doc via `LiveObject`/`LiveList`/`LiveMap` (`:57797`+). `CanvasStorageSync` (`CanvasView-CfgQSWLU.js`) mirrors the Zustand store ↔ LiveBlocks storage. Node types stored: `screen`, `chat`, `sticky`, `analytics`, `youtube`, `remotion`, `terminal`; plus `connections`, `navLinks`, `experiments` as `LiveList`s. `LOCAL_ONLY_FIELDS` are stripped before publish so per-machine/transient state (messages, busyTaskId, cwd, worktree) is never synced (`:66095-66115`).
+   235→- **Presence/awareness:** `MyCursorTracker`, `SelectionTracker`, `CollaboratorTracker`, `CursorsOverlay`, `SelectionOverlay`, `AvatarsPanel` render remote cursors/selections/avatars. Cursor color from `CURSOR_PALETTE` (`CanvasView-CfgQSWLU.js:66119`).
+   236→- The store's `applyRemoteCanvas` (`:14620`) is the *fallback/non-LiveBlocks* merge path (e.g. for the `bus:*` october-send flow and code-sync guests); LiveBlocks is the primary path.
+   237→- Related IPC namespaces: `bus:*` (node registration, edges, october-send, cloud sync), `code-sync:*` (host/guest local↔cloud repo sync), `cloud:*` (shared canvases).
+   238→
+   239→---
+   240→
+   241→## 6. Monaco editor integration
+   242→
+   243→Monaco is loaded as a **separate 7.1 MB chunk** `monaco-setup-BOXkfPHJ.js` (imported by the CanvasView chunk's `mapDeps`, `CanvasView-CfgQSWLU.js:1`) plus `monaco-setup-CIUAwcg6.css`. The editor powers `CodePanel` and `ArtifactViewer`.
+   244→
+   245→- Editor API referenced as `monaco-editor` (`CanvasView-CfgQSWLU.js:67485`); the `getWorker` factory is standard Monaco (sets `globalThis.MonacoEnvironment.getWorker`, spawns ES-module `Worker`s — `monaco-setup-BOXkfPHJ.js:167434-167452`).
+   246→- **Workers** (separate chunks): `editor.worker`, `ts.worker` (12 MB), `json.worker`, `html.worker`, `css.worker`.
+   247→- **Language services (Mode chunks):** `tsMode-DOlO8DXO.js`, `jsonMode-Bb2S_uhn.js`, `htmlMode-CK0fU5YY.js`, `cssMode-Bsk6e6Jm.js` register the TS/JSON/HTML/CSS language features.
+   248→- **81 Monaco language grammar contributions** are bundled (each `<lang>-<hash>.js`), e.g. `abap, apex, azcli, bat, bicep, cameligo, clojure, coffee, cpp, csharp, csp, css, cypher, dart, dockerfile, ecl, elixir, flow9, freemarker2, fsharp, go, graphql, handlebars, hcl, html, ini, java, javascript, julia, kotlin, less, lexon, liquid, lua, m3, markdown, mdx, mips, msdax, mysql, objective-c, pascaligo, pascal, perl, pgsql, php, pla, postiats, powerquery, powershell, protobuf, pug, python, qsharp, razor, r, redis, redshift, restructuredtext, ruby, rust, sb, scala, scheme, scss, shell, solidity, sophia, sparql, sql, st, swift, systemverilog, tcl, twig, typescript, typespec, vb, wgsl, xml, yaml`. (These are the standard `monaco-editor/esm/vs/basic-languages` + `language/*` contributions; `javascript` reuses the TS worker.)
+   249→
+   250→---
+   251→
+   252→## 7. xterm.js terminal rendering & data flow
+   253→
+   254→Terminals are **xterm.js** instances (`Terminal`, `FitAddon`, `WebLinksAddon` — `CanvasView-CfgQSWLU.js`) embedded inside `TerminalNode`. Data flows over the `terminal:*` IPC channels.
+   255→
+   256→Flow (terminal component, `CanvasView-CfgQSWLU.js:43020-43129`):
+   257→1. On mount the component calls `window.october.terminal.start({ id, cwd, cols, rows, startCommand, agent, busCanvasId })` (`:43051`). The main process spawns a PTY and returns `{ scrollback, seq }`; scrollback is written into xterm (`:43059-43069`). `agent` is derived from the harness (`claude-code`→`"claude"`, else the harness name) unless it's a remote/gated harness (`:43047`).
+   258→2. **Output:** `window.october.terminal.onData(e => …)` (`:43036`, channel `event:terminal-data`) writes `e.data` to xterm when `e.id === id`. While the node is offscreen an `IntersectionObserver` queues output (`writeOrQueue`/`hiddenQueue`, cap `HIDDEN_QUEUE_CAP`) and resyncs (re-`attach()`) on reveal (`:43073-43106`).
+   259→3. **Input:** `xterm.onData(data => window.october.terminal.input(id, data))` (`:43101`, channel `terminal:input` — `send`).
+   260→4. **Title:** `xterm.onTitleChange` → `updateTerminal(id,{title})` (`:43107`).
+   261→5. **Exit:** `window.october.terminal.onExit(e => …)` (`:43094`, channel `event:terminal-exit`) prints `[process exited …]` and marks health.
+   262→6. **Resize:** a `ResizeObserver` → `fit()` → `window.october.terminal.resize(id, cols, rows)` (channel `terminal:resize` — `send`).
+   263→7. Health/attention events (`event:terminal-exit/attention/reveal`, `terminal:snapshot/kill/restart`, `foreground`, `background`) are also consumed; `busCanvasId` is passed so terminals register as multiplayer "terminal" nodes via `bus:registerNode`.
+   264→
+   265→`october.terminal` also exposes `whichAgents`, `scanExternalSessions`, `seedResume`, `sessionExists`, `peekSession`, `foregroundCached`, `background`/`backgroundStatus` (for keeping terminals alive after project close).
+   266→
+   267→---
+   268→
+   269→## 8. Notable third-party SDKs / libraries
+   270→
+   271→| Library | Where | What it's used for |
+   272→|---|---|---|
+   273→| **Zustand** (`zustand`) | `index-C29xCgPS.js:14094` (`create`) | The single app store `useAppStore`. (Also `@xyflow/react`'s internal store in CanvasView.) |
+   274→| **@xyflow/react (react-flow)** | `CanvasView-CfgQSWLU.js` (`ReactFlow`, `Background`, `MiniMap`, `applyNodeChanges`) | The infinite node/edge canvas (screens, chats, terminals, stickies, …) and the cockpit `useReactFlow().setCenter`. |
+   275→| **xterm.js** | `CanvasView-CfgQSWLU.js` (`Terminal`, `FitAddon`, `WebLinksAddon`) | Terminal emulation inside `TerminalNode`; data over `terminal:*` IPC (see §7). |
+   276→| **Monaco editor** | chunk `monaco-setup-BOXkfPHJ.js` + mode/worker chunks | Code editing in `CodePanel` / `ArtifactViewer`; 81 language grammars + 5 workers. |
+   277→| **LiveBlocks** (`@liveblocks/client`, `@liveblocks/react`) | `CanvasView-CfgQSWLU.js` (`createClient`, `LiveblocksProvider`, `RoomProvider`, `LiveObject/List/Map`, `useRoom`, `useOthers`) | Real-time multiplayer canvas (cursors, selection, storage sync) — auth via `october.liveblocks.auth` (§5). |
+   278→| **qrcode** | `CanvasView-CfgQSWLU.js` (`qrcode`, `QRCode`, `toDataURL` ~`:11255-11528`) | Generates QR codes (e.g. phone/device preview pairing, LAN dev-server access, share links). |
+   279→| **defuddle** | chunk `index.full-C2kptLKF.js` (dep of CanvasView) | Article/content extraction from web pages — used by the `youtube`/browser nodes to pull clean markdown into the canvas. |
+   280→| **Temml** (TeX math) | chunk `index.full-C2kptLKF.js` | LaTeX/KaTeX-style math rendering inside chat markdown. |
+   281→| **@huggingface/transformers** (`ORT` = onnxruntime-web) | `CanvasView-CfgQSWLU.js` (many `ORT` refs `:26460`+) | In-app ONNX inference — the **Parakeet** on-device speech-to-text voice model (audio frames sent from renderer via `voice:parakeet-audio` after a V8 copy, `preload:322`). |
+   282→| **Lucide icons** | `index-C29xCgPS.js` (`Icon`, `LucideContext`) + `index-Bumud3UF.js` subset | UI icon set. |
+   283→| **analytics** (track/identify/initAnalytics) | `index-C29xCgPS.js` (`track`, `identify`, `initAnalytics`) | Event analytics; events forwarded from main via `event:analytics` → `track`. |
+   284→| **Agent SDKs (harnesses)** — referenced as **harness names** in the renderer, executed in the **main process**: `@anthropic-ai/claude-agent-sdk`, `@openai/codex-sdk`, `@agentclientprotocol/sdk` (Claude Code / Codex / OpenCode / Cursor / Gemini / Grok / Cline / Hermes / Pi …) | `index-C29xCgPS.js` lists `defaultHarness:"claude-code"` and a harness→agent intent map (`:12798-12827`); `sendChatMessage` dispatches to `october.tasks.canvasEdit` | The renderer only *names* the harness and sends chat/commands over IPC; the actual SDK subprocesses run in the main process. `@agentclientprotocol/sdk` was not found in the renderer bundle (its use, if any, is in main). |
+   285→
+   286→### Harness / agent inventory (renderer side)
+   287→Enabled harnesses (chat/terminal agents): `claude` (from `claude-code`), `codex`, `opencode`, `hermes`, `cursor`, `grok`, `pi`, `gemini`, `cline`. Release-hidden but wired: `campfire` (Skillsync), `qwen`, `goose`, `copilot` (commented out at `index-C29xCgPS.js:12806-12826`). Brand logos ship in `renderer/harness/`.
+   288→
+   289→---
+   290→
+   291→## 9. Summary of wiring (renderer ↔ main)
+   292→
+   293→```
+   294→index.html
+   295→  └─ assets/index-C29xCgPS.js  (React, useAppStore, App, Home/Settings/Onboarding/ConnectAgent,
+   296→       global event subscriptions, voice intent parser, harness map)
+   297→       ├─ lazy  CanvasView-CfgQSWLU.js  (react-flow canvas, xterm, LiveBlocks, Monaco deps,
+   298→       │                                 qrcode, transformers/ORT, FullScreenChat lazy)
+   299→       │     ├─ monaco-setup-BOXkfPHJ.js + mode/worker chunks
+   300→       │     ├─ index.full-C2kptLKF.js  (defuddle + Temml)
+   301→       │     ├─ CodePanel / ArtifactViewer / FullScreenChat chunks
+   302→       ├─ lazy  FinderOverlay-DVxtG3Hk.js  (whole-machine fs:* browser + AI ask)
+   303→  preload/index.js  →  window.october.*  (contextBridge over ipcRenderer)
+   304→       └─ 200+ IPC channels (settings/auth/cloud/liveblocks/voice/bus/browser/codeSync/
+   305→          backends/projects/canvas/workspace/devServer/tasks/files/fs/storage/find/git/
+   306→          worktrees/simulator/terminal/runtime/update/analytics/events/…)
+   307→```
+   308→
+   309→The renderer never touches Node or Electron directly — **every** capability (auth, cloud save, agent subprocesses, terminal PTYs, file I/O, git, screen capture, voice compile/transcribe, LiveBlocks token minting, updates, clipboard) is brokered through `window.october.<ns>.<method>` defined in `preload/index.js`.
+   310→

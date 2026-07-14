@@ -1,0 +1,683 @@
+     1→# 02 — Agent Runtime, Terminal Emulation & Git/Worktree Integration (Main Process)
+     2→
+     3→Reverse-engineering notes for the **October Desktop** main process
+     4→(`out/main/index.js`, ~19,794 lines, esbuild bundle). All `file:line` refs point at that file.
+     5→Companion reports: `03-voice.md`, `04-backends.md`.
+     6→
+     7→This subsystem owns three responsibilities:
+     8→
+     9→1. **Launching AI agents** (Claude, Codex, OpenCode, Hermes, Cursor, Grok, Pi, Campfire,
+    10→   Gemini, Cline, Qwen, Goose, Copilot) either over the **Agent Client Protocol (ACP)** or as
+    11→   **structured stdout CLIs**, and injecting the right credentials + bus-MCP env.
+    12→2. **Terminal emulation** via `node-pty` — a persistent terminal table, scrollback, resume
+    13→   detection, foreground-agent sampling, and 17 `terminal:*` IPC handlers.
+    14→3. **Git / worktree isolation** (`git:*` + `worktrees:*`) used to sandbox each agent session,
+    15→   plus the **context bus** (LiveBlocks realtime + a local MCP server) and the host/guest
+    16→   **code-sync**, **browser capture**, **thumbnails**, and **simulators**.
+    17→
+    18→---
+    19→
+    20→## 1. How agents are launched
+    21→
+    22→### 1.1 Dispatch: `runAgent()` — ACP first, bespoke fallback
+    23→
+    24→The single entry point for a chat-driven agent run is `runAgent(harness, prompt, cwd, settings, handlers, abort, bus, extras)` at `2491`:
+    25→
+    26→```js
+    27→async function runAgent(harness, prompt, cwd, settings, handlers, abort, bus, extras = {}) {
+    28→  if (ACP_CHAT_HARNESSES.has(harness) && acpEnabled()) {
+    29→    const acpResult = await runAcp(harness, prompt, cwd, settings, handlers, abort, bus, extras);
+    30→    if (acpResult) return acpResult;
+    31→    const hint = acpOnlyHint(harness);
+    32→    if (hint) return { ok: false, summary: hint };
+    33→  }
+    34→  return harness === "opencode"  ? runOpencode(...)
+    35→       : harness === "hermes"    ? runHermes(...)
+    36→       : harness === "cursor"    ? runCursor(...)
+    37→       : harness === "grok"      ? runGrok(...)
+    38→       : harness === "pi"        ? runPi(...)
+    39→       : harness === "campfire"  ? runCampfire(...)
+    40→       : harness === "gemini"    ? runGemini(...)
+    41→       : harness === "cline"     ? runCline(...)
+    42→       : harness === "browser-use" ? runBrowserUse(...)
+    43→       : harness === "codex"     ? runCodex(...)        // SDK wrapper class
+    44→       : runClaude(...);                            // default
+    45→}
+    46→```
+    47→
+    48→**Two launch strategies:**
+    49→
+    50→- **ACP (Agent Client Protocol)** — for `gemini, opencode, cursor, codex, qwen, goose, copilot`
+    51→  (`ACP_CHAT_HARNESSES`, `2013`). When `OCTOBER_ACP` is not `0/off/false` (`acpEnabled`, `2022`),
+    52→  it tries `runAcp()` first. If the CLI doesn't support ACP or the protocol handshake fails, it
+    53→  logs and **falls back** to the bespoke runner (or returns a provider-specific hint like
+    54→  *"Qwen Code could not start over ACP…"* — `acpOnlyHint`, `2054`).
+    55→- **Bespoke CLI runners** — every harness has a hand-written function (`runHermes`, `runCursor`,
+    56→  `runOpencode`, `runGrok`, `runPi`, `runCampfire`, `runGemini`, `runCline`, `runBrowserUse`,
+    57→  `runClaude`). Claude and Codex additionally use a **first-party SDK** (`@anthropic-ai/claude-agent-sdk`
+    58→  and `@openai/codex-sdk`) rather than spawning a raw process.
+    59→
+    60→**Manus is NOT a separate harness.** It is a *mode* layered onto any agent: when `params.manus`
+    61→is set, October injects a long "operate the remote Manus agent via REST" preamble into the prompt
+    62→and exports `MANUS_API_KEY` into the env (`17653`–`17691`, `17715`). Same pattern for Shopify /
+    63→Figma / Shortcut / Canva / PostBridge / Browser-Use CDP — each is a prompt preamble + one env var
+    64→(`17715`).
+    65→
+    66→### 1.2 The env pipeline (the core of credentials injection)
+    67→
+    68→Every launch funnels through a small stack of env builders:
+    69→
+    70→```
+    71→buildEnv(settings)            -- anthropic credential layer  (2471)
+    72→  └─ spawnEnv(extra)          -- process.env clone, scrubbed PATH, FORCE_COLOR=0 (1386)
+    73→cliEnv(settings, bus, extras) -- buildEnv + bus vars + extra (2500)
+    74→  └─ busEnvVars(bus)          -- OCTOBER_BUS_* (2497)
+    75→```
+    76→
+    77→**`spawnEnv(extra)` (`1386`)** — the base. It copies `process.env`, strips `GIT_ENV_VARS`,
+    78→re-hardens `PATH` via `hardenedPath()`, and sets `FORCE_COLOR=0`. `terminalEnv(extra)` (`1391`)
+    79→is the terminal variant (keeps color, adds `TERM=xterm-256color`, `TERM_PROGRAM=October`,
+    80→`ANTHROPIC_MODEL=claude-opus-4-8` default, etc.).
+    81→
+    82→**`buildEnv(settings)` (`2471`)** — the Anthropic credential decision:
+    83→
+    84→```js
+    85→function buildEnv(settings) {
+    86→  const env = spawnEnv();
+    87→  delete env.ANTHROPIC_API_KEY;
+    88→  delete env.ANTHROPIC_AUTH_TOKEN;
+    89→  delete env.ANTHROPIC_BASE_URL;
+    90→  if (settings.providerMode === "api-key") {
+    91→    env.ANTHROPIC_API_KEY = settings.apiKey;
+    92→  } else if (settings.providerMode === "october-cloud") {
+    93→    env.ANTHROPIC_BASE_URL = settings.octoberBaseUrl || "https://api.october.dev/v1";
+    94→    env.ANTHROPIC_AUTH_TOKEN = settings.octoberToken;
+    95→  }
+    96→  return env;
+    97→}
+    98→```
+    99→
+   100→So the Anthropic key is **never inherited from the host shell** — it's deleted and re-injected
+   101→from October's encrypted settings store (`apiKey` or `octoberToken`, decrypted at load time,
+   102→`3292`/`3358`). The Claude SDK options object is built in `buildClaudeOptions` (`2516`), which sets
+   103→`pathToClaudeCodeExecutable` to the unpacked native binary (`claudeExecutable`, `2391` / `bundledClaudeExecutable`, `2364`),
+   104→`bypassPermissions` by default, `systemPrompt: { type:"preset", preset:"claude_code" }`, and the
+   105→`october-bus` HTTP MCP server.
+   106→
+   107→**`cliEnv(settings, bus, extras)` (`2500`)** = `{ ...buildEnv(settings), ...busEnvVars(bus), ...extras?.env }`.
+   108→
+   109→**Per-agent extra env keys** (added on top of `cliEnv` in each runner):
+   110→
+   111→| Agent | Extra env var(s) | Where |
+   112→|------|------------------|-------|
+   113→| claude | (api-key/october-cloud via buildEnv) | `2519` |
+   114→| codex | `OPENAI_API_KEY` (2519? actually `2631`), plus `busEnvVars`, `extras.env` | `2630` |
+   115→| opencode | (inherits `cliEnv` only) | `2821` |
+   116→| hermes | `HERMES_INFERENCE_MODEL=model` | `2841` |
+   117→| cursor | `CURSOR_API_KEY` | `2921` |
+   118→| grok | `XAI_API_KEY` | `3030` |
+   119→| pi | (inherits `cliEnv`) | `2968` |
+   120→| campfire | (inherits `cliEnv`) | `2995` |
+   121→| gemini | `GEMINI_API_KEY`, `GEMINI_CLI_TRUST_WORKSPACE=true` | `3067` |
+   122→| cline | (inherits `cliEnv`) | `3157` |
+   123→| qwen | (inherits `cliEnv`; ACP path adds `OPENAI_API_KEY` at `2126`) | `2119` |
+   124→| goose | `GOOSE_MODE=auto` (ACP path `2124`) | `2124` |
+   125→| copilot | (ACM path; `OPENAI_API_KEY` at `2126`) | `2126` |
+   126→| browser-use | `ANTHROPIC_API_KEY` OR `OPENAI_API_KEY` (NOT via buildEnv — uses raw `spawnEnv`, `3110`) + `BU_CDP_WS` | `3110` |
+   127→
+   128→Note Codex is special: in the ACP path (`2119`) `OPENAI_API_KEY` + `codexLaunch.env` are merged
+   129→(`codexAcpLaunch`, `2036`); and in the bespoke path it uses the `@openai/codex-sdk` `Codex` class
+   130→with `codexPathOverride: codexExecutable()` (`2635`). The Codex native binary is resolved from the
+   131→bundled `@openai/codex-<plat>-<arch>` package, unwrapped from `app.asar` → `app.asar.unpacked`
+   132→(`codexExecutable`, `2431`).
+   133→
+   134→### 1.3 `envFor()` / `agentContext()` — backend-binding env injection (NOT agent auth)
+   135→
+   136→The task specifically references `envFor`/`agentContext`. These are **not** the agent-launch
+   137→credential helpers above — they belong to the **backend-binding adapter layer** (Supabase,
+   138→Convex, …). Each backend "adapter" object exposes `envFor(entity, framework)` and
+   139→`agentContext(entity, framework)` (e.g. `6861` supabase, `6949` convex). At agent-start, October
+   140→aggregates them:
+   141→
+   142→```js
+   143→function backendEnvFor(projectPath, framework) {        // ~7796
+   144→  const out = {};
+   145→  for (const e of readRegistry().entries)
+   146→    if (e.bindings.some(b => b.projectPath === projectPath))
+   147→      Object.assign(out, adapterFor(e.data.kind).envFor(e.data, framework));
+   148→  return out;
+   149→}
+   150→function agentContextFor(projectPath, framework) {      // 7803
+   151→  const blocks = [];
+   152→  for (const e of readRegistry().entries)
+   153→    if (e.bindings.some(b => b.projectPath === projectPath))
+   154→      blocks.push(adapterFor(e.data.kind).agentContext(e.data, framework));
+   155→  return blocks;
+   156→}
+   157→```
+   158→
+   159→- Supabase `envFor` injects `urlVar`/`anonVar` (e.g. `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY`) and,
+   160→  only in `autoApply` mode, `DATABASE_URL` from the secret vault (`6861`).
+   161→- Convex `envFor` injects its `CONVEX_URL` var (`6949`).
+   162→- The `agentContext` strings are appended to the agent's system/preamble so the model knows how
+   163→  to use the linked backend.
+   164→
+   165→### 1.4 The ACP runner (`runAcp`, `2114`)
+   166→
+   167→```js
+   168→const table = ACP_LAUNCH[harness];                                  // 2026
+   169→const ACP_LAUNCH = {
+   170→  gemini:    { bin: "gemini",    args: ["--acp"] },
+   171→  opencode:  { bin: "opencode",  args: ["acp"] },
+   172→  cursor:    { bin: "cursor-agent", args: ["acp"] },
+   173→  qwen:      { bin: "qwen",      args: ["--acp"] },
+   174→  goose:     { bin: "goose",     args: ["acp"] },
+   175→  copilot:   { bin: "copilot",   args: ["--acp", "--stdio"] },
+   176→  // codex is NOT from PATH — see codexAcpLaunch()
+   177→};
+   178→```
+   179→
+   180→`runAcp` (`2114`):
+   181→1. Resolves the binary (`resolveBin(table.bin)`), builds env with `cliEnv(settings, bus, extras)`;
+   182→   adds `GEMINI_API_KEY`/`GEMINI_CLI_TRUST_WORKSPACE` for gemini, `GOOSE_MODE=auto` for goose,
+   183→   `OPENAI_API_KEY` + `codexLaunch.env` for codex.
+   184→2. Model args: `gemini`/`qwen` → `["-m", model]`; `opencode` → `["--model", model]`; else none.
+   185→3. Spawns (`spawn(cmd, cmdArgs, { cwd, env, detached })` at `2135`), wraps stdin/stdout in the ACP
+   186→   SDK's `ndJsonStream`, connects `acp.client({ name: "october" })`.
+   187→4. Handles `requestPermission` via `answerPermission` (`2084`) — routes risky tool calls to
+   188→   `askUser(...)` if the chat is in `permission:"ask"` mode.
+   189→5. Resume logic: `acpResumeVerb(harness, caps, version)` (`1983`) returns `"resume"` or `"load"`
+   190→   depending on the agent's advertised `sessionCapabilities`/`loadSession`; `qwen/goose/copilot`
+   191→   also get the `october-bus` MCP server injected *into the session* (`ACP_BUS_VIA_SESSION`, `2066`).
+   192→6. Streams `session.nextUpdate()` → maps to `onTextDelta`/`onThinking`/`onTool` handlers.
+   193→
+   194→`codexAcpLaunch()` (`2036`) resolves the bundled `@agentclientprotocol/codex-acp` script, sets
+   195→`ELECTRON_RUN_AS_NODE=1` and `CODEX_PATH`, and runs it with `process.execPath`.
+   196→
+   197→### 1.5 Bespoke structured-CLI runners
+   198→
+   199→Two helpers drive most of them:
+   200→
+   201→- **`runStructuredCli(opts)` (`2742`)** — spawns `spawn(opts.bin, args, { cwd, env })`; parses
+   202→  newline-delimited JSON via `jsonLineSink` + a per-agent `handleLine` callback (`opencodeLine`,
+   203→  `cursorLine`, `piLine`, `grokStreamLine`); on unknown-flag errors it retries with a *plain*
+   204→  (non-JSON) args set (`CLI_AGENT_TIMEOUT_MS = 20*60_000`, `2726`).
+   205→- **ad-hoc `spawn` + stdout-stream** for gemini/cline/browser-use (`runGemini` `3056`, `runCline`
+   206→  `3147`, `runBrowserUse` `3100`).
+   207→
+   208→**Exact launch commands (the authoritative list):**
+   209→
+   210→| Harness | Binary (`resolveBin`) | Args (structured → plain) | File |
+   211→|--------|----------------------|----------------------------|------|
+   212→| **claude** | bundled `claude` (SDK `query`) | SDK options (`buildClaudeOptions`) — `pathToClaudeCodeExecutable`, `bypassPermissions`, `resume`, `effort`, `mcpServers` | `2612`, `2516` |
+   213→| **codex** | bundled `codex` (SDK `Codex`) | SDK `startThread` + `runStreamed` | `2629`, `2431` |
+   214→| **opencode** | `opencode` | `["run","--format","json","--print-logs", "--model <m>", prompt]` → `["run","--model <m>",prompt]` | `2816` |
+   215→| **hermes** | `hermes` | `["chat","-Q","--yolo","--accept-hooks","-q",prompt, ("--resume",sid)]` | `2843`, `hermesChatArgs 2344` |
+   216→| **cursor** | `cursor-agent` | `["-p",prompt,"--force","--trust","--approve-mcps","--output-format","stream-json","--stream-partial-output","--model <m>"]` → `--force --trust --approve-mcps` | `2924`, `cursorLine 2887` |
+   217→| **grok** | `grok` | `["-p",prompt,"--no-auto-update","--allow","MCPTool(october-bus__*)","--output-format","streaming-json","--resume <sid>","-m <m>"]` → plain | `3032`, `grokChatArgs 2332` |
+   218→| **pi** | `pi` | `["-p",prompt,"--mode","json","--approve","--session-id",sid,"--model <m>"]` → `["-p",prompt,"--approve","--model <m>"]` | `2972`, `piChatArgs 2353` |
+   219→| **campfire** | `campfire` | same shape as **pi** via `piChatArgs` (`["-p",prompt,"--mode","json","--approve","--session-id",sid]`) | `2997` |
+   220→| **gemini** | `gemini` | `["-p",prompt,"--yolo","-m <m>"]` | `3071` |
+   221→| **cline** | `cline` | `["--auto-approve","true","-m <m>",prompt]` | `3160` |
+   222→| **qwen** | `qwen` | ACP `--acp` (`ACP_LAUNCH`) | `2029` |
+   223→| **goose** | `goose` | ACP `acp` (or terminal: `"goose session"`, `8745`) | `2032`, `8744` |
+   224→| **copilot** | `copilot` | ACP `--acp --stdio` | `2033` |
+   225→| **browser-use** | `browser-use` | `["run",prompt]` | `3115` |
+   226→
+   227→Each runner emits a result object `{ ok, summary, usage?, sessionId? }`. Resume flow: when
+   228→`extras.resume` is supplied and the resumed run produces **no output** (meaning the stored session
+   229→id was rejected by the CLI), it calls `extras.onSessionExpired?.()` and re-runs fresh — see Hermes
+   230→(`2876`), Grok (`3045`).
+   231→
+   232→For Goose, the **terminal** launch command is the string `"goose session"` (`agentLaunchCommand`,
+   233→`8744`), used by the interactive terminal supervisor (§2), not the chat runner.
+   234→
+   235→---
+   236→
+   237→## 2. Terminal emulation (`node-pty`)
+   238→
+   239→All terminals live in a module-level `Map` called **`terms`** (`13353`). Sessions are also
+   240→persisted to disk under `userData/terminals/*.scrollback` and `*.resume.json`.
+   241→
+   242→### 2.1 `startTerminal(params)` — the pty (`13689`)
+   243→
+   244→```js
+   245→const shell = defaultShell();                 // zsh/bash/pwsh (defaultShell 13379)
+   246→const integ = shellIntegration(shell);        // injects October zshrc/profile to get a PROMPT_READY mark
+   247→const cwd = p.cwd && fs.existsSync(p.cwd) ? p.cwd : os.homedir();
+   248→const onBus = Boolean(p.busCanvasId) && busEnabled();
+   249→const busEnv = onBus ? busEnvForNode(p.busCanvasId, p.id) : {};   // OCTOBER_BUS_*
+   250→const proc2 = nodePty.spawn(shell, integ.args, {                 // <-- node-pty 13701
+   251→  name: "xterm-256color", cols, rows, cwd,
+   252→  env: terminalEnv({ ...integ.env, ...busEnv })
+   253→});
+   254→```
+   255→
+   256→Key behaviours:
+   257→- **Scrollback** is appended to `m.chunks` (capped at `SCROLLBACK_CAP = 2e5`, `13350`), flushed to
+   258→  the renderer in 16 ms batches via `flushPendingData`/`DATA_FLUSH_MS` (`13367`, `13743`), and
+   259→  debounced-persisted to disk (`PERSIST_DEBOUNCE = 1500`, `13409`).
+   260→- **Prompt-ready hook**: shell integration writes a `ZSH_HOOK`/`BASH_HOOK`/`PWSH_HOOK` that emits
+   261→  the OSC marker `\x1B]133;A` (`PROMPT_READY_MARK`, `13344`) so October knows the shell is ready to
+   262→  receive a startup command.
+   263→- **Auto-resume / start command**: after the prompt-ready mark (or a 3 s fallback timer),
+   264→  `fireStartup()` either writes `p.startCommand` directly or calls `injectResume()` (`13733`).
+   265→- **Bus repo install**: if `onBus`, `installRepoAsync(cwd)` then `refreshSkillsInRepo(cwd)` run on
+   266→  startup (`13721`), wiring the `october-bus` MCP into the repo so any agent launched inside that
+   267→  terminal can talk to the bus.
+   268→
+   269→### 2.2 Session/resume tracking — the "sampler"
+   270→
+   271→A single `setInterval` **`sampler`** (`SAMPLE_INTERVAL = 2500`, `13543`) runs `sampleResumeHints()`
+   272→(`13590`) which, for every live terminal:
+   273→1. Lists child processes (`childProcs`/`pgrep`+`ps`, or WMI on Windows, `13469`).
+   274→2. Maps their command lines to an agent via `agentFromCommands`/`agentFromCommand` (`8761`/`8753`)
+   275→   — matches the basename against `AGENT_BINARY` (`8729`).
+   276→3. If the foreground agent is **claude** or **codex**, it probes that agent's open jsonl transcript
+   277→   with `lsof -p <pid> -Fn` (`agentSessionFromPid`, `13508`) to recover the **session id**, records
+   278→   it (`recordTerminalSession` `8792`), and claims it (`resumeClaims` map, `13464`) so it can be
+   279→   resumed later.
+   280→4. Writes/clears a `.resume.json` hint (`writeResumeHint`/`dropResumeHint`, `13435`).
+   281→
+   282→`decideAgentStartup(agent, cwd, id)` (`1347`) decides, when a terminal opens, whether to **resume**
+   283→(`resumeSessionCommandFor`, `8768`) or launch fresh. `resumeSessionCommandFor` returns e.g.
+   284→`"claude --resume <id>"`, `"codex resume <id>"`, `"cursor-agent --resume <id>"`,
+   285→`"grok --resume <id>"`, `"pi --session <id>"`, `"qwen --resume <id>"`, `"copilot --resume <id>"` —
+   286→but only if the agent's `--help` advertises the resume flag (validated with `agentHelp`, `13529`).
+   287→
+   288→`injectResume()` (`13671`) then prepends the right **dangerously-skip-permissions** flag
+   289→(`dangerousFlag`, `13339`: `--dangerously-skip-permissions` for claude,
+   290→`--dangerously-bypass-approvals-and-sandbox` for codex, `--yolo` for gemini/qwen,
+   291→`--auto-approve true` for cline, `--allow-all-tools` for copilot, `--approve` for pi/campfire) and
+   292→writes the command into the pty.
+   293→
+   294→### 2.3 The 17 `terminal:*` IPC handlers (`19177`–`19192`)
+   295→
+   296→```js
+   297→ipcMain.handle(IPC.termStart,             (_e,p)   => startTerminal(p));
+   298→ipcMain.handle(IPC.termRestart,           (_e,p)   => restartTerminal(p));     // killTerminal + startTerminal
+   299→ipcMain.on    (IPC.termInput,             (_e,id,d)=> writeTerminal(id,d));   // proc.write
+   300→ipcMain.on    (IPC.termResize,            (_e,id,c,r)=> resizeTerminal(id,c,r));
+   301→ipcMain.handle(IPC.termSnapshot,          (_e,id)  => terminalSnapshot(id));   // ANSI-stripped tail (4k)
+   302→ipcMain.on    (IPC.termKill,              (_e,id)  => killTerminal(id));
+   303→ipcMain.handle(IPC.termWhichAgents,       ()       => agentAvailability());
+   304→ipcMain.handle(IPC.termForeground,        (_e,id)  => terminalForeground(id)); // detectForegroundAgent(proc.pid)
+   305→ipcMain.handle(IPC.termForegroundCached,  (_e,id)  => terminalForegroundCached(id)); // lastWork cache
+   306→ipcMain.handle(IPC.termPeekSession,       (_e,id)  => peekTerminalSession(id));
+   307→ipcMain.handle(IPC.termSeedResume,        (_e,id,s)=> seedTerminalResume(id,s));   // write resume hint + session rec
+   308→ipcMain.handle(IPC.termSessionExists,     (_e,s,c)=> closedSessionExists(s,c));
+   309→ipcMain.handle(IPC.termScanExternalSessions,        ()=> scanExternalSessions());
+   310→ipcMain.handle(IPC.termBackground,        (_e,p)   => backgroundTerminals(p.projectPath,p.projectName,p.terminals));
+   311→ipcMain.handle(IPC.termBackgroundStatus,  ()       => backgroundSummary());
+   312→```
+   313→
+   314→Supporting functions:
+   315→- `writeTerminal`/`resizeTerminal` (`13776`/`13779`) — thin wrappers over the pty.
+   316→- `killTerminal`/`killPtyTree` (`13839`/`13806`) — kills the pty and walks descendant PIDs
+   317→  (`descendantPidsSync` + `process.kill(-d, SIGTERM)` on POSIX, `taskkill /T /F` on Windows);
+   318→  releases resume claims and drops persisted scrollback/resume files.
+   319→- `terminalSnapshot` (`13771`) — `collapseScrollback().replace(ANSI,"").slice(-4000)`.
+   320→- `busEnvForNode` (`13075`) — `OCTOBER_BUS_PORT/CANVAS/NODE` + `GEMINI_CLI_TRUST_WORKSPACE=true`.
+   321→
+   322→### 2.4 `termWhichAgents` — installed-agent detection (`agentAvailability`, `13905`)
+   323→
+   324→This is what the renderer's agent picker queries. It returns a boolean map over **all 13
+   325→supported agents**:
+   326→
+   327→```js
+   328→function agentAvailability() {
+   329→  return {
+   330→    claude: resolveBin("claude") != null,
+   331→    codex: resolveBin("codex") != null,
+   332→    opencode: resolveBin("opencode") != null,
+   333→    hermes: resolveBin("hermes") != null,
+   334→    cursor: resolveBin("cursor-agent") != null,
+   335→    grok: grokInstalled(),          // <-- validated probe; rejects impostor `grok` wrappers (e.g. cmux's)
+   336→    pi: resolveBin("pi") != null,
+   337→    campfire: resolveBin("campfire") != null,
+   338→    gemini: resolveBin("gemini") != null,
+   339→    cline: resolveBin("cline") != null,
+   340→    qwen: resolveBin("qwen") != null,
+   341→    goose: resolveBin("goose") != null,
+   342→    copilot: resolveBin("copilot") != null
+   343→  };
+   344→}
+   345→```
+   346→
+   347→`resolveBin(name)` (`1414`) searches `extraPaths()` (October's added dirs) **then** `PATH`.
+   348→`grokInstalled()` (`3009`) is stricter: it checks `~/.grok/bin` or, for a PATH `grok`, validates the
+   349→realpath actually lives under `~/.grok`/`@xai-official` to avoid false positives from wrappers.
+   350→
+   351→### 2.5 `termScanExternalSessions` (`scanExternalSessions`, `13997`)
+   352→
+   353→Walks `~/.claude/projects` and `~/.codex` for resumable transcript jsonl files, skips ones already
+   354→known (`allRecordedSessionIds`), requires size ≥ `MIN_TRANSCRIPT_BYTES` (2048), extracts `cwd` from
+   355→the first chunk (`extractCwd`, `1429`), ignores worktree paths, and emits up to `RESULT_CAP` (30)
+   356→`{ agent, sessionId, cwd, lastActive, resumeCommand }` records. Used by the renderer to offer
+   357→"resume an external session" picks.
+   358→
+   359→---
+   360→
+   361→## 3. Agent supervision (health, questions, resume)
+   362→
+   363→### 3.1 Health — `evAgentsHealth` (`18240`)
+   364→
+   365→`sampleAgents()` (`~18170`) returns an `{ installed, ready }` record per agent, where `ready`
+   366→requires the binary **plus** a credential/auth signal (e.g. `ready: claude` if Anthropic key/token
+   367→present; `codex` ready if Codex CLI creds or `OPENAI_API_KEY`; `cursor` if cursor creds or
+   368→`CURSOR_API_KEY`; `gemini` if gemini creds or `GEMINI_API_KEY`; `qwen` if `qwenLoggedIn` or
+   369→`OPENAI_API_KEY`; etc. — `18205`–`18235`).
+   370→
+   371→`emitAgentsIfChanged()` (`18240`) stringifies that record, and only `safeSend(IPC.evAgentsHealth, h)`
+   372→when the JSON key changes (dedup), so the renderer's agent panel updates live as keys/creds change.
+   373→
+   374→### 3.2 Questions — `evAgentQuestion` / `agent:answer-question`
+   375→
+   376→The question mechanism is a **request/response promise keyed by UUID**:
+   377→
+   378→```js
+   379→function askUser(canvasId, nodeId, question, options) {   // 461
+   380→  const questionId = crypto.randomUUID();
+   381→  const payload = { canvasId, nodeId, questionId, question, options };
+   382→  return new Promise((resolve) => {
+   383→    const finish = (answer) => { /* clears timer, deletes pending, resolves */ };
+   384→    const timer = setTimeout(() => finish(
+   385→      "(The user did not respond. Proceed using your best judgment, choosing the safest reasonable option.)"
+   386→    ), TIMEOUT_MS$1 /* 10 min */);
+   387→    pending$1.set(questionId, finish);
+   388→    safeSend(IPC.evAgentQuestion, payload);     // renderer pops a UI prompt
+   389→  });
+   390→}
+   391→function answerUserQuestion(questionId, answer) {  // 481
+   392→  const finish = pending$1.get(questionId);
+   393→  if (!finish) return false;
+   394→  finish(answer);
+   395→  return true;
+   396→}
+   397→```
+   398→
+   399→Wired to IPC at `18956`: `ipcMain.handle(IPC.agentAnswerQuestion, (_e, questionId, answer) => answerUserQuestion(questionId, answer))`.
+   400→
+   401→This is invoked from two places:
+   402→- **ACP permission requests** — `answerPermission` (`2084`) calls `askUser` for risky tool calls
+   403→  when the chat is in `permission:"ask"` mode; the answer maps to ACP's `allow`/`deny` outcome.
+   404→- **Claude `canUseTool`** — `buildCanUseTool` (`2507`) similarly routes risky tools (anything not in
+   405→  `READONLY_TOOLS`, `2503`) to `askUser`, returning `{ behavior:"allow"|"deny" }`.
+   406→
+   407→### 3.3 Terminal work/attention + background tasks
+   408→
+   409→- `terminalWorkState(id)` (`13547`) and `busyTerminalWork()` (`13553`) sample each terminal's
+   410→  foreground agent (`lastWork` map) and `msSinceOutput` to classify it as working/idle.
+   411→- **`evTerminalAttention`** (`emitTerminalAttention`, `9540`) + `notifyTerminalAttention`
+   412→  (`10378`) fire when a terminal needs user input; feeds the macOS dock badge
+   413→  (`updateBadge`, `10355`) and tray (`updateTray`, `10319`).
+   414→- **Background terminal system** (`10234`–`10348`): `backgroundTerminals()` adds terminals to
+   415→  `entries`; `state$2(id)` (`10239`) returns `working` / `needsYou` / `idle` / `dead`;
+   416→  `backgroundSummary()` (`10278`) aggregates per project; `reap()` (`10289`) retires idle terminals
+   417→  after `GRACE_MS` (5 min); `revealBackgrounded` (clicking the tray) shows the window + fires
+   418→  `evBackgroundReveal`. Cap is `CAP = 8` terminals (`10236`).
+   419→
+   420→### 3.4 Resume at the agent-runtime layer
+   421→
+   422→Beyond terminal resume (§2.2), **chat** runs also support resume via `extras.resume` passed through
+   423→`runAgent` → each runner (`runHermes`, `runGrok`, `runPi`, `runCampfire` retry fresh on
+   424→`noOutput`; ACP uses `acpResumeVerb`/`attachSession`; Claude uses `buildClaudeOptions` `resume`).
+   425→`termSeedResume` (`13691`) lets the renderer/agent pre-seed a resume for a not-yet-opened terminal.
+   426→
+   427→---
+   428→
+   429→## 4. Git & worktrees
+   430→
+   431→### 4.1 `git:*` IPC handlers (`19142`–`19149`)
+   432→
+   433→| Channel | Handler | Function |
+   434→|--------|---------|----------|
+   435→| `git:status` | `(p)=>gitStatus(p)` | `3869` |
+   436→| `git:commit-all` | `(p,m)=>gitCommitAll(p,m)` | `3895` |
+   437→| `git:push` | `(p)=>gitPush(p)` | `3907` |
+   438→| `git:open-pr` | `(p,t)=>gitOpenPr(p,t)` | `3921` |
+   439→| `git:add-worktree` | `(p,l)=>gitAddWorktree(p,l)` | `3959` |
+   440→| `git:remove-worktree` | `(p,w)=>gitRemoveWorktree(p,w)` | `3978` |
+   441→
+   442→The git primitive is `gitOut(cwd, args, timeout=8e3)` / `gitSync$2` (`3769`/`3831`): both are
+   443→`child_process.spawnSync("git", ["-C", cwd, ...args], { env: spawnEnv() })`. `run$3` (`3835`) wraps
+   444→`runProc` with `GIT_TERMINAL_PROMPT=0`.
+   445→
+   446→- `gitCommitAll` (`3895`): `git add -A` then `git commit -m <msg>` (default *"Update from October"*).
+   447→- `gitPush` (`3907`): `git push -u origin <branch>`.
+   448→- `gitOpenPr` (`3921`): pushes, then `generatePrContent` (`3811`) runs a Claude/agent pass over the
+   449→  diff (`collectDiff` `3781`, `defaultBaseRef` `3773`) to write the PR body, then `gh pr create`
+   450→  (`--title/--body-file` or `--fill`). Requires `gh` on PATH.
+   451→
+   452→### 4.2 `worktrees:*` IPC handlers (`19151`–`19173`)
+   453→
+   454→| Channel | Function | Behaviour |
+   455→|--------|----------|-----------|
+   456→| `worktrees:isolate` | `isolateSession` (`4540`) | `git worktree add -b <branch> <path> HEAD` + node_modules symlink |
+   457→| `worktrees:merge` | `mergeSession` (`4586`) | `git merge --no-ff <branch>` (or `--squash`) |
+   458→| `worktrees:auto-land` | `autoLandSession` (`4613`) | commit-if-dirty, then `doAutoMerge` (`4642`) |
+   459→| `worktrees:drop` | `dropSession` (`4667`) | `git worktree remove --force` (+ optional `-D` branch) |
+   460→
+   461→**Isolation** (`isolateSession`, `4540`):
+   462→- Requires a git repo; refuses if already inside a worktree (`.git` is a file).
+   463→- Picks a worktree path under `worktreesRoot()` named from `sessionSlug(label, ts)` and branch
+   464→  `sessionBranchName(slug)`.
+   465→- `git worktree add -b <branch> <worktreePath> HEAD` (`4563`).
+   466→- **Shares `node_modules`** by symlinking the base repo's `node_modules` into the worktree
+   467→  (`fs.symlinkSync`, `4570` — `dir` junction on Windows) to avoid reinstalls.
+   468→- `copyIncludedFiles` + `runSetupHook` to bootstrap the project.
+   469→
+   470→**Merge** (`mergeSession`, `4586`): refuses if the worktree has uncommitted changes; merges
+   471→`--no-ff` (or `--squash`); on conflict runs `git merge --abort` and reports.
+   472→
+   473→**Auto-land** (`autoLandSession`, `4613`): if dirty, commits with author
+   474→`October <session@october.dev>` (`runEnv`, `4621`), then `doAutoMerge` under a per-base-repo
+   475→**`mergeLocks`** promise chain (`4613`) so multiple auto-lands serialize. `doAutoMerge` (`4642`)
+   476→computes `rev-list --count main..branch`; if 0, resets the worktree to `main`; otherwise merges
+   477→`--no-ff -m "October: merge <branch>"` with the October author identity, aborts on conflict, then
+   478→resets the worktree hard to `main` to stay in sync.
+   479→
+   480→**Drop** (`dropSession`, `4667`): `git worktree remove --force`; optionally `git branch -D <branch>`.
+   481→
+   482→`isSessionWorktreePath(p)` (`4485`) — used by `scanExternalSessions` (`14029`) and dev-server
+   483→analytics to recognise worktree paths and avoid double-counting them as projects.
+   484→
+   485→---
+   486→
+   487→## 5. The "bus" — LiveBlocks realtime + local MCP server
+   488→
+   489→### 5.1 `LocalBusStore` — the local authority (`9525`)
+   490→
+   491→A single `busStore = new LocalBusStore()` (`9525`) persists each canvas as a JSON file
+   492→(`load`/`flush`/`flushAll`, `8990`–`9054`). Each canvas record holds:
+   493→- **`nodes`** — `{ id, kind, displayName, cwd, status, lastSeen, createdAt, attention? }`
+   494→  (`registerNode` `9120`, `setNodeStatus` `9143`).
+   495→- **`edges`** — undirected pairs; `setEdges` (`9151`) deduplicates and stores `{a,b}`.
+   496→  `peerIds(canvas, me)` (`9112`) derives a node's peers from edges.
+   497→- **`messages`** — directed messages (`pushMessage` `9302`, `octoberSend` `9313`, `sendMessage`
+   498→  `9322`, `sendMessageMulti` `9332`). Delivery is gated (`deliveredAt`, needs-input/quiet),
+   499→  pruned after 24 h, hard-capped at `MESSAGE_CAP = 200` (`9016`).
+   500→- **`summaries`** — per-node turn TLDRs (`putSummary` `9166`, versioned).
+   501→- **`tasks`** — shared task board (`addTask`/`claimTask`/`completeTask`/`listTasks`, `9449`–`9523`)
+   502→  with race-free claim/steal semantics (main-thread atomic), `DONE_TASK_CAP = 100` pruning.
+   503→- **reply-debt + nudge** (`recordReplyDebt`, `nudgeReply` `9354`, `closeReplyLoop` `9546`) — when a
+   504→  node finishes owing a peer a reply, October injects a synthetic message telling the recipient to
+   505→  answer via its `message_peer` tool.
+   506→- **dead-letter** (`deadLetter` `9380`) — notifies senders when a removed node can never receive.
+   507→
+   508→Edits are debounced (`touch` → 400 ms `flushTimer`) and pushed to a **sync sink**
+   509→(`setSyncSink`/`syncSink`, `9056`, `applyRemote` `9067` for merges from peers). `evBusActivity`
+   510→(`emitBusActivity`, `9533`) broadcasts each activity event to the renderer.
+   511→
+   512→### 5.2 The bus MCP HTTP server (`startBusServer`, `11320`)
+   513→
+   514→A local `http` server listens on `127.0.0.1:0` (`busPort()`, `11317`) and serves the **october-bus
+   515→MCP server** plus hook endpoints:
+   516→
+   517→```
+   518→/mcp                 -> handleMcp        (the MCP server agents connect to)
+   519→/hook/stop           -> handleHookStop
+   520→/hook/pre-prompt     -> handlePrePrompt
+   521→/hook/session        -> handleHookSession
+   522→/hook/notify         -> handleHookNotify
+   523→/hook/message-peer   -> handleHookMessagePeer
+   524→/hook/task           -> handleHookTask
+   525→```
+   526→
+   527→The MCP server (`@modelcontextprotocol/sdk`) exposes the **`message_peer`, `get_node_status`,
+   528→`task_*`** tools to any connected agent, pointed at the local `busStore`. Agents reach it via the
+   529→env vars `OCTOBER_BUS_PORT` / `OCTOBER_BUS_CANVAS` / `OCTOBER_BUS_NODE` (`busEnvVars`, `2497`;
+   530→`busEnvForNode`, `13075`) and the URL `http://127.0.0.1:<port>/mcp`.
+   531→
+   532→The **`HOOK_SCRIPT`** (`11354`) is a zero-dependency Node hook that agents invoke on stop/pre-prompt/
+   533→session events; it reads the agent's transcript jsonl, extracts the last turn
+   534→(`readLastTurn`, `11398`), and POSTs it back to the bus so summaries/messages get ingested. FLAVOR
+   535→argv distinguishes claude/codex vs gemini/grok so session ids don't masquerade.
+   536→
+   537→### 5.3 `installRepo` — wiring the bus into each agent's CLI (`12411`)
+   538→
+   539→When a repo is opened with the bus on, `installRepoAsync` (`12633`) → `installRepo`/`doInstallRepoAsync`
+   540→writes the `october-bus` MCP + hooks into **every supported agent's config in that repo**:
+   541→
+   542→- **Claude**: `.claude/settings.local.json` — `hooks` (PreToolUse/PostToolUse/etc. via `HOOK_EVENTS`),
+   543→  `enabledMcpjsonServers += october-bus`, `permissions.allow += mcp__october-bus__*`; and
+   544→  `.mcp.json` pointing `october-bus` at `http://127.0.0.1:${OCTOBER_BUS_PORT}/mcp` with the
+   545→  `X-October-Canvas`/`X-October-Node` headers (`12442`).
+   546→- **Codex**: `.codex/config.toml` (`upsertCodexBlock`) + `hooks.json` (`mergeCodexHooks`) +
+   547→  `ensureCodexTrust` (`12572`, prompts for trust approval).
+   548→- **OpenCode**: `opencode.json` (`mergeOpencodeConfig`) + `.opencode/plugins/october-bus.js`
+   549→  (`OPENCODE_PLUGIN`).
+   550→- **Cursor**: `.cursor/mcp.json` (`mergeCursorMcpJson`) + `.cursor/cli.json`
+   551→  (`mergeCursorCliJson`, scoped `Mcp(october-bus:*)` allow — never a blanket allow, see
+   552→  `runCursor` comment `2927`).
+   553→- **Gemini**: `.gemini/settings.json` (`mergeGeminiSettings`) + `GEMINI_CLI_TRUST_WORKSPACE`.
+   554→- **Grok / Hermes / Pi / Campfire / Cline**: global config under `~/.grok`, `~/.hermes`, `~/.pi`,
+   555→  `~/.campfire`, `~/.cline` via `installGlobalAdapters` (`12523`) / `installHermesGlobal` (`12499`).
+   556→- Finally `ignoreGenerated` (`12589`) appends the generated files to `.gitignore` so they aren't
+   557→  committed.
+   558→
+   559→### 5.4 Cloud sync — LiveBlocks (`startBusCloudSync`, `12995`)
+   560→
+   561→`busEnabled()` (`13056`) = `contextBusEnabled !== false && busPort() > 0`. `startBusCloudSync`
+   562→attaches the local store's `syncSink` to a LiveBlocks-backed sync layer (cloud-sync.ts seam) that
+   563→pushes snapshots after every flush and applies remote merges via `busStore.applyRemote`. The
+   564→renderer obtains LiveBlocks auth tokens through `liveblocksAuth` (`18692`) → `liveblocksAuthToken`
+   565→(`5976`) hitting `https://www.october.dev/api/liveblocks-auth` (`OCTOBER_LIVEBLOCKS_AUTH`, `5961`),
+   566→with room id validation (`CANVAS_ROOM_RE`, `18612`).
+   567→
+   568→`evBusActivity` (`IPC.evBusActivity`) is the renderer-facing event; the bus also feeds
+   569→`evBrowserActivity` (`emitBrowserActivity`, `9526`) and `evTerminalAttention`.
+   570→
+   571→---
+   572→
+   573→## 6. Code-sync (host/guest), browser capture, thumbnails, simulators
+   574→
+   575→### 6.1 Code-sync — host/guest live preview (`15637`+)
+   576→
+   577→Driven by `codeSyncStartHost` (`15637`) / `codeSyncStartGuest` (`15745`) IPC (`18899`/`18803`).
+   578→A canvas can be **public-shared**; the host bundles its working tree and uploads it to cloud
+   579→storage, the guest downloads + runs it locally.
+   580→
+   581→**Host** (`startCodeSyncHost` → `hostTick`, `15685`):
+   582→- Gated on `cloudShareInfo(canvasId).isPublic`, `codeSyncConsent(host)`, and `codeSyncPreflight`
+   583→  (secret scan — `matchSecretPaths`/`SECRET_FILE_PATTERNS`, `15526`).
+   584→- Every `HOST_INTERVAL_MS`, snapshots the working tree (`snapshotWorkingTree`, `3988`),
+   585→  builds a tar bundle (`createShareBundle`), uploads it (`codeSyncUploadBundle`), and bumps a rev
+   586→  row (`setRevRow`, `15734`) recording `commitSha`, `pkgManager`, `framework`, `bundlePath`.
+   587→- If a new secret-looking file appears it **pauses** publishing (`hostFail`, `15704`).
+   588→
+   589→**Guest** (`startCodeSyncGuest` → `guestTick`, `15778`):
+   590→- Gated on `codeSyncConsent(guest)`.
+   591→- Polls `codeSyncGetRev`; when `rev > appliedRev`, downloads + applies the bundle
+   592→  (`applyShareBundle`), then `startDevServer` on the guest dir (`15813`), reinstalling when the
+   593→  lockfile hash changes (`lockfileHash`). Emits live dev-server state (`emitDevState`) to the
+   594→  renderer. Detects host-offline via `HOST_STALE_MS`.
+   595→
+   596→### 6.2 Browser capture (`captureBrowser`, `10059`)
+   597→
+   598→`browser:register`/`browser:unregister` (`9810`/`?`) bind a node id to a `webContentsId`;
+   599→`captureBrowser(nodeId, destDir, allowedRoots)` (`10059`) calls `wc.capturePage()` and writes a PNG
+   600→to `destDir` (falling back to Downloads if outside `allowedRoots`). The browser subsystem also
+   601→exposes a full **agent-driving API** over `webContents`: `readPage` (innerText up to 8 kB),
+   602→`navigate`, `screenshot` (base64), `click`/`typeText`/`pressKey`/`scroll`/`waitFor`, `findByText`,
+   603→`snapshot` (interactive element list with `@i` refs), and `evaluate` (`10103`–`10233`) — the
+   604→`RT` helper (`10193`) is injected DOM-resolution JS so an agent can address buttons/inputs.
+   605→
+   606→### 6.3 Thumbnails (`captureCanvasThumbnail`, `15497`)
+   607→
+   608→`thumbnails:capture` (`18911`) → `captureCanvasThumbnail(key, rect)` captures a **rect** of the
+   609→focused window via `win.webContents.capturePage(rect)`, resizes to 360 px wide, and writes a JPEG
+   610→(quality 70) to `fileFor(key)`. `thumbnails:get-many` (`18917`) → `getThumbnails(keys)`
+   611→(`15515`) returns them as `data:image/jpeg;base64,…` strings. Used for canvas node preview images.
+   612→
+   613→### 6.4 Simulators (`startSimulator`, `18528`)
+   614→
+   615→`sim:start`/`sim:stop`/`sim:status` (`19174`). `startSimulator` (`18528`) is macOS-arm64-only; it
+   616→spawns `npx --yes serve-sim --port <p>` (`18540`, `spawnEnv({CI:"true",BROWSER:"none"})`), polls
+   617→until the HTTP server is up (`pingHttp`), then if a dev server is running opens the Expo URL in the
+   618→iOS Simulator via `xcrun simctl openurl booted "exp://127.0.0.1:<devport>"` (`18570`). State lives
+   619→in a module `state` object (`getSimulatorState` `18525`); `stopSimulator` (`18597`) kills the tree
+   620→and clears the tracked port.
+   621→
+   622→---
+   623→
+   624→## Quick reference — files & line anchors
+   625→
+   626→| Concern | Function / symbol | Line |
+   627→|--------|-------------------|------|
+   628→| Agent dispatch | `runAgent` | `2491` |
+   629→| ACP run | `runAcp` | `2114` |
+   630→| ACP launch table | `ACP_LAUNCH` | `2026` |
+   631→| Codex ACP shim | `codexAcpLaunch` | `2036` |
+   632→| Claude SDK opts | `buildClaudeOptions` | `2516` |
+   633→| Codex SDK run | `runCodex` | `2629` |
+   634→| Bespoke runners | `runOpencode/runHermes/runCursor/runGrok/runPi/runCampfire/runGemini/runCline/runBrowserUse` | `2806`/`2831`/`2912`/`3021`/`2960`/`2987`/`3056`/`3147`/`3100` |
+   635→| Chat-args builders | `hermesChatArgs`/`piChatArgs`/`grokChatArgs` | `2344`/`2353`/`2332` |
+   636→| Env base | `spawnEnv` / `terminalEnv` | `1386`/`1391` |
+   637→| Anthropic creds | `buildEnv` | `2471` |
+   638→| CLI env | `cliEnv` / `busEnvVars` | `2500`/`2497` |
+   639→| Backend env/context | `envFor`/`agentContext` adapters + `agentContextFor` | `6861`/`6949`/`7803` |
+   640→| pty start | `startTerminal` | `13689` |
+   641→| pty sessions map | `terms` | `13353` |
+   642→| Resume sampler | `sampleResumeHints` | `13590` |
+   643→| Resume decision | `decideAgentStartup`/`resumeSessionCommandFor` | `1347`/`8768` |
+   644→| Skip-perms flags | `dangerousFlag` | `13339` |
+   645→| Agent binary map | `AGENT_BINARY` | `8729` |
+   646→| Installed detection | `agentAvailability`/`grokInstalled` | `13905`/`3009` |
+   647→| External sessions | `scanExternalSessions` | `13997` |
+   648→| Health event | `emitAgentsIfChanged` | `18240` |
+   649→| Question ask | `askUser`/`answerUserQuestion` | `461`/`481` |
+   650→| Background tasks | `backgroundTerminals`/`backgroundSummary` | `10247`/`10278` |
+   651→| git primitives | `gitOut`/`gitSync$2`/`run$3` | `3769`/`3831`/`3835` |
+   652→| git handlers | `gitStatus`/`gitCommitAll`/`gitPush`/`gitOpenPr`/`gitAddWorktree` | `3869`/`3895`/`3907`/`3921`/`3959` |
+   653→| worktree handlers | `isolateSession`/`mergeSession`/`autoLandSession`/`dropSession` | `4540`/`4586`/`4613`/`4667` |
+   654→| Bus store | `LocalBusStore`/`busStore` | `9525` |
+   655→| Bus MCP server | `startBusServer`/`busPort` | `11320`/`11317` |
+   656→| Bus repo wiring | `installRepo`/`installRepoAsync` | `12411`/`12633` |
+   657→| Bus cloud sync | `startBusCloudSync` | `12995` |
+   658→| LiveBlocks auth | `liveblocksAuthToken` | `5976` |
+   659→| Code-sync host/guest | `startCodeSyncHost`/`startCodeSyncGuest` | `15637`/`15745` |
+   660→| Browser capture | `captureBrowser` | `10059` |
+   661→| Thumbnails | `captureCanvasThumbnail`/`getThumbnails` | `15497`/`15515` |
+   662→| Simulators | `startSimulator`/`getSimulatorState` | `18528`/`18525` |
+   663→
+   664→## Notable design decisions (for your rebuild)
+   665→
+   666→1. **Credentials are never inherited from the shell.** `buildEnv` deletes `ANTHROPIC_API_KEY` /
+   667→   `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` from the inherited env and re-injects exactly what
+   668→   October's encrypted store holds (`api-key` → `ANTHROPIC_API_KEY`, `october-cloud` →
+   669→   `ANTHROPIC_BASE_URL`+`ANTHROPIC_AUTH_TOKEN`). Per-agent keys (OpenAI/Cursor/XAI/Gemini/Hermes)
+   670→   are added only by their own runner.
+   671→2. **ACP-first, bespoke-fallback** for 7 of 13 agents; Claude & Codex use vendor SDKs; the rest are
+   672→   structured-stdout CLIs with a JSON→plain retry.
+   673→3. **Resume is two-layered**: chat runs carry `extras.resume`; terminals run a background *sampler*
+   674→   that recovers claude/codex session ids from open jsonl transcripts and re-launches with
+   675→   `--resume`/`resume`, claiming ids to avoid double-resume.
+   676→4. **Every agent is bus-aware**: the local MCP server URL + canvas/node env is injected, and
+   677→   `installRepo` writes the `october-bus` MCP + hooks into each agent's repo/global config so peers
+   678→   can message each other.
+   679→5. **Worktrees are the isolation primitive** for agent sessions (`worktree add -b`, shared
+   680→   `node_modules` symlink), with serializeable auto-land merging under `October` author identity.
+   681→6. **node-pty is the single terminal engine**; output is debounced (16 ms) to the renderer,
+   682→   persisted to disk, and ANSI-stripped for snapshots.
+   683→

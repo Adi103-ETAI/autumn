@@ -1,0 +1,639 @@
+     1→# October Desktop — Main Process: Authentication, Settings, Cloud Sync & IPC
+     2→
+     3→**Source file:** `/tmp/october_work/app/asar_extracted/out/main/index.js` (esbuild bundle, 19,794 lines)
+     4→**Preload (for cross-reference):** `/tmp/october_work/app/asar_extracted/out/preload/index.js`
+     5→**IPC enum declared at:** `index.js:54` (`const IPC = {...}`)
+     6→
+     7→This document maps every IPC channel the main process handles, the authentication model, the settings schema, cloud sync, analytics, and all embedded secrets/constants. Line references are `index.js:<line>`.
+     8→
+     9→---
+    10→
+    11→## 0. Architecture overview
+    12→
+    13→- A single `function registerIpc()` at `index.js:18617` wires **all** `ipcMain.handle`/`ipcMain.on` listeners (226 registrations total). There is no per-subsystem registration elsewhere — every channel is listed inside this one function.
+    14→- Secret material is held in two separate stores:
+    15→  1. **`settings.json`** in `userData` — JSON, key/value secrets are encrypted with Electron `safeStorage` and the plaintext copy is also kept in-process in module-level `inMemory*` variables.
+    16→  2. **`supabase-session.json`** in `userData` — the Supabase auth session (JWT refresh token etc.), encrypted via a `fileStorage` adapter backed by `safeStorage`.
+    17→- `safeSend(channel, payload)` (`index.js:435`) fans a message out to all open BrowserWindows via `win.webContents.send`. Auth-change and analytics events use it.
+    18→- Validation helper `assertUuid(id)` (`index.js:18613`) enforces `/^[0-9a-f-]{8}-…-…-…-…$/` (canonical UUID) and throws `"Invalid canvas id."` for anything else. `CANVAS_ROOM_RE` (`index.js:18612`) splits liveblocks room names `canvas-<uuid>`.
+    19→- `maskSecrets(s)` (`index.js:18647`) returns a copy of the settings object with every secret replaced by `"••••"` if present (else `undefined`). Used by `settings:get` and `settings:set` so the renderer never receives plaintext secrets.
+    20→
+    21→---
+    22→
+    23→## 1. IPC CHANNEL COMPLETE MAP
+    24→
+    25→The full enum (`index.js:54-314`) plus every handler. Grouped by subsystem. Each entry: **channel**, **handler registration line**, **implementation function**, **behavior / inputs / outputs / side effects**.
+    26→
+    27→### 1.1 Settings (wired at `index.js:18645-18673`)
+    28→
+    29→| Channel | Reg | Impl | Notes |
+    30→|---|---|---|---|
+    31→| `settings:get` | `18665` | `maskSecrets(getSettings())` | Returns masked settings object (no plaintext secrets). |
+    32→| `settings:set` | `18666` | `setSettings(patch)` | Patch-merge settings; if `patch.voice.enabled === false` calls `engineShutdown()`. Returns masked settings. |
+    33→| `settings:auth-status` | `18670` | `getAuthStatus()` | Returns full agent-credential detection map (see §3). |
+    34→| `wallpapers:list` | `18671` | `listWallpapers()` | Lists bundled + custom wallpapers. |
+    35→| `wallpapers:upload` | `18672` | `uploadWallpaper()` | File picker → saves PNG/JPG/etc to `userData/wallpapers`. |
+    36→| `wallpapers:remove` | `18673` | `removeWallpaper(ref)` | Deletes a custom wallpaper by ref. |
+    37→
+    38→### 1.2 Auth (wired at `index.js:18674-18696`)
+    39→
+    40→| Channel | Reg | Impl | Notes |
+    41→|---|---|---|---|
+    42→| `event:auth-changed` (sent by main) | `18683` | via `onAuthStateChange` | Not a handler — main emits this to renderer when Supabase user changes. On `null` it also calls `stopAllCodeSync()` + `stopBusCloudSync()`. |
+    43→| `auth:sign-in` | `18685` | `authSignIn(email, password)` | Supabase password sign-in. Returns `{id, email}`. |
+    44→| `auth:sign-up` | `18686` | `authSignUp(email, password)` | Supabase sign-up. Returns `{user, needsConfirmation}`. |
+    45→| `auth:sign-in-github` | `18687` | `authSignInWithGitHub()` | GitHub OAuth via local callback server (see §2.2). |
+    46→| `auth:reset-password` | `18688` | `authResetPassword(email)` | Supabase `resetPasswordForEmail`, redirect `https://www.october.dev/auth/callback`. |
+    47→| `auth:resend-confirmation` | `18689` | `authResendConfirmation(email)` | Supabase `resend({type:"signup"})`. |
+    48→| `auth:sign-out` | `18690` | `authSignOut()` | Supabase `auth.signOut()`. |
+    49→| `auth:status` | `18691` | `authStatus()` | Returns current Supabase user (`{id,email}` or `null`). |
+    50→| `liveblocks:auth` | `18692` | `liveblocksAuthToken(room)` | Requires `room` to match `CANVAS_ROOM_RE`; POSTs to October with Supabase JWT, returns `{token}`. |
+    51→| `oauth:claude-login` | `19014` | `claudeOAuthLogin()` | Native Claude.ai OAuth (see §2.3). |
+    52→
+    53→### 1.3 Voice / STT / TTS (wired `18697-18723`)
+    54→
+    55→| Channel | Reg | Impl | Notes |
+    56→|---|---|---|---|
+    57→| `voice:deepgram-token` | `18697` | `deepgramToken()` | Returns Deepgram API token (October-proxied). |
+    58→| `voice:ensure-mic-access` | `18698` | `ensureMicAccess()` | macOS/Windows mic permission prompt. |
+    59→| `voice:open-mic-settings` | `18699` | inline | Opens OS mic privacy settings pane. |
+    60→| `voice:openai-realtime-token` | `18704` | `mintOpenaiRealtimeToken(opts)` | OpenAI Realtime API token. |
+    61→| `voice:compile` | `18708` | `compileVoiceCommand(input, getSettings().apiKey)` | Compiles a voice command using the Anthropic `apiKey`. |
+    62→| `voice:prewarm-compiler` | `18709` | `prewarmIntent()` | Prewarms intent model. |
+    63→| `voice:intent-ready` | `18710` | `intentReady(Boolean(getSettings().apiKey))` | Whether intent compiler is ready. |
+    64→| `voice:parakeet-status` | `18711` | `engineStatus()` | Local Parakeet STT engine status. |
+    65→| `voice:parakeet-ensure-model` | `18712` | `ensureEngineModel()` | Downloads Parakeet model. |
+    66→| `voice:parakeet-start` | `18713` | `engineStart()` | Starts local STT engine. |
+    67→| `voice:parakeet-audio` (`ipcMain.on`) | `18715` | `engineFeed(samples)` | Streams mic samples to engine. |
+    68→| `voice:parakeet-stop` | `18714` | `engineStop()` | Stops STT engine. |
+    69→| `voice:delete-old-model` | `18716` | `deleteOldModel()` | Frees stale model files. |
+    70→| `voice:speak` | `18717` | `engineSpeak(text.slice(0,500))` | TTS, max 500 chars. |
+    71→| `voice:speak-stop` | `18718` | `engineStopSpeaking()` | |
+    72→| `voice:mic-start` / `stop` / `mute` / `unmute` | `18720-18723` | `engineMicStart/Stop/Mute/Unmute()` | Local mic control. Engine eager-boot at `18719` if `voice.enabled !== false`. |
+    73→| `event:voice-transcript`, `event:voice-model-progress`, `event:voice-speaking`, `event:voice-mic-state` | enum `88-91` | sent via `safeSend` from engine | Not handlers — pushed to renderer. |
+    74→
+    75→### 1.4 Cloud canvases (wired `18724-18743`)
+    76→
+    77→| Channel | Reg | Impl | Notes |
+    78→|---|---|---|---|
+    79→| `cloud:create` | `18725` | `cloudCreate(name.slice(0,200), state)` | Inserts row in Supabase `desktop_canvases` (`owner_id`, `name`, `state` wrapped). Returns new `id`. Requires signed-in user. |
+    80→| `cloud:save` | `18728` | `cloudSave(assertUuid(id), state)` | `update` `desktop_canvases` row; throws if no rows affected (not owner). |
+    81→| `cloud:load` | `18729` | `cloudLoad(assertUuid(id))` | `select state`, returns unwrapped canvas. |
+    82→| `cloud:open-shared` | `18730` | `cloudLoadWithName(id)` + `pushRecentShared({id,name,lastOpenedAt})` | Returns `{state, name, ownerId}`; records into recent-shared list. |
+    83→| `cloud:recent-shared` | `18735` | `getRecentShared()` | Returns `settings.json` `recentShared` array. |
+    84→| `cloud:forget-recent-shared` | `18736` | `forgetRecentShared(assertUuid(id))` | Removes from recent-shared. |
+    85→| `cloud:share-info` | `18737` | `cloudShareInfo(id)` | Returns `{isPublic}` from `desktop_canvases.is_public`. |
+    86→| `cloud:set-shared` | `18738` | `cloudSetShared(id, Boolean(shared))` | Toggles `is_public`; if turned off, calls `stopCodeSync(id)`. |
+    87→| `cloud:delete` | `18743` | `cloudDelete(id)` | Deletes canvas + code-sync bucket objects + `bus_state` + `desktop_code_sync` rows. Only owner can. |
+    88→| `event:bus-activity`, `event:browser-activity` | enum `116-117` | pushed via `safeSend` | Not handlers. |
+    89→
+    90→**Sharing model:** a canvas is "shared" by setting `is_public=true` on its `desktop_canvases` row. The renderer builds the share link as the custom protocol `october://canvas/<uuid>` (confirmed in `renderer/assets/CanvasView-*.js:66737`). Public rows are world-readable in Supabase (RLS allows anon `select`), so opening a shared canvas only needs the UUID — no auth. Private canvases require the owner's Supabase session.
+    91→
+    92→### 1.5 Bus / live collaboration (wired `18744-18780`)
+    93→
+    94→| Channel | Reg | Impl | Notes |
+    95→|---|---|---|---|
+    96→| `bus:enabled` | `18744` | `busEnabled()` | Whether realtime bus is available. |
+    97→| `bus:register-node` | `18745` | `registerNode(assertUuid(canvasId), node)` | Liveblocks node registration. |
+    98→| `bus:set-edges` | `18749` | `setEdges(assertUuid(canvasId), pairs)` | Edge sync. |
+    99→| `bus:node-removed` | `18753` | `nodeRemoved(assertUuid(canvasId), nodeId)` | |
+   100→| `bus:october-send` | `18757` | `octoberSend(assertUuid(canvasId), node, text)` | Sends a message to a hosted October agent. |
+   101→| `bus:install-repo` | `18761` | `installRepoAsync(repoPath)` | Scans repo for skills; requires real dir. |
+   102→| `bus:start-cloud-sync` | `18776` | `startBusCloudSync(localBusCanvasId, cloudCanvasId)` | Bridges local bus ↔ cloud canvas. |
+   103→| `bus:stop-cloud-sync` | `18780` | `stopBusCloudSync()` | |
+   104→| `skills:sync` | `18766` | `syncSkillsInRepo(roots, ids)` | Syncs skills into repos. |
+   105→| `skills:installed` | `18769` | `installedSkillIds(roots)` | Returns installed skill id set. |
+   106→| `bus:drain-inbox` | `18774` | `drainInbox(canvasId, nodeId)` | |
+   107→| `bus:recent-activity` | `18775` | `recentActivity(canvasId)` | |
+   108→
+   109→### 1.6 Browser overlay (wired `18781-18790`)
+   110→
+   111→| Channel | Reg | Impl | Notes |
+   112→|---|---|---|---|
+   113→| `browser:register` | `18781` | `registerBrowser(nodeId, webContentsId)` | Maps a node to an embedded BrowserWindow webContents. |
+   114→| `browser:unregister` | `18785` | `unregisterBrowser(nodeId)` | |
+   115→| `browser:set-links` | `18786` | `setBrowserLinks(canvasId, pairs)` | |
+   116→| `browser:clear-data` | `18790` | `clearBrowserData()` | |
+   117→| `browser:capture` | `18791` | `captureBrowser(nodeId, destDir, allowedRoots)` | Screenshots an embedded browser; allowed roots = recent project paths + projects dir (falls back to Downloads). |
+   118→
+   119→### 1.7 Code-sync (wired `18799-18818`)
+   120→
+   121→| Channel | Reg | Impl | Notes |
+   122→|---|---|---|---|
+   123→| `code-sync:start-host` | `18799` | `startCodeSyncHost(assertUuid(id), repoPath)` | Hosts a repo bundle to Supabase Storage bucket `code-sync`. Requires real dir. |
+   124→| `code-sync:start-guest` | `18803` | `startCodeSyncGuest(assertUuid(id))` | |
+   125→| `code-sync:guest-dir` | `18804` | `guestRepoDir(id)` | Returns local guest checkout dir. |
+   126→| `code-sync:stop` | `18805` | `stopCodeSync(id)` | |
+   127→| `code-sync:consent` | `18806` | `codeSyncConsent(id)` | Returns consent record. |
+   128→| `code-sync:set-consent` | `18807` | `setCodeSyncConsent(id, {...})` | Patches `{host,guest,acceptedSecrets}` (strings sliced to 500 chars, max 200). |
+   129→| `code-sync:preflight` | `18815` | `codeSyncPreflight(id, repoPath)` | Requires real dir. |
+   130→
+   131→### 1.8 Backends (wired `18819-18872`)
+   132→
+   133→| Channel | Reg | Impl | Notes |
+   134→|---|---|---|---|
+   135→| `backends:list` | `18823` | `listBackends()` | |
+   136→| `backends:create` | `18824` | `createBackend(input)` | Input `.kind` must be `supabase`/`convex`/`concurred`. |
+   137→| `backends:update` | `18829` | `updateBackend(input)` | Requires `input.id`. |
+   138→| `backends:remove` | `18833` | `removeBackend(id)` | |
+   139→| `backends:link` | `18834` | `linkBackend(input)` | `input.app` ∈ `{web,phone}`, requires `id`+`projectPath`. |
+   140→| `backends:unlink` | `18839` | `unlinkBackend(input)` | |
+   141→| `backends:pending` | `18843` | `pendingChanges(id)` | |
+   142→| `backends:approve` | `18844` | `approveChange(changeId)` | |
+   143→| `backends:reject` | `18845` | `rejectChange(changeId)` | |
+   144→| `backends:query` | `18846` | `querySql(p)` | Direct SQL. |
+   145→| `backends:schema` | `18847` | `schema(id)` | |
+   146→| `backends:peek` | `18848` | `peek(p)` | |
+   147→| `backends:ask` | `18849` | `ask(p)` | Agentic SQL ask. |
+   148→| `backends:scaffold` | `18850` | `scaffoldClient(p)` | Generates client SDK module. |
+   149→| `backends:list-orgs` | `18851` | `listOrgs(accessToken)` | Requires Supabase PAT (`sbp_…`). |
+   150→| `backends:provision` | `18856` | `provision(input)` | Requires `orgId,name,region,dbPass` + `sbp_` PAT. |
+   151→| `backends:local-start` | `18863` | `localStart(id)` | Supabase local dev (Docker). |
+   152→| `backends:local-stop` | `18864` | `localStop(id)` | |
+   153→| `backends:local-status` | `18865` | `localStatus(id)` | |
+   154→| `backends:sync` | `18866` | (see reg) | Syncs pending migrations. |
+   155→| `backends:convex-auth-status` | `18870` | `convexAuthStatus()` | |
+   156→| `backends:convex-login` | `18871` | `convexLogin()` | |
+   157→| `backends:convex-create` | `18872` | `convexCreate(input)` | |
+   158→
+   159→### 1.9 Projects (wired `18877-18910`)
+   160→
+   161→| Channel | Reg | Impl | Notes |
+   162→|---|---|---|---|
+   163→| `projects:pick-folder` | `18877` | `dialog` picker | Returns a folder path. |
+   164→| `projects:recents` | `18883` | `getRecents()` | From `settings.json` `recents`. |
+   165→| `projects:forget-recent` | `18884` | `forgetRecent(path)` | |
+   166→| `projects:open` | `18885` | `openProject(path, opts)` | |
+   167→| `projects:discover-apps` | `18889` | (see reg) | Scans a project for app targets. |
+   168→| `projects:flutter-routes` | `18890` | (see reg) | Route extraction. |
+   169→| `projects:rn-routes` | `18894` | (see reg) | React Native routes. |
+   170→| `projects:open-isolated` | `18898` | `openProject(repoPath, {isolated:true})` | |
+   171→| `projects:detect-preview` | `18902` | (see reg) | |
+   172→| `projects:create` | `18906` | `startCreateProject(params)` | |
+   173→| `projects:clone` | `18907` | `startCloneRepo(params)` | |
+   174→| `projects:scan-routes` | `18908` | `scanRoutes(path, detectFramework(path))` | |
+   175→| `projects:default-dir` | `18909` | `defaultProjectsDir()` | |
+   176→| `projects:free-child-name` | `18910` | `freeChildName(parent, name)` | |
+   177→
+   178→### 1.10 Canvas / scratch / thumbnails (wired `18917-18933`)
+   179→
+   180→| Channel | Reg | Impl | Notes |
+   181→|---|---|---|---|
+   182→| `thumbnails:get-many` | `18917` | `getThumbnails(keys)` | Batch thumbnail fetch. |
+   183→| `canvas:load` | `18918` | `loadCanvas(projectPath)` | Loads local canvas.json from project. |
+   184→| `canvas:save` | `18919` | `saveCanvas(projectPath, state)` | Saves local canvas. |
+   185→| `workspace:scratch-list` | `18920` | `listScratch()` | |
+   186→| `workspace:scratch-create` | `18921` | `createScratch(name)` | |
+   187→| `workspace:scratch-load` | `18922` | `loadScratch(id)` | |
+   188→| `workspace:scratch-save` | `18923` | `saveScratch(id, name, state)` | |
+   189→| `workspace:scratch-delete` | `18924` | `deleteScratch(id)` | |
+   190→| `canvas:export` | `18925` | async (see reg) | Exports `.october-desktop-canvas` file (format `october-desktop-canvas` v1). |
+   191→| `canvas:import` | `18933` | async (see reg) | Imports same format; `unwrap()` rejects version > 1. |
+   192→| `canvas:command-result` | `18960` | `resolveCanvasCommand(requestId, result)` | Resolves a pending canvas command awaited by `runCanvasCommand`. |
+   193→| `event:open-canvas`, `event:canvas-command` | enum `296-293` | pushed via `safeSend` | Not handlers. |
+   194→
+   195→### 1.11 Dev server / Remotion / video (wired `18947-19006`)
+   196→
+   197→| Channel | Reg | Impl |
+   198→|---|---|---|
+   199→| `devserver:start` | `18947` | `startDevServer(projectPath)` |
+   200→| `devserver:stop` | `18947` | `stopDevServer(projectPath)` |
+   201→| `devserver:status` | `18948` | `getDevServerState(projectPath)` |
+   202→| `devserver:lan-host` | `18949` | `lanHost()` |
+   203→| `devserver:enable-expo-web` | `18950` | `enableExpoWebPreview(projectPath)` |
+   204→| `app:toggle-fullscreen` | `18951` | toggles focused window fullscreen |
+   205→| `remotion:create/…/render` | `18963-18968` | `remotionCreate/Compositions/Start/Stop/Status/render` |
+   206→| `video:pick-input` | `18969` | file picker (mp4/mov/m4v/webm/mkv/avi) |
+   207→| `video:subtitle` | `18979` | `runSubtitleJob` (AbortController tracked in `videoJobs`) |
+   208→| `video:bgm` | `18989` | `runBgmJob` |
+   209→| `video:cancel` | `18999` | aborts running job(s) |
+   210→| `event:devserver`, `event:simulator` | enum `295-297` | pushed via `safeSend` |
+   211→
+   212→### 1.12 Supervisor / agents (wired `19007-19030`)
+   213→
+   214→| Channel | Reg | Impl | Notes |
+   215→|---|---|---|---|
+   216→| `supervisor:release-project` | `19007` | `releaseProject(params)` | Packages project for release. |
+   217→| `supervisor:agents-health` | `19013` | `agentsHealth()` | |
+   218→| `terminal:background` | `19009` | `backgroundTerminals(projectPath, projectName, terminals)` | Spawns background terminals. |
+   219→| `terminal:background-status` | `19012` | `backgroundSummary()` | |
+   220→| `oauth:claude-login` | `19014` | `claudeOAuthLogin()` | (see §1.2) |
+   221→| `tasks:canvas-edit` | `19015` | `startCanvasEdit(params)` | Spawns an agent to edit the canvas. |
+   222→| `tasks:finder-ask` | `19016` | `startFinderAsk(params)` | Finder AI ask. |
+   223→| `find:query` | `19017` | `findFiles(params)` | |
+   224→| `find:candidates` | `19018` | `findCandidates(params)` | |
+   225→| `find:rank` | `19019` | `rankCandidates(req)` | |
+   226→| `find:recent` | `19020` | `recentFiles(roots)` | |
+   227→| `tasks:cancel` | `19021` | `cancelCanvasEdit(taskId)` | |
+   228→| `tasks:close-chat-session` | `19022` | `closeChatSession(chatId)` | |
+   229→| `tasks:close-all-chat-sessions` | `19566` (`ipcMain.on`) | `closeAllChatSessions()` | |
+   230→| `tasks:undo` | `19024` | `restoreUndoPoint(repoPath, snapshot, files)` | Git-based undo. |
+   231→| `tasks:decompose` | `19028` | `decomposeApp(idea, framework, settings)` | |
+   232→| `event:task`, `event:agents-health` | enum `294-298` | pushed via `safeSend` |
+   233→
+   234→### 1.13 Files / FS (wired `19031-19109`)
+   235→
+   236→| Channel | Reg | Impl | Notes |
+   237→|---|---|---|---|
+   238→| `files:save-attachment` | `19031` | `saveAttachment(params)` | Saves a chat attachment. |
+   239→| `files:list` | `19032` | `listProjectFiles(projectPath)` | |
+   240→| `files:list-project-resources` | `19033` | `listProjectResources(projectPath)` | |
+   241→| `files:read-project-thumbnail` | `19034` | `readProjectThumbnail(projectPath, relPath)` | |
+   242→| `files:capture-screen` | `19038` | offscreen BrowserWindow capture of localhost URL (must match `^http://localhost(:\d+)?`) | |
+   243→| `files:list-assets` | `19060` | `listWorkspaceAssets(canvasId)` | |
+   244→| `files:import-assets` | `19061` | `importWorkspaceAssets(canvasId, sourcePaths, apps)` | |
+   245→| `files:read-asset-thumbnail` | `19069` | `readWorkspaceAssetThumbnail(canvasId, name)` | |
+   246→| `files:materialize-assets` | `19073` | `materializeWorkspaceAssets(canvasId, apps)` | Copies assets into project. |
+   247→| `files:asset-path` | `19076` | `workspaceAssetPath(canvasId, name)` | |
+   248→| `files:list-folders` | `19077` | `listWorkspaceFolders(canvasId)` | |
+   249→| `files:import-folder` | `19078` | `importWorkspaceFolder…` | |
+   250→| `files:remove-folder` | `19085` | `removeWorkspaceFolder(canvasId, path)` | |
+   251→| `files:add-assets` | `19087` | `addWorkspaceAssets` | |
+   252→| `files:add-folders` | `19091` | `addWorkspaceFolders(canvasId, sourcePaths)` | |
+   253→| `fs:places` | `19094` | `fsPlaces(projectPath)` | Finder sidebar. |
+   254→| `fs:browse` | `19098` | `fsBrowse` | |
+   255→| `fs:preview` | `19099` | `fsPreview(filePath)` | |
+   256→| `fs:reveal` / `fs:open` | `19104 / 19105` | `fsReveal` / `fsOpen` | |
+   257→| `fs:rename` / `fs:move` / `fs:trash` / `fs:mkdir` | `19106-19109` | `fsRename/fsMove/fsTrash/fsMkdir` | |
+   258→| `files:read` | `19132` | `readProjectFile(projectPath, relPath)` | Resolves inside project (path-traversal guarded by `resolveInside`). |
+   259→| `files:exists` | `19133` | `projectFileExists(projectPath, relPath)` | |
+   260→| `files:write` | `19135` | `writeProjectFile(projectPath, relPath, content)` | |
+   261→| `files:migrate-design` | `19139` | `migrateCanvasDesign(canvasRoot, appPaths)` | |
+   262→
+   263→### 1.14 Cloud storage / rclone (wired `19110-19127`)
+   264→
+   265→| Channel | Reg | Impl | Notes |
+   266→|---|---|---|---|
+   267→| `storage:ensure` | `19110` | async | Ensures rclone available. |
+   268→| `storage:remotes` | `19118` | `listRemotes()` | |
+   269→| `storage:connect` | `19119` | `connectRemote(type)` | OAuth connect (Google Drive / Dropbox / etc). |
+   270→| `storage:cancel-connect` | `19125` | `cancelAuthorize()` | |
+   271→| `storage:disconnect` | `19126` | `disconnectRemote(name)` | |
+   272→| `storage:list` | `19127` | `storageList(uri)` | |
+   273→| `storage:import-to-library` | `19129` | `importToLibrary` | Pulls remote file into asset library. |
+   274→
+   275→### 1.15 Git / worktrees (wired `19142-19173`)
+   276→
+   277→| Channel | Reg | Impl | Notes |
+   278→|---|---|---|---|
+   279→| `git:status` | `19142` | `gitStatus(projectPath)` | Returns porcelain status (parsed by `parseGitStatusLines`). |
+   280→| `git:commit-all` | `19143` | `gitCommitAll(projectPath, message)` | |
+   281→| `git:push` | `19144` | `gitPush(projectPath)` | |
+   282→| `git:open-pr` | `19145` | `gitOpenPr(projectPath, title)` | Opens GitHub PR URL. |
+   283→| `git:add-worktree` | `19146` | `gitAddWorktree(projectPath, label)` | Creates `october/variant-*` worktree. |
+   284→| `worktrees:isolate` | `19151` | `isolateWorktree(repoPath, label)` | |
+   285→| `worktrees:merge` | `19155` | `mergeWorktree(worktreePath, baseRepoPath, opts)` | |
+   286→| `worktrees:auto-land` | `19160` | `autoLandWorktree(worktreePath, baseRepoPath, message)` | |
+   287→| `worktrees:drop` | `19171` | `dropWorktree` | |
+   288→| `event:agent-question` | enum `292` | pushed via `safeSend` | Drives `agent:answer-question`. |
+   289→| `agent:answer-question` | `18956` | `answerUserQuestion(questionId, answer)` | Resolves a pending agent question. |
+   290→
+   291→### 1.16 Simulator / terminal (wired `19174-19192` + `19179-19182`)
+   292→
+   293→| Channel | Reg | Impl |
+   294→|---|---|---|
+   295→| `sim:start` | `19174` | `startSimulator(projectPath)` |
+   296→| `sim:stop` | `19175` | `stopSimulator()` |
+   297→| `sim:status` | `19176` | `getSimulatorState()` |
+   298→| `terminal:start` | `19177` | `startTerminal(params)` |
+   299→| `terminal:restart` | `19178` | `restartTerminal(params)` |
+   300→| `terminal:input` (`ipcMain.on`) | `19179` | `writeTerminal(id, data)` |
+   301→| `terminal:resize` (`ipcMain.on`) | `19180` | `resizeTerminal(id, cols, rows)` |
+   302→| `terminal:snapshot` | `19181` | `terminalSnapshot(id)` |
+   303→| `terminal:kill` (`ipcMain.on`) | `19182` | `killTerminal(id)` |
+   304→| `terminal:which-agents` | `19183` | `agentAvailability()` |
+   305→| `terminal:foreground` | `19184` | `terminalForeground(id)` |
+   306→| `terminal:foreground-cached` | `19185` | `terminalForegroundCached(id)` |
+   307→| `terminal:peek-session` | `19186` | `peekTerminalSession(id)` |
+   308→| `terminal:seed-resume` | `19187` | `seedTerminalResume(id, session)` |
+   309→| `terminal:scan-external-sessions` | `19192` | `scanExternalSessions()` |
+   310→| `event:terminal-data/exit/resumed/attention/reveal`, `event:background-status/reveal` | enum `299-307` | pushed via `safeSend` |
+   311→
+   312→### 1.17 App / update / analytics / clipboard / runtime / diagnostics (wired `18618-18646` + `19188-19192`)
+   313→
+   314→| Channel | Reg | Impl | Notes |
+   315→|---|---|---|---|
+   316→| `log:write` (`ipcMain.on`) | `18618` | `log(scope, message)` | Appends to `session.log`. |
+   317→| `clipboard:write` | `18619` | `electron.clipboard.writeText` | |
+   318→| `clipboard:read-image` | `18620` | saves pasted PNG | |
+   319→| `clipboard:has-image` | `18624` | `!clipboard.readImage().isEmpty()` | |
+   320→| `diagnostics:report` | `18625` | `diagnosticsReport(note)` | |
+   321→| `runtime:ensure-node` | `18640` | `ensureNode(...)` | |
+   322→| `runtime:prefetch` (`ipcMain.on`) | `18636` | framework prefetch | |
+   323→| `runtime:prefetch` | `18636` | (see above) | |
+   324→| `update:state` | `18641` | `getUpdateState()` | |
+   325→| `update:start` (`ipcMain.on`) | `18642` | `startUpdateDownload()` | |
+   326→| `update:install` (`ipcMain.on`) | `18643` | `installUpdate()` | |
+   327→| `update:check` (`ipcMain.on`) | `18644` | `checkForUpdates()` | |
+   328→| `app:info` | `18645` | `appInfo()` | Returns `{version, platform, arch, sessionId, missingNodeTool, sttEngine}`. |
+   329→| `analytics:ready` (`ipcMain.on`) | `18646` | `flushAnalytics()` | Flushes buffered `track()` events once renderer is ready. |
+   330→| `nav:detect` | `18820` | `detectNavLinksInProject(projectPath, screens)` | |
+   331→| `thumbnails:capture` | (referenced) | `captureThumbnail` | |
+   332→| `agent:answer-question` | `18956` | (see §1.15) | |
+   333→| `event:analytics` | enum `258` | consumed by renderer | Emitted by `track()`; renderer forwards to Segment. |
+   334→| `event:runtime-progress` | enum `250` | pushed via `safeSend` | |
+   335→| `event:update` | enum `255` | pushed via `safeSend` | |
+   336→| `event:menu-reload-preview` / `event:menu-close-surface` / `event:menu-zoom` | enum `310-313` | pushed via `safeSend` | Menu accelerators routed to renderer. |
+   337→
+   338→---
+   339→
+   340→## 2. AUTHENTICATION
+   341→
+   342→### 2.1 Three distinct auth paths
+   343→
+   344→1. **Supabase email/password** (`auth:sign-in`/`auth:sign-up`) — wrapped by `authSignIn`/`authSignUp` (`index.js:5862`, `5869`) calling `client().auth.signInWithPassword` / `signUp`.
+   345→2. **GitHub OAuth** (`auth:sign-in-github`) — `authSignInWithGitHub` (`index.js:5878`).
+   346→3. **Bring-your-own API key / October Cloud token** — *not* IPC-guest auth; these are stored in **Settings** (`providerMode`, keys) and used directly by the agent harnesses. The `auth:*` Supabase flow is independent of `providerMode`.
+   347→
+   348→Separately, **Claude.ai OAuth** (`oauth:claude-login`) writes native Claude Code credentials (`index.js:5723`).
+   349→
+   350→### 2.2 Supabase client & session storage
+   351→
+   352→- `SUPABASE_URL = "https://latwxiqjgvluiddckvmj.supabase.co"` (`index.js:5797`)
+   353→- `SUPABASE_ANON = "eyJ…(JWT anon key)…"` (`index.js:5798`) — a **public anon key** (RLS-protected, not secret).
+   354→- Client created lazily in `client()` (`index.js:5849`) with `auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:false, storage: fileStorage, flowType:"pkce" }`.
+   355→- Session persisted via `fileStorage` adapter (`index.js:5816`):
+   356→  - `getItem(key)` / `setItem(key,value)` / `removeItem(key)` encrypted with `electron.safeStorage.encryptString`/`decryptString`.
+   357→  - Encrypted blob written to `userData/supabase-session.json` (mode `384` = `0600`, written atomically via tmp+rename in `writeEnc`, `index.js:5810`).
+   358→  - **Fallback when `safeStorage.isEncryptionAvailable()` is false:** an in-memory `memStore` object only (no disk persistence).
+   359→- Current Supabase JWT is read by `authAccessToken()` (`index.js:5957`) → used to authenticate October-proxied calls (liveblocks, deepgram).
+   360→- `toUser(u)` (`index.js:5859`) maps a Supabase user to `{id, email}`.
+   361→- `onAuthStateChange(cb)` (`index.js:6188`) registers the listener that drives `event:auth-changed`.
+   362→
+   363→### 2.3 GitHub OAuth flow (`authSignInWithGitHub`, `index.js:5878`)
+   364→
+   365→- PKCE: `signInWithOAuth({provider:"github", options:{redirectTo: GH_REDIRECT, skipBrowserRedirect:true}})` returns an authorize URL; main opens it in the user's browser via `electron.shell.openExternal`.
+   366→- A local HTTP server listens on **`127.0.0.1:54547`** (and `::1`) — `GH_PORT = 54547`, `GH_REDIRECT = "http://localhost:54547/callback"`, `GH_TIMEOUT_MS = 300000` (`index.js:5874-5876`).
+   367→- Browser redirects to `/callback?code=…`; main calls `client().auth.exchangeCodeForSession(code)` (PKCE). On success returns the user. Two servers are bound (IPv4 + IPv6) for resilience; the second silently no-ops on bind error.
+   368→
+   369→### 2.4 Claude.ai OAuth (`claudeOAuthLogin`, `index.js:5723`)
+   370→
+   371→- Constants (`index.js:5659-5665`):
+   372→  - `CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"`
+   373→  - `AUTHORIZE_URL = "https://claude.ai/oauth/authorize"`
+   374→  - `TOKEN_URL = "https://console.anthropic.com/v1/oauth/token"`
+   375→  - `PORT = 54545`, `REDIRECT_URI = "http://localhost:54545/callback"`
+   376→  - `SCOPES = "org:create_api_key user:profile user:inference"`
+   377→- Generates PKCE `verifier`/`challenge` + `state`, opens `AUTHORIZE_URL` in browser, listens on `54545/callback`, exchanges code at `TOKEN_URL` (`exchangeCode`, `index.js:5696`), then writes `~/.claude/.credentials.json` via `writeClaudeCredentials` (`index.js:5667`) under `claudeAiOauth: {accessToken, refreshToken, expiresAt, scopes, subscriptionType:"unknown"}`. File mode `0600`.
+   378→
+   379→### 2.5 `providerMode` model (October Cloud token + BYO keys)
+   380→
+   381→`providerMode` (default `"claude-code"`) selects how the agent harness authenticates to the model API. `buildEnv(settings)` (`index.js:2471`) shows the contract:
+   382→- `"api-key"` → `env.ANTHROPIC_API_KEY = settings.apiKey` (the user's own Anthropic key).
+   383→- `"october-cloud"` → `env.ANTHROPIC_BASE_URL = settings.octoberBaseUrl || "https://api.october.dev/v1"` and `env.ANTHROPIC_AUTH_TOKEN = settings.octoberToken` (October proxies Anthropic; the October Cloud token is the bearer).
+   384→- `"claude-code"` (default) → uses the locally-installed Claude CLI credentials (`~/.claude`), no env vars set.
+   385→
+   386→`getAuthStatus()` (`index.js:3410`) inspects the filesystem for each harness's native credentials (Claude, Codex, Hermes, Cursor, Grok, OpenCode, Gemini, Cline, Qwen, Goose, Copilot, Campfire) and reports `installed`/`loggedIn`/`hasKey` flags plus `keychainAvailable = safeStorage.isEncryptionAvailable()`.
+   387→
+   388→### 2.6 Session state tracking
+   389→
+   390→- Supabase session = the canonical "signed in to October" state, persisted in `supabase-session.json`. `authStatus()` returns the current user.
+   391→- `event:auth-changed` is emitted on every Supabase auth-state change; the renderer uses it to update UI, and main uses it to tear down `codeSync`/`busCloudSync` on sign-out.
+   392→- October Cloud / BYO keys are *settings*, not "sessions" — they have no refresh/expire lifecycle in the app (only the harness rejects them at runtime, surfaced by `describeAgentError`, `index.js:2451`).
+   393→
+   394→### 2.7 `maskSecrets` (definition `index.js:18647`)
+   395→
+   396→```js
+   397→const maskSecrets = (s) => {
+   398→  const mask2 = (v) => v ? "••••" : void 0;
+   399→  return { ...s,
+   400→    apiKey: mask2(s.apiKey),
+   401→    openaiApiKey: mask2(s.openaiApiKey),
+   402→    cursorApiKey: mask2(s.cursorApiKey),
+   403→    grokApiKey: mask2(s.grokApiKey),
+   404→    geminiApiKey: mask2(s.geminiApiKey),
+   405→    octoberToken: mask2(s.octoberToken),
+   406→    postBridgeApiKey: mask2(s.postBridgeApiKey),
+   407→    shopifyThemeToken: mask2(s.shopifyThemeToken),
+   408→    manusApiKey: mask2(s.manusApiKey),
+   409→    figmaToken: mask2(s.figmaToken),
+   410→    shortcutToken: mask2(s.shortcutToken),
+   411→    canvaAccessToken: mask2(s.canvaAccessToken)
+   412→  };
+   413→};
+   414→```
+   415→Called by `settings:get` and `settings:set` so the renderer never receives plaintext secrets. Note: non-secret fields (`model`, `theme`, `wallpaper`, `providerMode`, `octoberBaseUrl`, etc.) are passed through unmasked.
+   416→
+   417→### 2.8 Secret encryption at rest
+   418→
+   419→- `encryptKey(key)` (`index.js:3386`): if `key === ""` returns `{stored:undefined, memory:undefined}`; else if `safeStorage.isEncryptionAvailable()` returns `{stored: safeStorage.encryptString(key).toString("base64"), memory: key}`; else `{stored:undefined, memory:key}` (plaintext only in memory, never written).
+   420→- `decryptKey(enc, mem)` reverses it: if `enc` present it decrypts; otherwise returns the in-memory copy.
+   421→- In-memory copies live in module vars declared at `index.js:3198-3207` (`inMemoryApiKey`, `inMemoryOpenaiApiKey`, `inMemoryCursorApiKey`, `inMemoryGrokApiKey`, `inMemoryGeminiApiKey`, `inMemoryOctoberToken`, `inMemoryPostBridgeApiKey`, `inMemoryShopifyThemeToken`, `inMemoryManusApiKey`, `inMemoryFigmaToken`, and continues for `inMemoryShortcutToken`, `inMemoryCanvaAccessToken`). Decryption happens only when the renderer/agent actually needs the plaintext.
+   422→- `migrateLegacyOctoberToken` (`index.js:3244`) upgrades old `octoberToken` plaintext field → `octoberTokenEnc` on first read.
+   423→
+   424→---
+   425→
+   426→## 3. SETTINGS MODEL
+   427→
+   428→### 3.1 Persistence
+   429→
+   430→- File: `settings.json` in `userData` (`filePath$2()`, `index.js:3230`).
+   431→- `readStored()` (`index.js:3233`) parses it (with legacy-token migration); `writeStored()` (`index.js:3255`) writes pretty JSON (no special perms).
+   432→- Secrets are stored under `*Enc` fields (base64 `safeStorage` ciphertext); plaintext mirrored in `inMemory*` vars.
+   433→
+   434→### 3.2 Default values (`DEFAULTS$1`, `index.js:3221`)
+   435→
+   436→```js
+   437→providerMode: "claude-code",
+   438→model: "claude-opus-4-8",
+   439→codexModel: "gpt-5-codex",
+   440→defaultHarness: "claude-code",
+   441→octoberBaseUrl: "",
+   442→theme: "dark",
+   443→wallpaper: "w1"   // DEFAULT_WALLPAPER
+   444→```
+   445→
+   446→### 3.3 Full settings object shape (`getSettings()`, `index.js:3259`)
+   447→
+   448→| Field | Type | Notes |
+   449→|---|---|---|
+   450→| `providerMode` | `"claude-code" | "api-key" | "october-cloud" | …` | default `"claude-code"` |
+   451→| `model` | string | default `"claude-opus-4-8"` |
+   452→| `codexModel` | string | default `"gpt-5-codex"` |
+   453→| `hermesModel` | string? | |
+   454→| `cursorModel` | string? | |
+   455→| `grokModel` | string? | |
+   456→| `piModel` | string? | |
+   457→| `geminiModel` | string? | |
+   458→| `clineModel` | string? | |
+   459→| `defaultHarness` | string | which agent harness is default |
+   460→| `octoberToken` | string? | **secret** (October Cloud bearer) |
+   461→| `octoberBaseUrl` | string | default `""` → `https://api.october.dev/v1` |
+   462→| `theme` | string | `"dark"` etc |
+   463→| `wallpaper` | string | ref or `custom:<file>` |
+   464→| `onboardingCompletedAt` | number? | |
+   465→| `terminal` | object? | terminal prefs |
+   466→| `voice` | object? | voice prefs (incl. `enabled` flag) |
+   467→| `autoMergeSessions` | boolean? | |
+   468→| `skipPermissions` | boolean? | |
+   469→| `showMinimap` | boolean? | |
+   470→| `instantTerminals` | boolean? | |
+   471→| `apiKey` | string? | **secret** (Anthropic BYO key) |
+   472→| `openaiApiKey` | string? | **secret** |
+   473→| `cursorApiKey` | string? | **secret** |
+   474→| `grokApiKey` | string? | **secret** |
+   475→| `geminiApiKey` | string? | **secret** |
+   476→| `postBridgeApiKey` | string? | **secret** (PostBridge) |
+   477→| `shopifyStoreDomain` | string? | |
+   478→| `shopifyThemeToken` | string? | **secret** |
+   479→| `manusApiKey` | string? | **secret** |
+   480→| `figmaToken` | string? | **secret** |
+   481→| `shortcutToken` | string? | **secret** |
+   482→| `canvaAccessToken` | string? | **secret** |
+   483→| `remoteAccess` | object? | |
+   484→
+   485→`setSettings(patch)` (`index.js:3299`) merges only the provided keys: scalar fields assigned directly; secret fields re-encrypted via `encryptKey` and both `stored.*Enc` and `inMemory*` updated. Returns `maskSecrets(getSettings())`.
+   486→
+   487→### 3.4 Other persisted state in `settings.json`
+   488→
+   489→- `recents` (`getRecents`/`pushRecent`/`forgetRecent`, `index.js:3472-3485`) — recent project list.
+   490→- `recentShared` (`getRecentShared`/`pushRecentShared`/`forgetRecentShared`, `index.js:3487-3500`) — recently opened shared cloud canvas ids.
+   491→- `windowBounds` (`getWindowBounds`/`saveWindowBounds`, `index.js:3464-3471`).
+   492→
+   493→---
+   494→
+   495→## 4. CLOUD SYNC
+   496→
+   497→### 4.1 Supabase tables used
+   498→
+   499→- `desktop_canvases` — columns `id` (uuid, PK), `owner_id` (uuid, FK to auth user), `name`, `state` (jsonb, wrapped as `{format:"october-desktop-canvas", version:1, canvas}`), `is_public` (bool), `updated_at` (timestamptz).
+   500→- `bus_state` — realtime collaboration state keyed by `canvas_id`.
+   501→- `desktop_code_sync` — code-sync consent/metadata keyed by `canvas_id`.
+   502→- Storage bucket `code-sync` (`CODE_SYNC_BUCKET = "code-sync"`, `index.js:6078`) — holds repo bundles at `<canvasId>/<name>`.
+   503→
+   504→### 4.2 Create / Save / Load
+   505→
+   506→- `cloudCreate(name, state)` (`index.js:6002`): requires `client().auth.getUser()`; inserts `{owner_id, name, state: wrap(state)}`; returns `id`.
+   507→- `cloudSave(id, state)` (`index.js:6009`): `update set state=wrap(state), updated_at=now()`; throws if 0 rows affected (not owner / RLS denies).
+   508→- `cloudLoad(id)` (`index.js:6015`): `select state` → `unwrap(data.state)`.
+   509→- `cloudLoadWithName(id)` (`index.js:6020`): also returns `name`, `owner_id`.
+   510→- `wrap(state)` (`index.js:5989`) = `{format:"october-desktop-canvas", version:1, canvas:state}`; `unwrap` (`index.js:5992`) extracts `.canvas`, rejecting versions > 1.
+   511→
+   512→### 4.3 Sharing
+   513→
+   514→- `cloudSetShared(id, shared)` (`index.js:6035`): requires signed-in user; `update set is_public=shared`; returns `{isPublic}`. When set to false via `cloud:set-shared`, main also calls `stopCodeSync(id)`.
+   515→- `cloudShareInfo(id)` (`index.js:6025`): returns `{isPublic}`.
+   516→- Public rows are readable by anon Supabase key (RLS), so `cloud:open-shared` + `cloud:load` work for anyone holding the UUID.
+   517→- **Share link format** (built in the renderer, `renderer/assets/CanvasView-*.js:66737`): `october://canvas/<uuid>` — a custom URL scheme the app registers; the share page on october.dev resolves the UUID against `desktop_canvases` where `is_public=true`.
+   518→
+   519→### 4.4 Recent shared
+   520→
+   521→- `cloud:open-shared` pushes `{id, name, lastOpenedAt:Date.now()}` into `recentShared` (in `settings.json`).
+   522→- `cloud:recent-shared` lists them; `cloud:forget-recent-shared` removes one.
+   523→
+   524→### 4.5 Delete
+   525→
+   526→- `cloudDelete(id)` (`index.js:6042`): removes storage objects in `code-sync/<id>/…`, deletes `bus_state` + `desktop_code_sync` rows, then deletes the `desktop_canvases` row. Throws if 0 rows (not owner).
+   527→
+   528→### 4.6 Code-sync (git bundle over Supabase Storage)
+   529→
+   530→- `startCodeSyncHost(id, repoPath)` uploads a git bundle to `code-sync/<id>/…` (`upload` at `index.js:6080`, `contentType:"application/octet-stream"`, `upsert:true`).
+   531→- Guest downloads via `download` (`index.js:6087`); removal via `remove` (`index.js:6084`).
+   532→- Consent recorded in `desktop_code_sync`; `setCodeSyncConsent` bounds `acceptedSecrets` to 200 strings × 500 chars.
+   533→
+   534→---
+   535→
+   536→## 5. ANALYTICS (`track`)
+   537→
+   538→- `track(event, props)` (`index.js:4748`):
+   539→  - If `ready$1` (set by `analytics:ready` → `flushAnalytics`, `index.js:4756`) is true → `safeSend("event:analytics", {event, props})`.
+   540→  - Else buffers into `buffer` (max `MAX_BUFFER`; oldest shifted out).
+   541→- `flushAnalytics()` sets `ready$1=true` and replays buffered events.
+   542→- `analytics:ready` is sent by the **preload** (`preload/index.js:574` → `electron.ipcRenderer.send("analytics:ready")`) once the renderer has loaded.
+   543→- The `event:analytics` channel is **consumed in the renderer**, which forwards events to **Segment** (confirmed: `renderer/assets/ts.worker-*.js` references `segment`). The main process itself performs no network call for analytics.
+   544→- `sessionId` (`appInfo`, `index.js:4738`) is a `crypto.randomUUID()` persisted per app session and attached to analytics context.
+   545→
+   546→### Events emitted (from `track("…")` call sites)
+   547→
+   548→| Event | Count | Notes |
+   549→|---|---|---|
+   550→| `project_create_failed` | 5 | |
+   551→| `project_create_succeeded` | 3 | |
+   552→| `dev_server_failed` | 3 | |
+   553→| `template_clone_failed` | 2 | |
+   554→| `simulator_failed` | 2 | |
+   555→| `peer_message_sent` | 2 | bus collaboration |
+   556→| `parakeet_download_started` / `_failed` / `_completed` | 2 each | STT model download |
+   557→| `code_sync_started` / `_failed` | 2 each | |
+   558→| `agent_run_failed` / `_cancelled` | 2 each | |
+   559→| `voice_session_failed` | 1 | |
+   560→| `video_tools_install` | 1 | |
+   561→| `update_required_shown` / `update_installed` / `update_failed` / `update_download_started` / `update_downloaded` / `update_available` | 1 each | |
+   562→| `terminal_agent_turn` | 1 | |
+   563→| `template_unavailable` / `template_ready` | 1 each | |
+   564→| `simulator_running` | 1 | |
+   565→| `resource_pressure` | 1 | |
+   566→| `remotion_render_succeeded` / `_failed` | 1 each | |
+   567→| `quit_guard_cancelled` | 1 | |
+   568→| `project_create_started` / `_cancelled` | 1 each | |
+   569→| `node_ready` / `node_download_failed` | 1 each | runtime node |
+   570→| `diagnostics_report_failed` | 1 | |
+   571→| `dev_server_running` / `dev_server_gave_up` | 1 each | |
+   572→| `code_sync_guest_live` | 1 | |
+   573→| `app_quit_with_active_work` | 1 | from `trackPendingQuitSnapshot()` |
+   574→| `app_crashed` | 1 | |
+   575→| `agent_run_succeeded` / `_started` | 1 each | |
+   576→
+   577→`errorClass(err)` (`index.js:4777`) maps error messages to stable categories (`missing_web_deps`, `npx_unresolved`, `port_in_use`, `timeout`, `cancelled`, `checksum`, `disk_space`, `permission`, `not_installed`, `not_found`, …) used in failure analytics.
+   578→
+   579→---
+   580→
+   581→## 6. EMBEDDED CONSTANTS / SECRETS
+   582→
+   583→| Constant | Value | Location | Type |
+   584→|---|---|---|---|
+   585→| `SUPABASE_URL` | `https://latwxiqjgvluiddckvmj.supabase.co` | `5797` | public |
+   586→| `SUPABASE_ANON` | `eyJ…Aor5lE6ZSv…` (JWT anon key) | `5798` | public (RLS) |
+   587→| `OCTOBER_LIVEBLOCKS_AUTH` | `https://www.october.dev/api/liveblocks-auth` | `5961` | endpoint |
+   588→| `OCTOBER_DEEPGRAM_TOKEN` | `https://www.october.dev/api/deepgram-token` | `5962` | endpoint |
+   589→| `INTENT_URL` (voice intent) | `process.env.OCTOBER_INTENT_URL || "https://www.october.dev/api/intent"` | `6197` | endpoint |
+   590→| `OCTOBER_API_BASE` (models) | `https://api.october.dev/v1` (default `octoberBaseUrl`) | `2479` | endpoint |
+   591→| GitHub OAuth redirect | `http://localhost:54547/callback` | `5875` | local port 54547 |
+   592→| Claude OAuth `CLIENT_ID` | `9d1c250a-e61b-44d9-88ed-5944d1962f5e` | `5659` | public client id |
+   593→| Claude `AUTHORIZE_URL` | `https://claude.ai/oauth/authorize` | `5660` | endpoint |
+   594→| Claude `TOKEN_URL` | `https://console.anthropic.com/v1/oauth/token` | `5661` | endpoint |
+   595→| Claude `REDIRECT_URI` | `http://localhost:54545/callback` | `5663` | local port 54545 |
+   596→| Claude `SCOPES` | `org:create_api_key user:profile user:inference` | `5664` | |
+   597→| Supabase password reset redirect | `https://www.october.dev/auth/callback` | `5945` | endpoint |
+   598→| `CODE_SYNC_BUCKET` | `code-sync` | `6078` | storage bucket |
+   599→| `DESKTOP_CANVAS_FORMAT` / `_VERSION` | `october-desktop-canvas` / `1` | `5987-5988` | file format |
+   600→| `DEFAULT_WALLPAPER` | `w1` | `315` | |
+   601→| `WALLPAPER_PROTOCOL` | `october-wallpaper` | `316` | custom scheme |
+   602→| `APPNAME`/version | read from `electron.app.getVersion()` | `4740` | |
+   603→
+   604→Env vars consumed: `OCTOBER_ACP`, `OCTOBER_BUNDLED_CLAUDE`, `OCTOBER_USE_SYSTEM_CLAUDE`, `OCTOBER_INTENT_URL`, `ANTHROPIC_API_KEY` (detected for claude login), `GH_TOKEN`/`GITHUB_TOKEN` (copilot detection), `APPDATA`/`LOCALAPPDATA` (Windows paths).
+   605→
+   606→---
+   607→
+   608→## 7. CONTROL-FLOW SUMMARY
+   609→
+   610→1. On boot, `registerIpc()` (`18617`) wires every listener. `onAuthStateChange` subscribes and emits `event:auth-changed`.
+   611→2. Renderer calls `settings:get` → main returns **masked** settings; `settings:set` merges + re-encrypts secrets + masks on return.
+   612→3. To sign in: renderer → `auth:sign-in` / `auth:sign-up` / `auth:sign-in-github` / `oauth:claude-login`. Supabase sessions persist in `supabase-session.json` (encrypted); Claude creds in `~/.claude/.credentials.json`.
+   613→4. Agent runs read `providerMode`: `"api-key"` uses `apiKey` as `ANTHROPIC_API_KEY`; `"october-cloud"` uses `octoberToken` as `ANTHROPIC_AUTH_TOKEN` against `api.october.dev/v1`; `"claude-code"` uses local CLI creds.
+   614→5. Cloud canvases: CRUD against Supabase `desktop_canvases`; sharing toggles `is_public`; share link is `october://canvas/<uuid>` resolved by october.dev. Code-sync bundles git repos into the `code-sync` storage bucket.
+   615→6. Liveblocks/deepgram tokens: main POSTs to october.dev with the Supabase JWT (`postWithOctoberJwt`).
+   616→7. Analytics: `track()` buffers until `analytics:ready`, then `event:analytics` → renderer → Segment.
+   617→
+   618→---
+   619→
+   620→## 8. KEY FILE/LINE INDEX
+   621→
+   622→- IPC enum: `index.js:54-314`
+   623→- `registerIpc` (all handlers): `index.js:18617`
+   624→- `maskSecrets`: `index.js:18647`
+   625→- `settings.json` path / read / write: `index.js:3230 / 3233 / 3255`
+   626→- `DEFAULTS$1`: `index.js:3221`
+   627→- `getSettings` / `setSettings`: `index.js:3259 / 3299`
+   628→- `encryptKey` / `decryptKey`: `index.js:3386`
+   629→- `getAuthStatus`: `index.js:3410`
+   630→- Supabase constants + client + `fileStorage`: `index.js:5797-5858`
+   631→- `authSignIn/Up/SignInWithGitHub/SignOut/Reset/Resend/Status`: `index.js:5862-5959`
+   632→- `postWithOctoberJwt` / `liveblocksAuthToken` / `deepgramToken`: `index.js:5963-5986`
+   633→- Cloud CRUD: `index.js:6002-6054`
+   634→- `CODE_SYNC_BUCKET`: `index.js:6078`
+   635→- `appInfo` / `track` / `flushAnalytics`: `index.js:4737 / 4748 / 4756`
+   636→- Claude OAuth constants + flow: `index.js:5659-5762`
+   637→- `buildEnv` (providerMode contract): `index.js:2471`
+   638→- `assertUuid` / `CANVAS_ROOM_RE`: `index.js:18611-18616`
+   639→

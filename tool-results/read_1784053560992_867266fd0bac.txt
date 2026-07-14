@@ -1,0 +1,586 @@
+     1→# October Desktop — Voice Pipeline (Reverse-Engineering Notes)
+     2→
+     3→**App:** October Desktop v1.0.30 (Wega Labs)
+     4→**Source:** `/tmp/october_work/app/asar_extracted/out/main/index.js` (esbuild bundle, 19,794 lines)
+     5→**Subsystem:** Voice pipeline (STT + TTS + intent) in the main process + native on-device models.
+     6→
+     7→---
+     8→
+     9→## 0. Executive summary
+    10→
+    11→The voice system is built around two selectable **on-device STT engines** plus a **hybrid intent layer** and **cloud/local TTS**:
+    12→
+    13→| Concern | Implementation |
+    14→|---|---|
+    15→| On-device STT (primary, Apple Silicon) | **FluidAudio** native sidecar `october-stt` (a closed-source binary, `binaryPath()` at `index.js:4922`). Communicates over stdio JSON + a 4th "control" fd pipe. |
+    16→| On-device STT (fallback, all platforms) | **sherpa-onnx** (`sherpa-onnx-node` v1.13.3) with the `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` model + Silero VAD. Loaded via dynamic `import("sherpa-onnx-node")` (`index.js:5379`). |
+    17→| Cloud STT option | **Deepgram** (token minted by October backend `https://www.october.dev/api/deepgram-token`). |
+    18→| Cloud STT option (GPT Realtime) | **OpenAI Realtime transcription** — client secret minted directly against `https://api.openai.com/v1/realtime/client_secrets` using the user's OpenAI API key. |
+    19→| TTS | **FluidAudio** (local, on Apple Silicon only). For sherpa/non-fluid path `voiceSpeak` returns `Promise.resolve(false)` — i.e. **no TTS** is implemented outside FluidAudio. |
+    20→| Intent / command parsing | LLM "Commander" prompt sent to `https://www.october.dev/api/intent` (October gateway, Claude `claude-sonnet-5`), with BYOK Anthropic fallback (`https://api.anthropic.com/v1/messages`). |
+    21→
+    22→Engine selection is automatic: `fluidAvailable()` is true only on `darwin` + `arm64` **and** when the `october-stt` sidecar binary exists (`index.js:4935`). Otherwise the app falls back to sherpa-onnx. The active engine is tracked by the module-level `active$2` variable, initialized to `"sherpa"` (`index.js:5581`).
+    23→
+    24→---
+    25→
+    26→## 1. IPC channel inventory & handlers
+    27→
+    28→All channels are string constants defined in the `IPC` object (`index.js:69-91`) and wired in a single registration block (`index.js:18697-18723`). Channels below are exactly those in the task brief.
+    29→
+    30→| Constant | Channel string | Handler | Line | Logic summary |
+    31→|---|---|---|---|---|
+    32→| `voiceEnsureMicAccess` | `voice:ensure-mic-access` | `ensureMicAccess()` | 18698 | macOS only: checks/prompts `systemPreferences.getMediaAccessStatus("microphone")` (4698). No-op on other OS. |
+    33→| `voiceOpenMicSettings` | `voice:open-mic-settings` | inline | 18699 | Opens OS mic privacy pane (`x-apple.systempreferences:...:Privacy_Microphone` on darwin, `ms-settings:privacy-microphone` on win32). |
+    34→| `voiceDeepgramToken` | `voice:deepgram-token` | `deepgramToken()` | 18697 | Returns a Deepgram token from the October backend (see §2). |
+    35→| `voiceOpenaiRealtimeToken` | `voice:openai-realtime-token` | `(_e, opts) => mintOpenaiRealtimeToken(opts)` | 18704 | Mints an OpenAI Realtime client secret (see §3). |
+    36→| `voiceCompile` | `voice:compile` | `compileVoiceCommand(input, getSettings().apiKey)` | 18708 | Compiles a transcript into canvas actions (see §6). |
+    37→| `voicePrewarmCompiler` | `voice:prewarm-compiler` | `prewarmIntent()` | 18709 | Warms the intent gateway with a `"ping"` request (see §6). |
+    38→| `voiceIntentReady` | `voice:intent-ready` | `intentReady(Boolean(getSettings().apiKey))` | 18710 | Returns whether intent is usable (signed-in OR has BYOK key) (see §6). |
+    39→| `voiceParakeetStatus` | `voice:parakeet-status` | `engineStatus()` | 18711 | Returns `{available, model, progress, engine}` for the active engine (see §4). |
+    40→| `voiceParakeetEnsureModel` | `voice:parakeet-ensure-model` | `ensureEngineModel()` | 18712 | Downloads/installs the active engine's model (see §4). |
+    41→| `voiceParakeetStart` | `voice:parakeet-start` | `engineStart()` | 18713 | Boots the active engine (see §4/§5). |
+    42→| `voiceParakeetAudio` | `voice:parakeet-audio` | `(_e, samples) => engineFeed(samples)` | 18715 | **`ipcMain.on`** (not handle) — streams raw PCM samples into the active engine. |
+    43→| `voiceParakeetStop` | `voice:parakeet-stop` | `engineStop()` | 18714 | Stops the active engine (keeps FluidAudio warm, releases after idle). |
+    44→| `voiceDeleteOldModel` | `voice:delete-old-model` | `deleteOldModel()` | 18716 | Deletes stale FluidAudio models + the full sherpa model dir (see §4). |
+    45→| `voiceSpeak` | `voice:speak` | `(_e, text) => engineSpeak(String(text ?? "").slice(0, 500))` | 18717 | TTS; text truncated to 500 chars; FluidAudio only (see §5). |
+    46→| `voiceSpeakStop` | `voice:speak-stop` | `engineStopSpeaking()` | 18718 | Stops TTS (FluidAudio only). |
+    47→| `voiceMicStart` | `voice:mic-start` | `engineMicStart()` | 18720 | Starts mic capture + sets speaker lock / prewarms TTS (FluidAudio only). |
+    48→| `voiceMicStop` | `voice:mic-stop` | `engineMicStop()` | 18721 | Stops mic capture. |
+    49→| `voiceMicMute` | `voice:mic-mute` | `engineMicMute()` | 18722 | Mutes mic. |
+    50→| `voiceMicUnmute` | `voice:mic-unmute` | `engineMicUnmute()` | 18723 | Unmutes mic. |
+    51→
+    52→In addition, at `index.js:18719` the voice engine is **eagerly booted** at startup if enabled:
+    53→```js
+    54→if (getSettings().voice?.enabled !== false) engineEagerBoot();
+    55→```
+    56→`engineEagerBoot()` (`index.js:5642`) calls `fluidStart()` (no-op if fluid unavailable).
+    57→
+    58→### Internal helper: `safeSend`
+    59→All upstream events are broadcast to every live `BrowserWindow` via `safeSend(channel, payload)` (`index.js:435`):
+    60→```js
+    61→function safeSend(channel, payload) {
+    62→  for (const win of electron.BrowserWindow.getAllWindows()) {
+    63→    try {
+    64→      if (!win.isDestroyed() && !win.webContents.isDestroyed())
+    65→        win.webContents.send(channel, payload);
+    66→    } catch {}
+    67→  }
+    68→}
+    69→```
+    70→
+    71→---
+    72→
+    73→## 2. Deepgram integration (`voice:deepgram-token`)
+    74→
+    75→Endpoint: `https://www.october.dev/api/deepgram-token` — defined at `index.js:5962`:
+    76→```js
+    77→const OCTOBER_DEEPGRAM_TOKEN = "https://www.october.dev/api/deepgram-token";
+    78→async function deepgramToken() {
+    79→  const json = await postWithOctoberJwt(OCTOBER_DEEPGRAM_TOKEN);
+    80→  const token = json.token ?? json.key;
+    81→  if (!token) throw new Error("No Deepgram token returned.");
+    82→  return token;
+    83→}
+    84→```
+    85→
+    86→The actual network call goes through `postWithOctoberJwt` (`index.js:5963`):
+    87→```js
+    88→async function postWithOctoberJwt(endpoint, body) {
+    89→  const jwt = await authAccessToken();
+    90→  if (!jwt) throw new Error("Sign in to October to use this feature.");
+    91→  const res = await fetch(endpoint, {
+    92→    method: "POST",
+    93→    headers: { Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" },
+    94→    body: JSON.stringify(body ?? {}),
+    95→    signal: AbortSignal.timeout(8e3)   // 8s hard cap so a hung october.dev never stalls the caller
+    96→  });
+    97→  if (!res.ok) throw new Error(`October auth failed (${res.status}).`);
+    98→  return res.json();
+    99→}
+   100→```
+   101→
+   102→**Key points:**
+   103→- The request is authenticated with the **user's October JWT** (`authAccessToken()`), not a Deepgram key directly.
+   104→- October's backend proxies/returns a Deepgram token (field `token` or `key`).
+   105→- There is a **8-second `AbortSignal.timeout`** so a hung backend never blocks the renderer.
+   106→- The returned token is consumed by the renderer (which opens the Deepgram WebSocket); the main process only mints the token.
+   107→
+   108→---
+   109→
+   110→## 3. OpenAI Realtime (`voice:openai-realtime-token`)
+   111→
+   112→Constants (`index.js:4700-4701`):
+   113→```js
+   114→const CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
+   115→const TRANSCRIBE_MODEL = "gpt-realtime-whisper";
+   116→```
+   117→
+   118→Minting (`index.js:4702`):
+   119→```js
+   120→async function mintOpenaiRealtimeToken(opts = {}) {
+   121→  const key2 = getSettings().openaiApiKey;
+   122→  if (!key2) throw new Error("Add an OpenAI API key in Settings → AI Provider to use GPT Realtime voice.");
+   123→  const session = {
+   124→    type: "transcription",
+   125→    audio: {
+   126→      input: {
+   127→        format: { type: "audio/pcm", rate: 24e3 },
+   128→        transcription: {
+   129→          model: TRANSCRIBE_MODEL,
+   130→          ...opts.language ? { language: opts.language } : {}
+   131→        },
+   132→        turn_detection: { type: "server_vad" }
+   133→      }
+   134→    }
+   135→  };
+   136→  const res = await fetch(CLIENT_SECRETS_URL, {
+   137→    method: "POST",
+   138→    headers: { Authorization: `Bearer ${key2}`, "Content-Type": "application/json" },
+   139→    body: JSON.stringify({ session })
+   140→  });
+   141→  if (!res.ok) { /* throws with status + body detail */ }
+   142→  const json = await res.json();
+   143→  const value = json.value ?? json.client_secret?.value;
+   144→  const expiresAt = json.expires_at ?? json.client_secret?.expires_at;
+   145→  if (!value) throw new Error("OpenAI Realtime token mint returned no client secret.");
+   146→  return { value, expiresAt };
+   147→}
+   148→```
+   149→
+   150→**Key points:**
+   151→- This calls the **OpenAI Realtime client_secrets API directly** with the **user's OpenAI API key** (`getSettings().openaiApiKey`) — it does NOT go through October's backend.
+   152→- It requests a **transcription session** (`type: "transcription"`) using model `gpt-realtime-whisper`, PCM @ 24 kHz, with **server-side VAD** (`turn_detection: { type: "server_vad" }`).
+   153→- `opts.language` (optional) is forwarded to pin the transcription language.
+   154→- Returns `{ value, expiresAt }` (the ephemeral client secret). The renderer connects to OpenAI Realtime with this secret. This is a fully cloud STT path (separate from FluidAudio/sherpa on-device paths).
+   155→
+   156→---
+   157→
+   158→## 4. On-device STT — engines, models, download & lifecycle
+   159→
+   160→### 4.1 Engine dispatch (the `engine*` facade)
+   161→
+   162→`index.js:5581-5658` defines thin dispatchers that branch on `fluidAvailable()`:
+   163→
+   164→```js
+   165→let active$2 = "sherpa";
+   166→
+   167→async function engineStart() {
+   168→  if (fluidAvailable()) {
+   169→    try { await fluidStart(); active$2 = "fluid"; return; }
+   170→    catch (e) { log("voice", `FluidAudio start failed — falling back to sherpa: ...`); }
+   171→  }
+   172→  active$2 = "sherpa";
+   173→  await parakeetStart();
+   174→}
+   175→function engineFeed(samples) { active$2 === "fluid" ? fluidFeed(samples) : parakeetFeed(samples); }
+   176→function engineStop()        { active$2 === "fluid" ? fluidStop()   : parakeetStop(); }
+   177→async function engineStatus(){ /* returns {available, model, progress, engine} */ }
+   178→function resolveEngineName() { return fluidAvailable() ? "fluid" : "sherpa"; }
+   179→function ensureEngineModel() { return fluidAvailable() ? fluidPrepare() : ensureParakeetModel(); }
+   180→function engineSpeak(text)   { return fluidAvailable() ? fluidSpeak(text) : Promise.resolve(false); }
+   181→function engineStopSpeaking(){ if (fluidAvailable()) fluidStopSpeaking(); }
+   182→async function engineMicStart() { /* fluid only; also sets speaker lock + prewarms TTS */ }
+   183→function engineMicStop()  { if (fluidAvailable()) fluidMicStop(); }
+   184→function engineMicMute()  { if (fluidAvailable()) fluidMicMute(); }
+   185→function engineMicUnmute(){ if (fluidAvailable()) fluidMicUnmute(); }
+   186→```
+   187→
+   188→`fluidAvailable()` (`index.js:4935`):
+   189→```js
+   190→function fluidAvailable() {
+   191→  if (process.platform !== "darwin" || process.arch !== "arm64") return false;
+   192→  const ok = fs.existsSync(binaryPath());
+   193→  ...
+   194→  return ok;
+   195→}
+   196→```
+   197→
+   198→### 4.2 FluidAudio (Apple Silicon) — the `october-stt` sidecar
+   199→
+   200→This is the primary engine on Apple Silicon. It is a **closed-source native binary**, not an npm package.
+   201→
+   202→**Binary location** (`binaryPath()`, `index.js:4922`):
+   203→```js
+   204→function binaryPath() {
+   205→  if (electron.app.isPackaged)
+   206→    return path.join(process.resourcesPath, "bin", "october-stt");
+   207→  // dev: native/october-stt/.build/release/october-stt
+   208→  const rel = path.join("native", "october-stt", ".build", "release", "october-stt");
+   209→  for (const root of [electron.app.getAppPath(), process.cwd()]) {
+   210→    const p = path.join(root, rel);
+   211→    if (fs.existsSync(p)) return p;
+   212→  }
+   213→  return path.join(electron.app.getAppPath(), rel);
+   214→}
+   215→```
+   216→
+   217→**Model location** (`fluidModelsBase()`, `index.js:4840`):
+   218→```js
+   219→function fluidModelsBase() {
+   220→  return path.join(os.homedir(), "Library", "Application Support", "FluidAudio", "Models");
+   221→}
+   222→const ACTIVE_MODEL_DIR = "nemotron-streaming";   // index.js:4839
+   223→```
+   224→Models are `.mlmodelc` bundles under `<fluidModelsBase()>/nemotron-streaming`. Presence check is `fluidModelsPresent()` (`index.js:4859`) which scans for `*.mlmodelc` and verifies the `weights` dir has non-zero files via `mlmodelcComplete()` (`index.js:4843`).
+   225→
+   226→**Spawn / cold start** (`coldStart()`, `index.js:5024`):
+   227→```js
+   228→const proc = child_process.spawn(bin, [], { detached: true, stdio: ["pipe","pipe","pipe","pipe"] });
+   229→```
+   230→- 4 stdio fds: stdin = audio (raw PCM frames), stdout = JSON status/transcript lines, stderr = logs, **fd #3 (stdio[3]) = control pipe** (`controlPipe()`, `index.js:5148`) for commands.
+   231→- Writes a PID file (`sttPidFile()` → `<userData>/october-stt.pid`, `index.js:4931`) so an orphaned sidecar can be reaped on next launch (`reapOrphanedSttOnStartup()`, `index.js:5249`).
+   232→- 90s start timeout (`START_TIMEOUT_MS = 9e4`); on timeout it kills, falls back, and surfaces an error.
+   233→- Reads stdout line-by-line, parsing each line as JSON in `handleLine()` (`index.js:4944`).
+   234→
+   235→**Inbound JSON message protocol** (`handleLine()`, `index.js:4944`):
+   236→| `type` | Action |
+   237→|---|---|
+   238→| `ready` | sets `ready=true`, `modelState="ready"` |
+   239→| `partial` | `safeSend(IPC.evVoiceTranscript, { text, isFinal:false })` |
+   240→| `final` | `safeSend(IPC.evVoiceTranscript, { text, isFinal:true })` |
+   241→| `speaking` | `safeSend(IPC.evVoiceSpeaking, { speaking: state==="start" })`; on `end` calls `speakDone?.()` |
+   242→| `mic` | `safeSend(IPC.evVoiceMicState, { state, message, flushing })` |
+   243→| `progress` | `modelState="loading"` |
+   244→| `error` | `modelState="error"` |
+   245→
+   246→**Outbound control commands** (written as JSON + `"\n"` to fd #3 via `sendControl()`/`controlPipe()`, `index.js:5191`):
+   247→- `{ cmd:"speak", text }` — TTS (`fluidSpeak`, `index.js:5152`)
+   248→- `{ cmd:"stop_speaking" }` — `fluidStopSpeaking` (`index.js:5185`)
+   249→- `{ cmd:"mic_start" }` / `{ cmd:"mic_stop" }` / `{ cmd:"mic_mute" }` / `{ cmd:"mic_unmute" }`
+   250→- `{ cmd:"speaker_lock", enabled }` — `fluidSetSpeakerLock` (`index.js:5211`)
+   251→- `{ cmd:"prewarm_tts" }` — `fluidPrewarmTts` (`index.js:5214`)
+   252→
+   253→**Audio feed** (`fluidFeed()`, `index.js:5120`): writes `Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength)` to child stdin. Includes backpressure handling: if `stdin.writableLength > STDIN_QUEUE_CAP` (`256*1024`, `index.js:4836`) it drops frames; tracks `fedFrames` / `droppedFrames`.
+   254→
+   255→**Idle release** (`fluidStop()`, `index.js:5220`): keeps the sidecar warm, but schedules `fluidShutdown()` after `IDLE_RELEASE_MS = 3*60_000` (`index.js:4835`) to free memory. `fluidShutdown()` (`index.js:5229`) ends stdin, `killTree()`, removes the pid file.
+   256→
+   257→**Model install** (`fluidPrepare()`, `index.js:5283`): spawns `october-stt --prepare` (`child_process.spawn(bin, ["--prepare"], ...)`), parses `{"type":"progress","status":"downloading","fraction":<0..1>}` lines, and emits `IPC.evVoiceModelProgress` `{phase:"downloading", progress}` then `{phase:"ready"}` or `{phase:"error", error}`. 15-min timeout (`PREPARE_TIMEOUT_MS = 15*60_000`). Tracks `track("parakeet_download_started"/"_completed"/"_failed")`.
+   258→
+   259→**Stale-model cleanup** (`deleteStaleFluidModels()`, `index.js:4896`): removes every subdir of `fluidModelsBase()` except `ACTIVE_MODEL_DIR` (`nemotron-streaming`). `purgePartialModel()` (`index.js:4869`) deletes the `ACTIVE_MODEL_DIR` itself (used before a re-download):
+   260→```js
+   261→function purgePartialModel() {
+   262→  if (child) return;
+   263→  const dir = path.join(fluidModelsBase(), ACTIVE_MODEL_DIR);
+   264→  if (!fs.existsSync(dir)) return;
+   265→  fs.rmSync(dir, { recursive: true, force: true });
+   266→  ...
+   267→}
+   268→```
+   269→
+   270→### 4.3 sherpa-onnx (cross-platform fallback) — Parakeet + Silero VAD
+   271→
+   272→**Model constants** (`index.js:5363-5376`):
+   273→```js
+   274→const MODEL_NAME  = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8";
+   275→const RELEASE     = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models";
+   276→const MODEL_URL   = `${RELEASE}/${MODEL_NAME}.tar.bz2`;
+   277→const VAD_URL     = `${RELEASE}/silero_vad.onnx`;
+   278→const SAMPLE_RATE = 16e3;   // 16 kHz
+   279→
+   280→function modelsRoot() { return path.join(electron.app.getPath("userData"), "voice-models"); }
+   281→function modelDir()   { return path.join(modelsRoot(), MODEL_NAME); }
+   282→function vadPath()    { return path.join(modelsRoot(), "silero_vad.onnx"); }
+   283→```
+   284→
+   285→**Download URLs / filenames (exact):**
+   286→- Model archive: `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2`
+   287→- VAD model: `https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx`
+   288→- Stored under `<userData>/voice-models/`.
+   289→
+   290→**Native module load** (`loadSherpa()`, `index.js:5379`) — dynamic import so the bundle still loads on machines without the native binary:
+   291→```js
+   292→async function loadSherpa() {
+   293→  if (mod) return mod;
+   294→  if (loadFailed) return null;
+   295→  try {
+   296→    const ns = await import("sherpa-onnx-node");   // v1.13.3
+   297→    mod = ns.default ?? ns;
+   298→    return mod;
+   299→  } catch (e) {
+   300→    loadFailed = true;
+   301→    log("voice", `sherpa-onnx-node unavailable: ...`);
+   302→    return null;
+   303→  }
+   304→}
+   305→```
+   306→The npm package `sherpa-onnx-node@1.13.3` (in `node_modules/sherpa-onnx-node/`) wraps the native addon, which resolves the prebuilt binary from `sherpa-onnx-<platform>-<arch>` (e.g. `sherpa-onnx-win-x64` in `app.asar.unpacked/node_modules/`, containing `sherpa-onnx.node`). `onnxruntime-node` is also present in `app.asar.unpacked/node_modules/` as the ONNX runtime backend.
+   307→
+   308→**Model file resolution** (`resolveModelFiles()`, `index.js:5392`): requires `encoder*.onnx`, `decoder*.onnx`, `joiner*.onnx`, and `tokens.txt` inside `modelDir()`. `modelReady()` (`index.js:5409`) = model files present **and** `vadPath()` exists.
+   309→
+   310→**Status** (`parakeetStatus()`, `index.js:5415`): returns `{available, model, progress, error}` where `model` is `"absent" | "downloading" | "ready" | "error"`.
+   311→
+   312→**Download + extract** (`ensureParakeetModel()`, `index.js:5454`):
+   313→- Idempotent / de-duplicated via `ensureInFlight` promise.
+   314→- Emits `evVoiceModelProgress` phases: `downloading` (with fractional progress), `extracting`, `ready`, or `error`.
+   315→- Steps:
+   316→  1. `mkdir -p <voice-models>`.
+   317→  2. If `silero_vad.onnx` missing → `download(VAD_URL, vadPath())`.
+   318→  3. `download(MODEL_URL, <voice-models>/<MODEL_NAME>.tar.bz2, onProgress→emit)`.
+   319→  4. Extract: `runProc("tar", ["-xf", tarPath, "-C", modelsRoot()], { timeoutMs: 120_000 })`.
+   320→  5. `fs.rmSync(tarPath)`; verify `modelReady()`; emit `ready`.
+   321→- `download()` (`index.js:5424`): streams via `fetch` + `res.body.getReader()`, writes to `<dest>.part`, renames on success, removes `.part` on failure; enforces `content-length` completeness.
+   322→
+   323→**Recognizer + VAD construction** (`ensureEngine()`, `index.js:5494`):
+   324→```js
+   325→recognizer = new sherpa.OfflineRecognizer({
+   326→  modelConfig: {
+   327→    transducer: { encoder: f.encoder, decoder: f.decoder, joiner: f.joiner },
+   328→    tokens: f.tokens,
+   329→    numThreads: 2,
+   330→    modelType: "nemo_transducer"
+   331→  }
+   332→});
+   333→vad = new sherpa.Vad(
+   334→  { sileroVad: {
+   335→      model: vadPath(),
+   336→      threshold: 0.5,
+   337→      minSilenceDuration: 0.7,   // tuned up from 0.25 to avoid chopping long sentences
+   338→      minSpeechDuration: 0.25,
+   339→      maxSpeechDuration: 20       // hard cap so a monologue still flushes
+   340→    },
+   341→    sampleRate: SAMPLE_RATE,
+   342→    numThreads: 1
+   343→  },
+   344→  30   // ??? (window size arg)
+   345→);
+   346→```
+   347→
+   348→**Inference loop:**
+   349→- `parakeetStart()` (`index.js:5541`): `ensureEngine()` then `vad.reset()`.
+   350→- `parakeetFeed(samples)` (`index.js:5545`): `vad.acceptWaveform(samples); drain(); if (vad.isDetected()) safeSend(IPC.evVoiceTranscript, {text:"", isFinal:false})` — the empty `isFinal:false` is a heartbeat that keeps the renderer's coalesce timer from firing mid-speech.
+   351→- `drain()` (`index.js:5529`): while VAD has a segment, `vad.front(false)` → `recognizer.createStream()` → `acceptWaveform({samples, sampleRate})` → `decode()` → `getResult().text` → `safeSend(IPC.evVoiceTranscript, {text, isFinal:true})`.
+   352→- `parakeetStop()` (`index.js:5551`): `vad.flush(); drain(); vad.reset()`.
+   353→
+   354→**Model deletion** (`deleteParakeetModel()`, `index.js:5561`): removes the **entire** `<voice-models>` directory (`modelsRoot()`) and returns bytes freed.
+   355→
+   356→### 4.4 `voice:delete-old-model` handler — `deleteOldModel()` (`index.js:5652`)
+   357→```js
+   358→async function deleteOldModel() {
+   359→  if (!fluidAvailable()) return { deleted: false };
+   360→  const stale = deleteStaleFluidModels();     // removes non-active FluidAudio model dirs
+   361→  const sherpaBytes = deleteParakeetModel();  // removes whole sherpa voice-models dir
+   362→  const bytes = stale.bytes + sherpaBytes;
+   363→  return { deleted: stale.count > 0 || sherpaBytes > 0, freedMb: Math.round(bytes / 1e6) };
+   364→}
+   365→```
+   366→
+   367→### 4.5 `voice:parakeet-status` — `engineStatus()` (`index.js:5609`)
+   368→Returns `{ available, model, progress, engine }`. `engine` is `"fluid"` when fluid is available (with `fluidStatus()`'s `model` = `absent|downloading|ready|error`), else `"sherpa"` when sherpa's model/recognizer is available, else `engine` is omitted (`undefined`).
+   369→
+   370→---
+   371→
+   372→## 5. TTS (`voice:speak` / `voice:speak-stop`)
+   373→
+   374→```js
+   375→function engineSpeak(text) {
+   376→  if (fluidAvailable()) return fluidSpeak(text);
+   377→  return Promise.resolve(false);   // NO TTS outside FluidAudio
+   378→}
+   379→function engineStopSpeaking() {
+   380→  if (fluidAvailable()) fluidStopSpeaking();
+   381→}
+   382→```
+   383→
+   384→**TTS is implemented ONLY by FluidAudio** (local, Apple Silicon). The sherpa path has no synthesis (there is a `non-streaming-tts.js` in `sherpa-onnx-node`, but it is never invoked).
+   385→
+   386→`fluidSpeak()` (`index.js:5152`):
+   387→- No-op if fluid unavailable or its model missing.
+   388→- Lazily starts the sidecar if needed.
+   389→- Sends `{ cmd:"speak", text }` over the control pipe (fd #3).
+   390→- Resolves `true` when the sidecar emits a `speaking` end event (calls `speakDone?.()`); 30s safety timeout.
+   391→- The renderer-triggered `say` line from the compiler (see §6) is what gets spoken.
+   392→
+   393→`voiceSpeak` truncates input to **500 chars**: `String(text ?? "").slice(0, 500)`.
+   394→
+   395→`fluidStopSpeaking()` (`index.js:5185`): sends `{ cmd:"stop_speaking" }`.
+   396→
+   397→Mic ↔ speaker coordination: `engineMicStart()` (`index.js:5632`) also sets `fluidSetSpeakerLock(voice?.speakerLock !== false)` and, if `voice?.speakReplies !== false`, calls `fluidPrewarmTts()` — so the mic disarms after a reply is spoken (one-shot interaction model).
+   398→
+   399→---
+   400→
+   401→## 6. Intent detection (`voice:intent-ready`, `voice:compile`, `voice:prewarm-compiler`)
+   402→
+   403→Endpoint (`index.js:6197`):
+   404→```js
+   405→const INTENT_URL = process.env.OCTOBER_INTENT_URL || "https://www.october.dev/api/intent";
+   406→const INTENT_DEV_SECRET = process.env.INTENT_DEV_SECRET;
+   407→const COMPILER_MODEL = "claude-sonnet-5";
+   408→const temperatureFor = (model) => model.startsWith("claude-haiku") ? 0 : 1;
+   409→```
+   410→
+   411→### 6.1 Gateway call — `callIntentGateway()` (`index.js:6199`)
+   412→```js
+   413→async function callIntentGateway(system, user, abort, model = COMPILER_MODEL) {
+   414→  const token = await authAccessToken().catch(() => null);
+   415→  if (!token && !INTENT_DEV_SECRET) return null;
+   416→  const headers = { "content-type": "application/json" };
+   417→  if (token) headers.authorization = `Bearer ${token}`;
+   418→  if (INTENT_DEV_SECRET) headers["x-intent-dev-secret"] = INTENT_DEV_SECRET;
+   419→  const res = await fetch(INTENT_URL, {
+   420→    method: "POST",
+   421→    headers,
+   422→    body: JSON.stringify({ system, messages: [{ role:"user", content: user }], model,
+   423→                          max_tokens: 1024, temperature: temperatureFor(model) }),
+   424→    signal: abort?.signal
+   425→  });
+   426→  if (res.status === 402) return "over-quota";
+   427→  if (!res.ok) return null;
+   428→  const data = await res.json().catch(() => null);
+   429→  return typeof data?.text === "string" ? data.text : null;
+   430→}
+   431→```
+   432→
+   433→### 6.2 BYOK fallback — `callAnthropicDirect()` (`index.js:6419`)
+   434→If the gateway returns `null` and the user has a `getSettings().apiKey` (Anthropic BYOK), the request is sent **directly to Anthropic**:
+   435→```js
+   436→const res = await fetch("https://api.anthropic.com/v1/messages", {
+   437→  method:"POST",
+   438→  headers: { "content-type":"application/json", "x-api-key": apiKey, "anthropic-version":"2023-06-01" },
+   439→  body: JSON.stringify({ model, max_tokens:1024, temperature: temperatureFor(model), system,
+   440→                         messages:[{ role:"user", content: user }] }),
+   441→  signal: abort?.signal
+   442→});
+   443→...
+   444→const text = data?.content?.find((b)=>b.type==="text")?.text;
+   445→```
+   446→
+   447→### 6.3 Compiler entry — `compileVoiceCommand()` (`index.js:6447`)
+   448→```js
+   449→async function compileVoiceCommand(input, byokApiKey, abort) {
+   450→  const utterance = input.utterance.trim();
+   451→  if (!utterance) return { kind:"steps", steps:[] };
+   452→  const startedAt = Date.now();
+   453→  const viaGateway = await callIntentGateway(compilerSystemPrompt(), compilerUserPrompt(input), abort);
+   454→  if (viaGateway != null && viaGateway !== "over-quota")
+   455→    return logCompileResult(parseCompilerResult(viaGateway), "gateway", startedAt);
+   456→  if (byokApiKey) {
+   457→    const viaKey = await callAnthropicDirect(compilerSystemPrompt(), compilerUserPrompt(input), byokApiKey, abort);
+   458→    if (viaKey != null) {
+   459→      const parsed = logCompileResult(parseCompilerResult(viaKey), "byok", startedAt);
+   460→      if (viaGateway === "over-quota" && !overQuotaNoticeShown) { /* attach notice */ }
+   461→      return parsed;
+   462→    }
+   463→  }
+   464→  return { kind:"ask", ask:"I couldn't reach the canvas commander — ..." };
+   465→}
+   466→```
+   467→Inputs to compile (`input`): `{ utterance, snapshot, history?, lastTurn?, pendingAsk?, snapshot.recentActions? }`.
+   468→
+   469→### 6.4 Prompt construction
+   470→- `compilerSystemPrompt()` (`index.js:6271`) — the "COMMANDER" system prompt. It instructs the LLM to translate one spoken command into compact JSON describing canvas actions. Enumerates the full `DO_ACTIONS` set (see §6.6) and the action grammar, with extensive name-matching / STT-error-tolerance guidance (e.g. "clawed"→claude, "her mez"→Hermes, and many "claude code" near-misses). Replies are either `{"ask":...}` or `{"steps":[...],"say":"...","listen"?:true}`.
+   471→- `compilerUserPrompt(input)` (`index.js:6361`) — builds the `CANVAS` / `LAST TURN` / `RECENT ACTIONS` / `RECENT CONVERSATION` / `PENDING ASK` / `COMMAND` block from `renderSnapshot(input.snapshot)` (`index.js:6259`, node-cap 40 via `SNAPSHOT_NODE_CAP`).
+   472→
+   473→### 6.5 Result parsing — `parseCompilerResult()` (`index.js:6398`)
+   474→- Extracts the first `{...}` block via regex.
+   475→- If `obj.ask` present → `{ kind:"ask", ask, options? }`.
+   476→- Otherwise collects steps (`obj.steps` or a single `obj` containing `do`/`respond`/`do_agent`), each validated by `validateStep()` (`index.js:6379`):
+   477→  - `do_agent` → `{ do_agent: { node?, scope?, text } }` (text must be non-empty, verbatim).
+   478→  - `respond` → `{ respond: <string> }`.
+   479→  - `do` → must be in the `DO_ACTIONS` allow-set; `{ do, params }`.
+   480→- Returns `{ kind:"steps", steps, say?, expectsReply? }`, or falls back to `CLARIFY` (`{ kind:"ask", ask:"Sorry, I didn't catch that…" }`) on any parse failure / empty steps.
+   481→
+   482→### 6.6 `DO_ACTIONS` allow-set (`index.js:6226`)
+   483→```
+   484→add_screen, add_chat, add_terminal, add_agents, add_note, add_remotion, add_browser,
+   485→connect_nodes, disconnect_nodes, rename_node, move_node, remove_node, remove_nodes,
+   486→arrange_nodes, send_to_node, import_sessions, focus_node, reload_screen, cancel_node,
+   487→start_dev_server, stop_dev_server, go_home, open_settings, show_canvas, open_finder,
+   488→find_files, expand_chat, set_auto_comm, set_chat_option, generate_variants
+   489→```
+   490→The renderer executes these steps on the canvas and speaks the `say` line back via `voiceSpeak`.
+   491→
+   492→### 6.7 Readiness & prewarm
+   493→- `intentReady(hasByokKey)` (`index.js:6483`): returns `true` if `INTENT_DEV_SECRET` is set, or `hasByokKey` (a BYOK Anthropic key present), or the user is signed in to October (`authAccessToken()`). Otherwise `false`.
+   494→- `prewarmIntent()` (`index.js:6476`): once per 60s, calls `callIntentGateway(compilerSystemPrompt(), "ping")` to warm the gateway connection (errors swallowed).
+   495→
+   496→---
+   497→
+   498→## 7. Mic access & audio capture flow; upstream events
+   499→
+   500→### 7.1 Mic access
+   501→- `voice:ensure-mic-access` → `ensureMicAccess()` (`index.js:4687`): macOS only; uses `systemPreferences.getMediaAccessStatus("microphone")` and, if not granted, `askForMediaAccess("microphone")`. Returns boolean.
+   502→- `voice:open-mic-settings` opens the OS mic privacy panel.
+   503→- `voice:mic-start/stop/mute/unmute` map to `engineMicStart/Stop/Mute/Unmute()` — these are **FluidAudio-only** (they are no-ops when fluid is unavailable). FluidAudio performs the actual capture inside the native sidecar; the renderer feeds PCM to `voice:parakeet-audio` only on the sherpa path.
+   504→
+   505→### 7.2 Audio capture → STT (the two paths)
+   506→- **FluidAudio path:** the `october-stt` sidecar captures the mic *internally*, does STT internally, and emits `final`/`partial` JSON lines. The renderer does **not** push audio for STT on this path (mic control is via control-pipe `mic_start`/`mic_stop`).
+   507→- **sherpa path:** the renderer captures mic audio and pushes raw PCM Float32 frames via `voice:parakeet-audio` (`ipcMain.on`, `index.js:18715`) → `engineFeed(samples)` → `parakeetFeed()` → `vad.acceptWaveform()`. Sample rate is 16 kHz (`SAMPLE_RATE`). `fluidFeed()` conversely accepts raw PCM written to the sidecar's stdin (this is the *input* to FluidAudio when used in a non-mic or test context).
+   508→
+   509→### 7.3 Upstream events (main → renderer, via `safeSend`)
+   510→| Constant | Channel | Emitted from | Payload |
+   511→|---|---|---|---|
+   512→| `evVoiceTranscript` | `event:voice-transcript` | `handleLine` (`partial`/`final`), `drain()` | `{ text, isFinal }` |
+   513→| `evVoiceModelProgress` | `event:voice-model-progress` | `fluidPrepare`, `ensureParakeetModel`, `onSidecarLost` | `{ phase, progress?, error? }` where `phase ∈ downloading\|extracting\|ready\|error` |
+   514→| `evVoiceSpeaking` | `event:voice-speaking` | `handleLine` `speaking` | `{ speaking: boolean }` |
+   515→| `evVoiceMicState` | `event:voice-mic-state` | `handleLine` `mic` | `{ state, message?, flushing? }` |
+   516→
+   517→(Channel strings also at `index.js:88-91`.)
+   518→
+   519→---
+   520→
+   521→## 8. End-to-end voice flow (mic → STT → intent → action → TTS)
+   522→
+   523→1. **Capability check / model prep (once, or on demand):**
+   524→   - `voice:intent-ready` → is intent usable? (signed-in / BYOK / dev-secret).
+   525→   - `voice:parakeet-status` → is an engine + model ready?
+   526→   - `voice:parakeet-ensure-model` → download/install the engine model (FluidAudio `nemotron-streaming` via `october-stt --prepare`, or sherpa Parakeet `tar.bz2` + Silero VAD `onnx` from the k2-fsa GitHub release).
+   527→   - `voice:prewarm-compiler` → warm the intent gateway.
+   528→
+   529→2. **Mic + engine start:**
+   530→   - `voice:ensure-mic-access` (macOS prompt).
+   531→   - `voice:parakeet-start` → `engineStart()` boots FluidAudio or sherpa.
+   532→   - `voice:mic-start` → FluidAudio starts mic capture (and sets speaker-lock + prewarms TTS); on the sherpa path the renderer captures and streams samples.
+   533→
+   534→3. **Capture → STT:**
+   535→   - FluidAudio: sidecar does on-device STT, emits `event:voice-transcript {text, isFinal}` (and `event:voice-mic-state`).
+   536→   - sherpa: renderer streams PCM via `voice:parakeet-audio`; `parakeetFeed` → Silero VAD → `OfflineRecognizer` (`nemo_transducer`) → emits `event:voice-transcript {text, isFinal:true}`.
+   537→   - (Cloud alternatives exist: Deepgram via `voice:deepgram-token`, or OpenAI Realtime via `voice:openai-realtime-token` + `gpt-realtime-whisper` + server VAD — both return transcripts to the renderer, not through this main-process STT path.)
+   538→
+   539→4. **Intent / command compile:**
+   540→   - Renderer sends the final transcript to `voice:compile` with the live canvas snapshot (`compileVoiceCommand`).
+   541→   - Gateway `https://www.october.dev/api/intent` (Claude `claude-sonnet-5`) is tried first; on failure/over-quota it falls back to Anthropic directly with the user's BYOK key (`callAnthropicDirect`).
+   542→   - Returns `{ kind:"ask", ask, options? }` or `{ kind:"steps", steps, say, expectsReply? }`.
+   543→
+   544→5. **Action execution (renderer):**
+   545→   - `ask` → renderer speaks the question (TTS) and, if `options`/`expectsReply`, keeps the mic open for a spoken answer (feeds back into step 3).
+   546→   - `steps` → renderer executes the `DO_ACTIONS` canvas mutations, then **speaks the `say` line via `voice:speak`** (FluidAudio local TTS only).
+   547→
+   548→6. **TTS / stop:**
+   549→   - `voice:speak` → `engineSpeak` (FluidAudio `speak` control command). `voice:speak-stop` → `stop_speaking`.
+   550→   - After the spoken reply, the mic disarms (one-shot), unless `expectsReply`/`listen` keeps it open.
+   551→
+   552→7. **Shutdown / cleanup:**
+   553→   - `voice:parakeet-stop` → `engineStop()` (immediate for sherpa; for FluidAudio, warm then idle-release after `IDLE_RELEASE_MS`).
+   554→   - `voice:mic-stop/mute/unmute` → FluidAudio mic control.
+   555→   - `voice:delete-old-model` → remove stale FluidAudio models + the entire sherpa `voice-models` dir; returns freed MB.
+   556→
+   557→---
+   558→
+   559→## 9. Native modules reference
+   560→
+   561→| Module | Location | Version | Role |
+   562→|---|---|---|---|
+   563→| `sherpa-onnx-node` | `node_modules/sherpa-onnx-node/` | 1.13.3 | JS wrapper for on-device ASR/VAD/TTS. Used APIs: `OfflineRecognizer` (`modelType:"nemo_transducer"`, `numThreads:2`), `Vad` (Silero, `numThreads:1`). |
+   564→| `sherpa-onnx-win-x64` | `app.asar.unpacked/node_modules/sherpa-onnx-win-x64/` | 1.13.3 | Prebuilt native `.node` addon (`sherpa-onnx.node`). Loaded by `sherpa-onnx-node/addon.js` via platform-arch path resolution. |
+   565→| `onnxruntime-node` | `app.asar.unpacked/node_modules/onnxruntime-node/` | — | ONNX runtime backend for sherpa. |
+   566→| `october-stt` | `resources/bin/october-stt` (packaged) / `native/october-stt/.build/release/october-stt` (dev) | closed-source | FluidAudio sidecar (Apple Silicon). Audio capture + STT (Nemotron streaming) + TTS. IPC: stdin=PCM, stdout=JSON status, stderr=logs, fd3=control pipe. |
+   567→| `@img/sharp-win32-x64` | `app.asar.unpacked/node_modules/@img/` | — | (image lib, unrelated to voice) |
+   568→| `@openai/codex-sdk`, `codex-win32-x64` | `app.asar.unpacked/node_modules/@openai/` | — | (Codex agent SDK; the OpenAI Realtime token is minted via plain `fetch` to `api.openai.com`, not this SDK) |
+   569→
+   570→---
+   571→
+   572→## 10. Key file:line index
+   573→
+   574→- IPC channel strings: `index.js:69-91`
+   575→- Handler registration block: `index.js:18697-18723`
+   576→- `ensureMicAccess`: `index.js:4687`
+   577→- `mintOpenaiRealtimeToken` / `CLIENT_SECRETS_URL` / `TRANSCRIBE_MODEL`: `index.js:4700-4732`
+   578→- `safeSend`: `index.js:435`
+   579→- FluidAudio: `binaryPath` 4922, `fluidAvailable` 4935, `handleLine` 4944, `coldStart` 5024, `fluidFeed` 5120, `fluidSpeak` 5152, `fluidStopSpeaking` 5185, `sendControl` 5191, `fluidMicStart` 5198, `fluidStop` 5220, `fluidShutdown` 5229, `reapOrphanedSttOnStartup` 5249, `fluidPrepare` 5283, `fluidStatus` 5356
+   580→- Fluid model mgmt: `ACTIVE_MODEL_DIR` 4839, `fluidModelsBase` 4840, `fluidModelsPresent` 4859, `purgePartialModel` 4869, `deleteStaleFluidModels` 4896, `deleteOldModel` 5652
+   581→- sherpa: `MODEL_NAME`/`RELEASE`/`MODEL_URL`/`VAD_URL` 5363-5366, `loadSherpa` 5379, `resolveModelFiles` 5392, `parakeetStatus` 5415, `download` 5424, `ensureParakeetModel` 5454, `ensureEngine` 5494, `drain` 5529, `parakeetStart/Feed/Stop` 5541-5559, `deleteParakeetModel` 5561
+   582→- Engine dispatch: `engineStart` 5582, `engineFeed` 5597, `engineStop` 5601, `engineStatus` 5609, `ensureEngineModel` 5621, `engineSpeak` 5625, `engineMicStart` 5632, `engineEagerBoot` 5642
+   583→- Deepgram: `OCTOBER_DEEPGRAM_TOKEN` 5962, `postWithOctoberJwt` 5963, `deepgramToken` 5981
+   584→- Intent/compiler: `COMPILER_MODEL` 6195, `INTENT_URL` 6197, `callIntentGateway` 6199, `DO_ACTIONS` 6226, `renderSnapshot` 6259, `compilerSystemPrompt` 6271, `compilerUserPrompt` 6361, `validateStep` 6379, `parseCompilerResult` 6398, `callAnthropicDirect` 6419, `compileVoiceCommand` 6447, `prewarmIntent` 6476, `intentReady` 6483
+   585→- Helpers: `runProc` 1619
+   586→
