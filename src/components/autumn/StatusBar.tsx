@@ -14,6 +14,8 @@ import {
   Command as CommandIcon,
   Wifi,
   Search,
+  Keyboard,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export function StatusBar() {
   const setShowCommandPalette = useAutumnStore((s) => s.setShowCommandPalette);
   const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
   const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
+  const setShortcutHelpOpen = useAutumnStore((s) => s.setShortcutHelpOpen);
+  const busHistory = useAutumnStore((s) => s.busHistory);
 
   const agentCount = nodes.filter((n) => n.kind === "chat").length;
   const runningCount = Object.values(running).filter(Boolean).length;
@@ -75,13 +79,22 @@ export function StatusBar() {
         <span className="text-muted-foreground/50">·</span>
         <span>{taskDone} done</span>
       </div>
+      {busHistory.length > 0 && (
+        <>
+          <div className="h-3 w-px bg-border/60" />
+          <div className="hidden sm:flex items-center gap-1.5 text-amber-300/80">
+            <Radio className="size-2.5" />
+            <span>{busHistory.length} bus msg{busHistory.length === 1 ? "" : "s"}</span>
+          </div>
+        </>
+      )}
       {pulses.length > 0 && (
         <>
           <div className="h-3 w-px bg-border/60" />
           <div className="flex items-center gap-1.5 text-amber-400">
             <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span>
-              {pulses.length} bus msg{pulses.length === 1 ? "" : "s"}
+              {pulses.length} live
             </span>
           </div>
         </>
@@ -204,6 +217,14 @@ export function StatusBar() {
       >
         <Search className="size-2.5" />
         <kbd className="font-mono">⌘F</kbd>
+      </button>
+      <button
+        className="hidden md:flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+        onClick={() => setShortcutHelpOpen(true)}
+        title="Keyboard shortcuts"
+      >
+        <Keyboard className="size-2.5" />
+        <kbd className="font-mono">?</kbd>
       </button>
 
       {lastAction && (

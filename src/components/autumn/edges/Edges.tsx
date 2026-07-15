@@ -67,16 +67,23 @@ export function BusEdge({
         />
       ))}
       <EdgeLabelRenderer>
-        <div
+        <button
           style={{
             position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: "none",
+            pointerEvents: "all",
           }}
-          className="rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-amber-300/90 nodrag nopan"
+          className="rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-amber-300/90 nodrag nopan hover:bg-amber-500/30 hover:border-amber-500/50 hover:scale-110 transition-all cursor-pointer"
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent("autumn:inspect-edge", { detail: { id } }),
+            );
+          }}
+          title="Double-click to inspect bus traffic"
         >
           {(data as { label?: string })?.label ?? "bus"}
-        </div>
+        </button>
       </EdgeLabelRenderer>
     </>
   );

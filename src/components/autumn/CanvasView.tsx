@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useMemo, useCallback, useEffect, useRef } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -34,6 +34,8 @@ import {
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
+import { EdgeInspector } from "./EdgeInspector";
 import { Cable, Sparkles, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -75,9 +77,24 @@ function CanvasInner() {
   const clearSelection = useAutumnStore((s) => s.clearSelection);
   const searchMatchIds = useAutumnStore((s) => s.searchMatchIds);
   const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
-  const { fitView, setCenter, getNode } = useReactFlow();
+  const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
+
+  // Context menu state (right-click on pane or node).
+  const [ctxMenu, setCtxMenu] = useState<CanvasContextMenuState>(INITIAL_CONTEXT_MENU);
+  // Edge inspector state (double-click on bus edge label).
+  const [inspectedEdge, setInspectedEdge] = useState<string | null>(null);
+
+  // Listen for "autumn:inspect-edge" custom events from the BusEdge label.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id?: string } | undefined;
+      if (detail?.id) setInspectedEdge(detail.id);
+    };
+    window.addEventListener("autumn:inspect-edge", handler);
+    return () => window.removeEventListener("autumn:inspect-edge", handler);
+  }, []);
 
   // Track whether Shift is currently held so onNodesChange can distinguish
   // multi-select clicks from single-select clicks. react-flow's NodeChange
@@ -233,6 +250,39 @@ function CanvasInner() {
     clearSelection();
   }, [setSelectedNode, clearSelection]);
 
+  const onPaneContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      setCtxMenu({
+        open: true,
+        x: e.clientX,
+        y: e.clientY,
+        canvasX: flowPos.x,
+        canvasY: flowPos.y,
+        nodeId: null,
+        kind: "pane",
+      });
+    },
+    [screenToFlowPosition],
+  );
+
+  const onNodeContextMenu = useCallback(
+    (e: React.MouseEvent, node: Node) => {
+      e.preventDefault();
+      setCtxMenu({
+        open: true,
+        x: e.clientX,
+        y: e.clientY,
+        canvasX: 0,
+        canvasY: 0,
+        nodeId: node.id,
+        kind: "node",
+      });
+    },
+    [],
+  );
+
   return (
     <div className="absolute inset-0 autumn-canvas">
       {/* Empty state */}
@@ -294,6 +344,8 @@ function CanvasInner() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={onPaneClick}
+        onPaneContextMenu={onPaneContextMenu}
+        onNodeContextMenu={onNodeContextMenu}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.1 }}
         minZoom={0.2}
@@ -325,6 +377,15 @@ function CanvasInner() {
         />
         <CanvasToolbar />
       </ReactFlow>
+      <CanvasContextMenu
+        state={ctxMenu}
+        onClose={() => setCtxMenu((s) => ({ ...s, open: false }))}
+      />
+      <EdgeInspector
+        edgeId={inspectedEdge}
+        open={inspectedEdge !== null}
+        onOpenChange={(v) => !v && setInspectedEdge(null)}
+      />
     </div>
   );
 }

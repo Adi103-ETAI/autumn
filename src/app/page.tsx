@@ -22,6 +22,7 @@ import { ExportImportDialog } from "@/components/autumn/ExportImportDialog";
 import { ActivityTimeline } from "@/components/autumn/ActivityTimeline";
 import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
 import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
+import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -102,6 +103,7 @@ export default function Home() {
         onOpenChange={setShowActivityLog}
       />
       <NodeSearchOverlay />
+      <ShortcutHelpOverlay />
     </div>
   );
 }

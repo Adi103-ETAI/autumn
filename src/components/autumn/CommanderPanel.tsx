@@ -18,8 +18,21 @@ import {
   Sparkles,
   ChevronRight,
   Volume2,
+  Bot,
+  Cable,
+  StickyNote,
+  Workflow,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const QUICK_TEMPLATES: { label: string; cmd: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
+  { label: "Spawn agent", cmd: "Spawn a new agent on Claude Code and have them stand by for tasks.", icon: Bot, color: "text-amber-300" },
+  { label: "Connect two", cmd: "Connect Atlas to Apollo with a bus edge so they can coordinate.", icon: Cable, color: "text-sky-300" },
+  { label: "Drop a note", cmd: 'Drop a sticky note saying "remember to ship on Friday".', icon: StickyNote, color: "text-amber-400" },
+  { label: "Auto-arrange", cmd: "Arrange all nodes on the canvas into a clean tiered layout.", icon: Workflow, color: "text-violet-300" },
+  { label: "Run all idle", cmd: "Have every idle agent pick up an open task from the board and start work.", icon: Zap, color: "text-emerald-300" },
+];
 
 export function CommanderPanel() {
   const messages = useAutumnStore((s) => s.commanderMessages);
@@ -333,6 +346,25 @@ export function CommanderPanel() {
                 title={cmd}
               >
                 {cmd}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Quick prompt template chips (only when input is empty and not thinking) */}
+        {input === "" && !isThinking && messages.length <= 2 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider mr-1">
+              try
+            </span>
+            {QUICK_TEMPLATES.map((t) => (
+              <button
+                key={t.label}
+                onClick={() => void send(t.cmd)}
+                className="flex items-center gap-1 text-[10px] rounded-full bg-muted/30 hover:bg-amber-500/10 border border-border/40 hover:border-amber-500/40 px-2 py-0.5 text-muted-foreground hover:text-amber-200 transition-all disabled:opacity-40 group"
+                title={t.cmd}
+              >
+                <t.icon className={cn("size-2.5", t.color, "group-hover:scale-110 transition-transform")} />
+                {t.label}
               </button>
             ))}
           </div>

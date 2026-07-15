@@ -173,8 +173,15 @@ export function TaskBoard() {
           );
         })}
         {sorted.length === 0 && (
-          <div className="text-center text-xs text-muted-foreground py-12">
-            No tasks on the board yet.
+          <div className="text-center text-xs text-muted-foreground py-12 empty-cta rounded-lg">
+            <div className="size-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3">
+              <Plus className="size-5 text-amber-400/70" />
+            </div>
+            <div className="font-medium text-foreground/80 mb-1">No tasks on the board</div>
+            <div className="text-[10px] text-muted-foreground/70 leading-relaxed max-w-[220px] mx-auto">
+              Add a task below, or ask the Commander to{" "}
+              <span className="text-amber-300/80">"add a task to the board"</span>.
+            </div>
           </div>
         )}
       </div>

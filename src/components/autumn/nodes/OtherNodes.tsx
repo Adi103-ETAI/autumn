@@ -20,6 +20,7 @@ import {
   Smartphone,
   Monitor,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const HANDLE_STYLE = { background: "oklch(0.78 0.18 55)" };
 
@@ -243,10 +244,39 @@ export function StickyNode({ id, data, selected }: NodeProps) {
               setDraft(d.text);
               setEditing(true);
             }}
-            className="text-xs leading-relaxed whitespace-pre-wrap cursor-text"
-            title="Double-click to edit"
+            className="text-xs leading-relaxed cursor-text sticky-markdown"
+            title="Double-click to edit · supports **bold**, *italic*, `code`, # headings"
           >
-            {d.text}
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                code: ({ children }) => (
+                  <code className="font-mono text-[10px] bg-black/20 px-0.5 py-0.5 rounded">
+                    {children}
+                  </code>
+                ),
+                h1: ({ children }) => <h3 className="font-bold text-sm mb-1">{children}</h3>,
+                h2: ({ children }) => <h4 className="font-bold text-xs mb-1">{children}</h4>,
+                h3: ({ children }) => <h5 className="font-semibold text-xs mb-0.5">{children}</h5>,
+                ul: ({ children }) => <ul className="list-disc pl-3 mb-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-3 mb-1">{children}</ol>,
+                li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                a: ({ children, href }) => (
+                  <a href={href} className="underline font-medium" target="_blank" rel="noreferrer">
+                    {children}
+                  </a>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-2 border-black/30 pl-1.5 italic opacity-80">
+                    {children}
+                  </blockquote>
+                ),
+              }}
+            >
+              {d.text}
+            </ReactMarkdown>
           </div>
         )}
       </div>

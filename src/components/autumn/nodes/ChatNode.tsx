@@ -249,6 +249,23 @@ export function ChatNode({ id, data, selected }: NodeProps) {
           {lastText || "Standing by."}
         </div>
 
+        {/* Working shimmer (when status is working/thinking but not streaming a message) */}
+        {(d.status === "working" || d.status === "thinking") && !lastMsg?.streaming && (
+          <div className="flex items-center gap-1.5 text-[10px] text-amber-300/90">
+            <div className="flex items-center gap-0.5">
+              <span className="thinking-dot size-1 rounded-full bg-amber-400" />
+              <span className="thinking-dot size-1 rounded-full bg-amber-400" />
+              <span className="thinking-dot size-1 rounded-full bg-amber-400" />
+            </div>
+            <span className="text-[9px] uppercase tracking-wider">
+              {d.status === "thinking" ? "thinking" : "working"}
+            </span>
+            <div className="flex-1 h-px bg-gradient-to-r from-amber-500/40 via-amber-500/10 to-transparent rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-amber-400/80 shimmer-slide" />
+            </div>
+          </div>
+        )}
+
         {/* Message preview / typing indicator */}
         {lastMsg?.streaming ? (
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">

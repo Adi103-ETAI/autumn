@@ -17,6 +17,10 @@ import {
   Square,
   Bot,
   Sparkles,
+  MessageSquare,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +31,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const appendAgentMessage = useAutumnStore((s) => s.appendAgentMessage);
   const setAgentStatus = useAutumnStore((s) => s.setAgentStatus);
+  const busHistory = useAutumnStore((s) => s.busHistory);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
 
@@ -63,6 +68,16 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
   }
 
   const persona = PERSONA_BY_ID[data.personaId ?? ""];
+
+  // Stats: messages, handoffs sent, handoffs received, last activity.
+  const userMsgs = data.messages.filter((m) => m.role === "user").length;
+  const assistantMsgs = data.messages.filter((m) => m.role === "assistant").length;
+  const peerMsgs = data.messages.filter((m) => m.role === "peer").length;
+  const sentHandoffs = busHistory.filter((p) => p.fromNodeId === nodeId).length;
+  const recvHandoffs = busHistory.filter((p) => p.toNodeId === nodeId).length;
+  const lastActivity = data.messages.length > 0
+    ? data.messages[data.messages.length - 1].ts
+    : null;
 
   const send = async () => {
     const text = input.trim();
@@ -125,12 +140,12 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
         </Button>
       </div>
 
-      {/* Persona tagline */}
-      <div className="px-3 py-1.5 border-b border-border/50 bg-muted/20">
+      {/* Persona tagline + stats card */}
+      <div className="px-3 py-2 border-b border-border/50 bg-muted/20 space-y-2">
         <div className="text-[10px] text-muted-foreground italic">
           {persona?.tagline} · {persona?.specialty}
         </div>
-        <div className="flex items-center gap-1.5 mt-1">
+        <div className="flex items-center gap-1.5">
           <span
             className={cn(
               "size-1.5 rounded-full",
@@ -149,6 +164,34 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
               · {data.doing}
             </span>
           )}
+        </div>
+        {/* Stats row */}
+        <div className="grid grid-cols-4 gap-1">
+          <StatChip
+            icon={MessageSquare}
+            label="msgs"
+            value={data.messages.length}
+            color="text-amber-300"
+          />
+          <StatChip
+            icon={ArrowUpRight}
+            label="sent"
+            value={sentHandoffs}
+            color="text-emerald-300"
+          />
+          <StatChip
+            icon={ArrowDownLeft}
+            label="recv"
+            value={recvHandoffs}
+            color="text-sky-300"
+          />
+          <StatChip
+            icon={Clock}
+            label="last"
+            value={lastActivity ? relTime(lastActivity) : "—"}
+            color="text-muted-foreground"
+            mono
+          />
         </div>
       </div>
 
@@ -274,4 +317,38 @@ function MessageBubble({
       </div>
     </div>
   );
+}
+
+function StatChip({
+  icon: Icon,
+  label,
+  value,
+  color,
+  mono,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number | string;
+  color: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-md bg-muted/40 border border-border/40 px-1.5 py-1 flex flex-col items-center gap-0.5 hover:bg-muted/60 transition-colors">
+      <div className={cn("flex items-center gap-0.5 text-[8px] uppercase tracking-wider", color)}>
+        <Icon className="size-2.5" />
+        <span>{label}</span>
+      </div>
+      <div className={cn("text-[11px] font-semibold leading-none", mono && "font-mono text-[10px] text-muted-foreground")}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function relTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return `${Math.max(1, Math.floor(diff / 1000))}s`;
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  return `${Math.floor(diff / 86_400_000)}d`;
 }

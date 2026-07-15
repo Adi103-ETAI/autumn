@@ -67,7 +67,8 @@ export interface AutumnStore {
   nodes: AutumnNode[];
   edges: AutumnEdge[];
   selectedNodeId: string | null;
-  pulses: BusPulse[];
+  pulses: BusPulse[]; // transient edge animations (auto-clear after 3.5s)
+  busHistory: BusPulse[]; // persistent log of all bus traffic (capped at 100)
   tasks: AutumnTask[];
   taskSeq: number;
 
@@ -90,6 +91,7 @@ export interface AutumnStore {
   showCommandPalette: boolean;
   showExportDialog: boolean;
   showActivityLog: boolean;
+  shortcutHelpOpen: boolean;
   pendingCommand: string | null; // when set, CommanderPanel will auto-send this command
   connectMode: { from: string | null } | null; // when active, next clicked chat node becomes the target
   activityLog: ActivityEntry[]; // global append-only activity timeline
@@ -111,6 +113,7 @@ export interface AutumnStore {
   setShowCommandPalette: (v: boolean) => void;
   setShowExportDialog: (v: boolean) => void;
   setShowActivityLog: (v: boolean) => void;
+  setShortcutHelpOpen: (v: boolean) => void;
   setPendingCommand: (cmd: string | null) => void;
   setConnectMode: (m: { from: string | null } | null) => void;
   pushActivity: (e: Omit<ActivityEntry, "id" | "ts">) => void;
@@ -150,6 +153,8 @@ export interface AutumnStore {
 
   pushPulse: (p: Omit<BusPulse, "id" | "ts">) => void;
   clearPulses: () => void;
+  clearBusHistory: () => void;
+  removeBusHistoryEntry: (id: string) => void;
 
   pushCommanderMessage: (m: Omit<CommanderChatMessage, "id" | "ts">) => string;
   updateCommanderMessage: (id: string, patch: Partial<CommanderChatMessage>) => void;
@@ -176,6 +181,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   edges: seed.edges,
   selectedNodeId: null,
   pulses: [],
+  busHistory: [],
   tasks: seed.tasks,
   taskSeq: 3,
 
@@ -202,6 +208,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   showCommandPalette: false,
   showExportDialog: false,
   showActivityLog: false,
+  shortcutHelpOpen: false,
   pendingCommand: null,
   connectMode: null,
   activityLog: [
@@ -229,6 +236,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   setShowCommandPalette: (v) => set({ showCommandPalette: v }),
   setShowExportDialog: (v) => set({ showExportDialog: v }),
   setShowActivityLog: (v) => set({ showActivityLog: v }),
+  setShortcutHelpOpen: (v) => set({ shortcutHelpOpen: v }),
   setPendingCommand: (cmd) => set({ pendingCommand: cmd }),
   setConnectMode: (m) => set({ connectMode: m }),
 
@@ -516,7 +524,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   clearCanvas: () => {
-    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], selectedNodeId: null });
+    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], busHistory: [], selectedNodeId: null });
     get().pushActivity({
       kind: "canvas_cleared",
       text: "Cleared all nodes, edges, and tasks from the canvas.",
@@ -572,6 +580,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         tasks: state.tasks ?? [],
         taskSeq: state.taskSeq ?? 0,
         pulses: [],
+        busHistory: [],
         selectedNodeId: null,
         isSaving: false,
         lastSavedAt: Date.now(),
@@ -646,6 +655,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         tasks: c.tasks ?? [],
         taskSeq: c.taskSeq ?? 0,
         pulses: [],
+        busHistory: [],
         selectedNodeId: null,
       });
       get().pushActivity({
@@ -804,14 +814,26 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   pushPulse: (p) => {
     const pulse: BusPulse = { ...p, id: `pulse-${nanoid(8)}`, ts: Date.now() };
-    set((s) => ({ pulses: [...s.pulses, pulse].slice(-50) }));
-    // auto-clear after 3.5s
+    set((s) => ({
+      pulses: [...s.pulses, pulse].slice(-50),
+      // Also push to the persistent bus history (capped at 100).
+      busHistory: [...s.busHistory, pulse].slice(-100),
+    }));
+    // auto-clear the transient pulse after 3.5s (history stays).
     setTimeout(() => {
       set((s) => ({ pulses: s.pulses.filter((x) => x.id !== pulse.id) }));
     }, 3500);
   },
 
   clearPulses: () => set({ pulses: [] }),
+
+  clearBusHistory: () => set({ busHistory: [], pulses: [] }),
+
+  removeBusHistoryEntry: (id) =>
+    set((s) => ({
+      busHistory: s.busHistory.filter((p) => p.id !== id),
+      pulses: s.pulses.filter((p) => p.id !== id),
+    })),
 
   pushCommanderMessage: (m) => {
     const id = `cmd-${nanoid(8)}`;
@@ -933,6 +955,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       tasks: fresh.tasks,
       taskSeq: 3,
       pulses: [],
+      busHistory: [],
       selectedNodeId: null,
     });
   },

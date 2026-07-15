@@ -61,6 +61,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // ? — Toggle shortcut help overlay (without modifier)
+      if (e.key === "?" && !mod && !isEditableTarget(e.target)) {
+        e.preventDefault();
+        s.setShortcutHelpOpen(!s.shortcutHelpOpen);
+        return;
+      }
+
       // ⌘F — Open node search overlay
       if (mod && e.key.toLowerCase() === "f") {
         e.preventDefault();
@@ -78,6 +85,10 @@ export function useKeyboardShortcuts() {
 
       // Escape — layered: search → palette → dialog → connect mode → deselect
       if (e.key === "Escape") {
+        if (s.shortcutHelpOpen) {
+          s.setShortcutHelpOpen(false);
+          return;
+        }
         if (s.showNodeSearch) {
           s.setShowNodeSearch(false);
           return;
