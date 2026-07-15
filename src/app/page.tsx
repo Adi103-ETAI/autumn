@@ -5,6 +5,7 @@
 
 import { useEffect } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
 import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
 import { TopBar } from "@/components/autumn/TopBar";
 import { Dock } from "@/components/autumn/Dock";
@@ -23,6 +24,7 @@ import { ActivityTimeline } from "@/components/autumn/ActivityTimeline";
 import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
 import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
 import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
+import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -57,6 +59,21 @@ export default function Home() {
   useEffect(() => {
     void loadActivity(canvasId);
   }, [loadActivity, canvasId]);
+
+  // On mount: if the URL has a `#canvas=...` hash, decode it and import the
+  // shared canvas state. This lets users share canvases by pasting a URL.
+  const importCanvasState = useAutumnStore((s) => s.importCanvasState);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith("#canvas=")) return;
+    const state = decodeCanvasFromHash(hash);
+    if (!state) return;
+    importCanvasState(state);
+    // Clear the hash so a refresh doesn't re-import (the canvas is now in
+    // memory; if the user wants to save it, they can hit Save).
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [importCanvasState]);
 
   // Show agent chat panel when a chat node is selected AND we're on the commander tab.
   const showAgentChat =
@@ -104,6 +121,7 @@ export default function Home() {
       />
       <NodeSearchOverlay />
       <ShortcutHelpOverlay />
+      <AgentHistoryPanel />
     </div>
   );
 }

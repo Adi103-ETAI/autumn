@@ -277,11 +277,20 @@ export function CommanderPanel() {
               )}
             >
               {m.pending ? (
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
-                  <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
-                  <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
-                  <span className="ml-1 text-xs">planning…</span>
+                <div className="space-y-2 min-w-[220px]">
+                  <div className="flex items-center gap-1.5 text-[10px] text-amber-300/80 uppercase tracking-wider">
+                    <Sparkles className="size-2.5 animate-pulse" />
+                    <span>planning</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="commander-skeleton-line w-[85%]" />
+                    <div className="commander-skeleton-line w-[65%]" />
+                    <div className="commander-skeleton-line w-[75%]" />
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] text-muted-foreground/60 pt-0.5">
+                    <span className="size-1 rounded-full bg-amber-400/70 animate-pulse" />
+                    <span>routing via autumn-bus…</span>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -323,8 +332,9 @@ export function CommanderPanel() {
           </div>
         ))}
         {isThinking && messages[messages.length - 1]?.pending && (
-          <div className="text-[10px] text-muted-foreground/60 text-center">
-            routing via autumn-bus…
+          <div className="text-[10px] text-muted-foreground/60 text-center flex items-center justify-center gap-1.5">
+            <span className="size-1 rounded-full bg-amber-400/70 animate-pulse" />
+            <span>commander is composing a DO_ACTIONS plan</span>
           </div>
         )}
       </div>

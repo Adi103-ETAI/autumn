@@ -42,9 +42,11 @@ import {
   Plus,
   Settings2,
   Search,
+  Share2,
 } from "lucide-react";
 import type { NodeKind } from "@/lib/autumn/types";
 import { toast } from "sonner";
+import { shareCurrentCanvas } from "@/lib/autumn/share-canvas";
 
 interface Cmd {
   id: string;
@@ -139,6 +141,17 @@ export function CommandPalette() {
       icon: Download,
       group: "Canvas",
       run: () => setShowExportDialog(true),
+    });
+    list.push({
+      id: "share-canvas",
+      label: "Share canvas via URL",
+      icon: Share2,
+      color: "text-amber-300",
+      group: "Canvas",
+      keywords: "share link copy url hash export",
+      run: () => {
+        shareCurrentCanvas();
+      },
     });
     list.push({
       id: "arrange",

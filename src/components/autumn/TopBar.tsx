@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Leaf,
   MoreVertical,
+  Pencil,
   RotateCcw,
   Save,
   Share2,
@@ -32,6 +33,7 @@ import {
   Command as CommandIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { shareCurrentCanvas } from "@/lib/autumn/share-canvas";
 
 export function TopBar() {
   const canvasName = useAutumnStore((s) => s.canvasName);
@@ -66,10 +68,10 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-14 shrink-0 border-b border-border/50 bg-sidebar/60 backdrop-blur-md flex items-center px-3 gap-3">
+    <header className="autumn-topbar-gradient h-14 shrink-0 border-b border-border/50 backdrop-blur-md flex items-center px-3 gap-3">
       <div className="flex items-center gap-2">
-        <div className="size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-          <Leaf className="size-4 text-white" />
+        <div className="topbar-logo-shimmer size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+          <Leaf className="size-4 text-white relative z-10" />
         </div>
         <div className="leading-tight">
           <div className="text-sm font-semibold tracking-tight">Autumn</div>
@@ -81,17 +83,27 @@ export function TopBar() {
 
       <div className="h-6 w-px bg-border/60 mx-1" />
 
-      <input
-        value={canvasName}
-        onChange={(e) => setCanvasName(e.target.value)}
-        className="bg-transparent text-sm font-medium px-2 py-1 rounded-md hover:bg-accent/40 focus:bg-accent/40 focus:outline-none transition-colors w-56"
-        aria-label="Canvas name"
-      />
+      <div className="flex items-center gap-2">
+        <span
+          className="size-1.5 rounded-full bg-emerald-400 pulse-ring"
+          aria-label="Workshop online"
+          title="Workshop online"
+        />
+        <div className="group relative flex items-center">
+          <input
+            value={canvasName}
+            onChange={(e) => setCanvasName(e.target.value)}
+            className="bg-transparent text-sm font-medium pl-2 pr-7 py-1 rounded-md hover:bg-accent/40 focus:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors w-56"
+            aria-label="Canvas name"
+          />
+          <Pencil className="size-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity absolute right-2 pointer-events-none" />
+        </div>
+      </div>
 
       <Button
         variant="ghost"
         size="sm"
-        className="gap-1.5 text-muted-foreground h-8"
+        className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
         onClick={() => setShowCanvasSwitcher(true)}
       >
         <FolderOpen className="size-3.5" />
@@ -124,11 +136,11 @@ export function TopBar() {
         </span>
       )}
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground h-8"
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
           onClick={() => setShowActivityLog(true)}
         >
           <Clock className="size-4" />
@@ -137,7 +149,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground h-8"
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
           onClick={() => setShowExportDialog(true)}
         >
           <Download className="size-4" />
@@ -146,7 +158,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground h-8"
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
           onClick={() => setShowHelp(true)}
         >
           <HelpCircle className="size-4" />
@@ -155,10 +167,9 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground"
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
           onClick={() => {
-            navigator.clipboard?.writeText(window.location.href);
-            toast.success("Share link copied");
+            shareCurrentCanvas();
           }}
         >
           <Share2 className="size-4" />
@@ -167,7 +178,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-amber-300 hover:text-amber-200"
+          className="gap-1.5 text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 h-8"
           onClick={() => void handleSave()}
           disabled={isSaving}
         >
@@ -182,7 +193,7 @@ export function TopBar() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8">
+            <Button variant="ghost" size="icon" className="size-8 hover:bg-accent/60">
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>

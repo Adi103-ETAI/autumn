@@ -44,7 +44,9 @@ export interface ActivityEntry {
     | "canvas_loaded"
     | "canvas_cleared"
     | "duplicate_node"
-    | "search";
+    | "search"
+    | "agent_session_start"
+    | "agent_session_stop";
   text: string;
   nodeId?: string;
   meta?: Record<string, unknown>;
@@ -102,6 +104,10 @@ export interface AutumnStore {
   showNodeSearch: boolean; // node search overlay open?
   searchMatchIds: string[]; // ids that match the current query
 
+  // per-agent execution history panel (Task 2-a)
+  agentHistoryOpen: boolean;
+  agentHistoryFor: string | null; // nodeId currently being viewed in the history panel
+
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -127,7 +133,12 @@ export interface AutumnStore {
   duplicateCanvas: (id: string) => Promise<void>;
   exportCanvas: () => string; // returns JSON string
   importCanvas: (json: string) => boolean; // returns success
-
+  importCanvasState: (state: {
+    nodes: AutumnNode[];
+    edges: AutumnEdge[];
+    tasks: AutumnTask[];
+    canvasName: string;
+  }) => void;
   // multi-select + search actions
   addToSelection: (id: string) => void;
   toggleSelection: (id: string) => void;
@@ -136,6 +147,10 @@ export interface AutumnStore {
   setShowNodeSearch: (v: boolean) => void;
   duplicateNode: (id: string) => string | null;
   removeNodes: (ids: string[]) => void;
+
+  // per-agent execution history panel (Task 2-a)
+  setAgentHistoryOpen: (v: boolean) => void;
+  setAgentHistoryFor: (id: string | null) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -225,6 +240,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   searchQuery: "",
   showNodeSearch: false,
   searchMatchIds: [],
+
+  // per-agent execution history panel (Task 2-a)
+  agentHistoryOpen: false,
+  agentHistoryFor: null,
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -349,6 +368,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       searchMatchIds: v ? s.searchMatchIds : [],
       searchQuery: v ? s.searchQuery : "",
     })),
+  setAgentHistoryOpen: (v) => set({ agentHistoryOpen: v }),
+  setAgentHistoryFor: (id) => set({ agentHistoryFor: id }),
   duplicateNode: (id) => {
     const node = get().nodes.find((n) => n.id === id);
     if (!node) return null;
@@ -666,6 +687,30 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     } catch {
       return false;
     }
+  },
+
+  importCanvasState: (state) => {
+    set({
+      // Use a "shared-" prefix so we don't accidentally clobber the default
+      // canvas id when the user pastes a share link.
+      canvasId: `shared-${nanoid(6)}`,
+      canvasName: state.canvasName,
+      nodes: state.nodes,
+      edges: state.edges,
+      tasks: state.tasks,
+      // taskSeq is intentionally NOT carried over from shared state — tasks
+      // created on the shared canvas should continue numbering from the
+      // highest existing seq in the imported tasks (or 0 if empty).
+      taskSeq: state.tasks.reduce((max, t) => Math.max(max, t.seq), 0),
+      pulses: [],
+      busHistory: [],
+      selectedNodeId: null,
+      selectedNodeIds: [],
+    });
+    get().pushActivity({
+      kind: "canvas_loaded",
+      text: `Imported shared canvas: ${state.canvasName} (${state.nodes.length} nodes, ${state.edges.length} edges)`,
+    });
   },
 
   addNode: (partial) => {

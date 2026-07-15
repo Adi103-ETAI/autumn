@@ -30,6 +30,8 @@ import {
   CircleDot,
   Copy,
   Search,
+  Play,
+  Square,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,8 @@ const KIND_META: Partial<
   canvas_cleared: { icon: Eraser, color: "text-rose-400", label: "Clear" },
   duplicate_node: { icon: Copy, color: "text-amber-300", label: "Duplicate" },
   search: { icon: Search, color: "text-emerald-400", label: "Search" },
+  agent_session_start: { icon: Play, color: "text-emerald-400", label: "Run start" },
+  agent_session_stop: { icon: Square, color: "text-violet-400", label: "Run stop" },
 };
 
 export function ActivityTimeline({

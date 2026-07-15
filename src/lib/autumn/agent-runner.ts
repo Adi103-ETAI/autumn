@@ -30,12 +30,25 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   // Already running? skip.
   if (store.isAgentRunning[nodeId]) return;
 
+  const startTs = Date.now();
+  const taskSummary =
+    finalTask.length > 60 ? `${finalTask.slice(0, 57)}…` : finalTask;
+
   store.setAgentRunning(nodeId, true);
   store.setAgentStatus(nodeId, "thinking", "Reading the task…");
   store.pushActivity({
     kind: "agent_status",
-    text: `${persona.name} started thinking about: ${finalTask.slice(0, 60)}${finalTask.length > 60 ? "…" : ""}`,
+    text: `${persona.name} started thinking about: ${taskSummary}`,
     nodeId,
+  });
+
+  // Log a session-start event so the per-agent execution history panel
+  // can show this run. Fire-and-forget POST to /api/logs.
+  store.pushActivity({
+    kind: "agent_session_start",
+    text: `${persona.name} started: ${taskSummary}`,
+    nodeId,
+    meta: { startTs, task: finalTask },
   });
 
   // 1) Fetch peer context from the bus (drains the inbox).
@@ -75,6 +88,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
 
   // 3) Call the agent runner.
   let text = "";
+  let errored = false;
   try {
     const r = await fetch("/api/agent/run", {
       method: "POST",
@@ -93,6 +107,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     text = j.text ?? "";
   } catch (err) {
     console.error("[runAgent]", err);
+    errored = true;
     text =
       `⚠️ I couldn't reach my reasoning backend.\n\nFalling back: I've acknowledged the task and queued it.\n\n\`queue: ${finalTask.slice(0, 80)}…\``;
   }
@@ -101,7 +116,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   await streamText(nodeId, msgId, text);
 
   store.updateAgentMessage(nodeId, msgId, { streaming: false });
-  store.setAgentStatus(nodeId, "done", "Finished — awaiting next task.");
+  store.setAgentStatus(nodeId, errored ? "error" : "done", errored ? "Backend unreachable — queued." : "Finished — awaiting next task.");
   store.pushActivity({
     kind: "agent_message",
     text: `${persona.name} finished and produced a ${text.length}-char response.`,
@@ -109,15 +124,55 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   });
 
   // 5) Parse [autumn-bus] message_peer handoff lines and route them.
-  const handoffsRouted = routeBusHandoffs(nodeId, text);
+  //    Returns the set of peer node IDs that received an explicit handoff.
+  const explicitPeerIds = routeBusHandoffs(nodeId, text);
 
-  // 5b) Auto-emit a synthetic handoff if the agent has connected peers but
-  //     the LLM didn't include a [autumn-bus] line in its response. This
-  //     smooths over LLM variance and keeps the multi-agent coordination
+  // 5b) Auto-emit synthetic handoffs to ANY connected peers the LLM didn't
+  //     explicitly address. This handles two cases:
+  //       (a) LLM emitted zero handoffs → auto-emit to ALL connected peers.
+  //       (b) LLM emitted handoffs to SOME peers but missed others → auto-emit
+  //           to the missing peers so no downstream agent is left in the dark.
+  //     This smooths over LLM variance and keeps the multi-agent coordination
   //     loop visible to the user.
-  if (handoffsRouted === 0 && connectedPeers.length > 0) {
-    autoEmitSyntheticHandoff(nodeId, persona.name, finalTask, text, connectedPeers);
+  if (connectedPeers.length > 0) {
+    const store2 = useAutumnStore.getState();
+    const lowerExplicit = new Set(
+      explicitPeerIds.map((id) => {
+        const n = store2.nodes.find((x) => x.id === id);
+        return n?.name.toLowerCase() ?? "";
+      }),
+    );
+    const missingPeerNames = connectedPeers.filter(
+      (name) => !lowerExplicit.has(name.toLowerCase()),
+    );
+    if (missingPeerNames.length > 0) {
+      autoEmitSyntheticHandoff(
+        nodeId,
+        persona.name,
+        finalTask,
+        text,
+        missingPeerNames,
+      );
+    }
   }
+
+  // 6) Log a session-stop event so the per-agent execution history panel
+  //    can show the run's duration, response length, and final status.
+  const endTs = Date.now();
+  const durationMs = endTs - startTs;
+  store.pushActivity({
+    kind: "agent_session_stop",
+    text: `${persona.name} finished in ${durationMs}ms — ${text.length} chars`,
+    nodeId,
+    meta: {
+      startTs,
+      endTs,
+      durationMs,
+      task: finalTask,
+      responseLength: text.length,
+      status: errored ? "error" : "done",
+    },
+  });
 
   store.setAgentRunning(nodeId, false);
 }
@@ -146,10 +201,10 @@ function chunkText(text: string, size: number): string[] {
   return out;
 }
 
-function routeBusHandoffs(nodeId: string, text: string): number {
+function routeBusHandoffs(nodeId: string, text: string): string[] {
   const store = useAutumnStore.getState();
   const lines = text.split("\n");
-  let routed = 0;
+  const routedPeerIds: string[] = [];
   for (const line of lines) {
     const m = line.match(
       /\[autumn-bus\]\s*message_peer\s*(?:→|->)\s*(\w+)\s*:\s*(.+)$/i,
@@ -175,38 +230,23 @@ function routeBusHandoffs(nodeId: string, text: string): number {
     if (!edge) continue;
 
     deliverPeerMessage(nodeId, peerNode.id, edge.id, message);
-    routed++;
+    routedPeerIds.push(peerNode.id);
   }
-  return routed;
+  return routedPeerIds;
 }
 
-// Auto-synthesize a handoff to the first connected peer when the LLM didn't
-// emit a [autumn-bus] message_peer line. Keeps the coordination loop visible
-// and surfaces progress to downstream agents.
+// Auto-synthesize a handoff to EVERY connected peer when the LLM didn't
+// emit any [autumn-bus] message_peer line. Keeps the coordination loop
+// visible and surfaces progress to all downstream agents — not just the
+// first peer. Returns the count of peers that received a synthetic handoff.
 function autoEmitSyntheticHandoff(
   fromNodeId: string,
   fromName: string,
   task: string,
   responseText: string,
   peerNames: string[],
-) {
+): number {
   const store = useAutumnStore.getState();
-
-  // Find the first peer (by name) that's a chat node.
-  const peerNode = store.nodes.find(
-    (n) =>
-      n.kind === "chat" &&
-      peerNames.includes(n.name),
-  );
-  if (!peerNode) return;
-
-  // Find the edge between this node and the peer.
-  const edge = store.edges.find(
-    (e) =>
-      (e.source === fromNodeId && e.target === peerNode.id) ||
-      (e.source === peerNode.id && e.target === fromNodeId),
-  );
-  if (!edge) return;
 
   // Pull a short, useful summary from the response (first non-empty line, capped).
   const firstLine = responseText
@@ -215,23 +255,44 @@ function autoEmitSyntheticHandoff(
     .filter((l) => l && !l.startsWith("```") && !l.startsWith("#"))
     .slice(0, 1)[0] ?? task;
   const summary = firstLine.length > 140 ? `${firstLine.slice(0, 137)}…` : firstLine;
-
   const message = `(auto) Task "${task.slice(0, 80)}" complete. Summary: ${summary}`;
 
-  deliverPeerMessage(fromNodeId, peerNode.id, edge.id, message);
+  // Find ALL chat nodes whose name is in peerNames (case-insensitive).
+  const lowerPeerNames = new Set(peerNames.map((n) => n.toLowerCase()));
+  const peerNodes = store.nodes.filter(
+    (n) =>
+      n.kind === "chat" &&
+      lowerPeerNames.has(n.name.toLowerCase()),
+  );
+  if (peerNodes.length === 0) return 0;
 
-  // Record a synthetic activity entry so the user can see this happened.
-  store.pushActivity({
-    kind: "bus_message_peer",
-    text: `${fromName} → ${peerNode.name}: (auto-handoff) ${summary.slice(0, 80)}`,
-    nodeId: peerNode.id,
-    meta: {
-      fromNodeId,
-      toNodeId: peerNode.id,
-      edgeId: edge.id,
-      synthetic: true,
-    },
-  });
+  let routed = 0;
+  for (const peerNode of peerNodes) {
+    // Find the edge between this node and the peer.
+    const edge = store.edges.find(
+      (e) =>
+        (e.source === fromNodeId && e.target === peerNode.id) ||
+        (e.source === peerNode.id && e.target === fromNodeId),
+    );
+    if (!edge) continue;
+
+    deliverPeerMessage(fromNodeId, peerNode.id, edge.id, message);
+    routed++;
+
+    // Record a synthetic activity entry per peer (distinct toNodeId in meta).
+    store.pushActivity({
+      kind: "bus_message_peer",
+      text: `${fromName} → ${peerNode.name}: (auto-handoff) ${summary.slice(0, 80)}`,
+      nodeId: peerNode.id,
+      meta: {
+        fromNodeId,
+        toNodeId: peerNode.id,
+        edgeId: edge.id,
+        synthetic: true,
+      },
+    });
+  }
+  return routed;
 }
 
 // Shared helper: deliver a peer message via the bus, push a visual pulse,

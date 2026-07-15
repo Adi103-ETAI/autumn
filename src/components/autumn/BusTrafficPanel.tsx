@@ -225,11 +225,19 @@ function BusTrafficCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors p-2 space-y-1 group",
+        "rounded-lg border bg-amber-500/5 hover:bg-amber-500/10 transition-colors p-2 space-y-1 group bus-card-enter relative overflow-hidden",
         expanded && "ring-1 ring-amber-500/30",
       )}
+      style={{
+        borderColor: fromPersona ? `${fromPersona.color}40` : "oklch(0.78 0.18 55 / 0.2)",
+      }}
     >
-      <div className="flex items-center gap-1.5">
+      {/* Persona-colored left edge accent */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-0.5"
+        style={{ background: fromPersona?.color ?? "#888" }}
+      />
+      <div className="flex items-center gap-1.5 pl-1">
         <Badge
           variant="outline"
           className="text-[9px] h-4 px-1 border-amber-500/30 text-amber-300"
@@ -247,22 +255,24 @@ function BusTrafficCard({
           <X className="size-3" />
         </button>
       </div>
-      <div className="flex items-center gap-1.5 text-[11px]">
+      <div className="flex items-center gap-1.5 text-[11px] pl-1">
         <div
-          className="size-4 rounded-sm flex items-center justify-center text-[8px] font-bold text-white"
+          className="size-4 rounded-sm flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
           style={{ background: fromPersona?.color ?? "#888" }}
+          title={fromPersona?.name}
         >
           {fromPersona?.glyph ?? "?"}
         </div>
-        <span className="font-medium">{nodeName(pulse.fromNodeId)}</span>
-        <ArrowRight className="size-3 text-amber-400" />
+        <span className="font-medium truncate">{nodeName(pulse.fromNodeId)}</span>
+        <ArrowRight className="size-3 text-amber-400 persona-arrow-flow shrink-0" />
         <div
-          className="size-4 rounded-sm flex items-center justify-center text-[8px] font-bold text-white"
+          className="size-4 rounded-sm flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
           style={{ background: toPersona?.color ?? "#888" }}
+          title={toPersona?.name}
         >
           {toPersona?.glyph ?? "?"}
         </div>
-        <span className="font-medium">{nodeName(pulse.toNodeId)}</span>
+        <span className="font-medium truncate">{nodeName(pulse.toNodeId)}</span>
       </div>
       <button
         onClick={onToggle}

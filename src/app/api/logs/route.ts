@@ -4,6 +4,7 @@
 //
 // GET  /api/logs?canvas=X                → list all entries for canvas (newest last)
 // GET  /api/logs?canvas=X&node=Y         → filtered to a single node
+// GET  /api/logs?canvas=X&kind=K         → filtered to a single kind
 // GET  /api/logs?canvas=X&limit=200      → cap result count
 // POST /api/logs                          → append a batch of entries
 //        body: { canvasId, entries: [{ kind, text, nodeId?, meta?, ts? }] }
@@ -31,20 +32,29 @@ const KINDS = new Set([
   "canvas_loaded",
   "canvas_cleared",
   "duplicate_node",
+  "search",
+  "agent_session_start",
+  "agent_session_stop",
 ]);
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const canvasId = url.searchParams.get("canvas") ?? "default";
   const nodeId = url.searchParams.get("node");
+  const kind = url.searchParams.get("kind");
   const limit = Math.min(
     500,
     Math.max(1, Number(url.searchParams.get("limit") ?? "200")),
   );
 
   try {
-    const where: { canvasId: string; nodeId?: string } = { canvasId };
+    const where: {
+      canvasId: string;
+      nodeId?: string;
+      kind?: string;
+    } = { canvasId };
     if (nodeId) where.nodeId = nodeId;
+    if (kind) where.kind = kind;
 
     const logs = await db.agentLog.findMany({
       where,

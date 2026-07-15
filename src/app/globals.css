@@ -759,3 +759,180 @@ textarea:focus-visible {
     oklch(0.155 0.007 55 / 70%) 100%
   );
 }
+
+/* ---- Round 6 styling polish (Zoom indicator + Dock + TopBar micro-animations) ---- */
+
+/* 1. node-spawn-in — entrance animation for freshly added nodes.
+   opacity 0→1, translateY 8px→0, scale 0.96→1 over 250ms ease-out.
+   Applied once on mount by ChatNode / OtherNodes when they first appear. */
+@keyframes node-spawn-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.node-spawn-in {
+  animation: node-spawn-in 250ms ease-out;
+}
+
+/* 2. edge-connect-pulse — one-shot stroke-opacity pulse for newly connected bus edges. */
+@keyframes edge-connect-pulse {
+  0% { stroke-opacity: 0.3; }
+  50% { stroke-opacity: 1; }
+  100% { stroke-opacity: 0.3; }
+}
+.edge-connect-pulse {
+  animation: edge-connect-pulse 800ms ease-in-out;
+}
+
+/* 3. topbar-logo-shimmer — slow diagonal highlight sweeping across the logo every 4s. */
+@keyframes topbar-logo-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.topbar-logo-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.topbar-logo-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    oklch(1 0 0 / 0.22) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: topbar-logo-shimmer 4s ease-in-out infinite;
+}
+
+/* 4. dock-btn-lift — bare hover-lift for dock buttons (translateY -2px). */
+.dock-btn-lift {
+  transition:
+    transform 0.15s ease-out,
+    background-color 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+.dock-btn-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* autumn-dock-btn — comprehensive dock button styling: hover lift + warm gradient
+   + amber active/pressed ring + scale-down. Used by the Dock.tsx buttons. */
+.autumn-dock-btn {
+  transition:
+    transform 0.15s ease-out,
+    background-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background-image 0.15s ease-out;
+  background-image: linear-gradient(180deg, transparent 0%, transparent 100%);
+}
+.autumn-dock-btn:hover {
+  transform: translateY(-2px);
+  background-image: linear-gradient(
+    180deg,
+    oklch(0.78 0.18 55 / 0.14) 0%,
+    oklch(0.7 0.22 16 / 0.06) 100%
+  );
+  box-shadow: 0 4px 10px -4px oklch(0.78 0.18 55 / 0.28);
+}
+.autumn-dock-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* 5. chip-zoom-reset — border + box-shadow transition for the zoom chip on hover. */
+.chip-zoom-reset {
+  transition:
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    color 0.15s ease-out,
+    background-color 0.15s ease-out;
+}
+.chip-zoom-reset:hover {
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
+        TaskBoard progress, ChatNode idle glow) ---- */
+
+/* 6. commander-skeleton — shimmer skeleton lines for the "planning…" state.
+   Each line is a subtle amber-tinted bar with a moving highlight. */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.commander-skeleton-line {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55 / 0.08) 0%,
+    oklch(0.78 0.18 55 / 0.22) 50%,
+    oklch(0.78 0.18 55 / 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+/* 7. bus-card-enter — entrance animation for newly arrived bus traffic cards.
+   Slide in from the right + fade in, 280ms ease-out. */
+@keyframes bus-card-enter {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.bus-card-enter {
+  animation: bus-card-enter 280ms ease-out;
+}
+
+/* 8. task-progress-fill — animated width transition for the TaskBoard progress bar fill. */
+.task-progress-fill {
+  transition: width 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 9. chat-node-idle-glow — subtle persona-colored glow ring on idle chat nodes
+   that intensifies on hover. The CSS var --persona-color is set inline. */
+.chat-node-idle-glow {
+  transition: box-shadow 0.25s ease-out;
+}
+.chat-node-idle-glow:hover {
+  box-shadow:
+    0 8px 28px -8px var(--persona-color, oklch(0.78 0.18 55)),
+    0 0 0 1px var(--persona-color, oklch(0.78 0.18 55)),
+    0 0 24px -4px var(--persona-color, oklch(0.78 0.18 55 / 0.45));
+}
+
+/* 10. status-dot-glow — small pulsing aura behind the status dot in ChatNode. */
+@keyframes status-dot-glow {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  50% { box-shadow: 0 0 0 3px transparent; opacity: 0.6; }
+}
+.status-dot-glow {
+  animation: status-dot-glow 1.6s ease-in-out infinite;
+}
+
+/* 11. persona-arrow-flow — animated dash offset for the persona→persona arrow
+   in bus traffic cards, suggesting message flow direction. */
+@keyframes persona-arrow-flow {
+  0% { transform: translateX(-2px); opacity: 0.5; }
+  50% { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(-2px); opacity: 0.5; }
+}
+.persona-arrow-flow {
+  animation: persona-arrow-flow 1.4s ease-in-out infinite;
+}
+
+/* 12. task-card-accent — left-edge accent bar that inherits the status color. */
+.task-card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.task-card-accent::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--task-accent, oklch(0.7 0.02 55));
+  transition: background 0.2s ease-out;
+}

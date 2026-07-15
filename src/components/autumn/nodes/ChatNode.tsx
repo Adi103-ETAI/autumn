@@ -22,6 +22,8 @@ import {
   Cable,
   Copy,
   Search,
+  History,
+  MessageSquare,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -62,6 +64,8 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
   const setConnectMode = useAutumnStore((s) => s.setConnectMode);
+  const setAgentHistoryFor = useAutumnStore((s) => s.setAgentHistoryFor);
+  const setAgentHistoryOpen = useAutumnStore((s) => s.setAgentHistoryOpen);
   const isRunning = useAutumnStore((s) => s.isAgentRunning[id] ?? false);
   const connectMode = useAutumnStore((s) => s.connectMode);
   const isConnectSource = connectMode?.from === id;
@@ -101,10 +105,15 @@ export function ChatNode({ id, data, selected }: NodeProps) {
     if (newId) setSelectedNode(newId);
   };
 
+  const handleViewHistory = () => {
+    setAgentHistoryFor(id);
+    setAgentHistoryOpen(true);
+  };
+
   return (
     <div
       className={cn(
-        "w-[280px] rounded-xl border bg-card/95 backdrop-blur shadow-xl transition-all relative overflow-hidden",
+        "w-[280px] rounded-xl border bg-card/95 backdrop-blur shadow-xl transition-all relative overflow-hidden chat-node-idle-glow",
         selected
           ? "border-amber-500/70 ring-2 ring-amber-500/30"
           : "border-border/60 hover:border-border",
@@ -119,6 +128,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
         boxShadow: persona
           ? `0 8px 24px -8px ${persona.color}30, 0 0 0 1px ${persona.color}20`
           : undefined,
+        ["--persona-color" as string]: persona?.color ?? "oklch(0.78 0.18 55)",
       }}
     >
       {/* Gradient top accent */}
@@ -209,6 +219,10 @@ export function ChatNode({ id, data, selected }: NodeProps) {
               <Settings2 className="size-3.5" />
               Settings…
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleViewHistory} className="gap-2">
+              <History className="size-3.5" />
+              View history
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => removeNode(id)}
@@ -224,7 +238,13 @@ export function ChatNode({ id, data, selected }: NodeProps) {
       {/* Body */}
       <div className="px-3 py-2.5 space-y-2">
         <div className="flex items-center gap-2">
-          <span className={cn("size-1.5 rounded-full", status.dot)} />
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              status.dot,
+              (d.status === "working" || d.status === "thinking") && "status-dot-glow",
+            )}
+          />
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
             {status.label}
           </span>
@@ -274,12 +294,18 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
             <span className="ml-1">streaming…</span>
           </div>
-        ) : (
-          d.messages.length > 0 && (
-            <div className="text-[10px] text-muted-foreground/70">
+        ) : d.messages.length > 0 ? (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+            <MessageSquare className="size-2.5" />
+            <span>
               {d.messages.length} message{d.messages.length === 1 ? "" : "s"}
-            </div>
-          )
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/40 italic">
+            <MessageSquare className="size-2.5" />
+            <span>no messages yet — click Run to start</span>
+          </div>
         )}
       </div>
 

@@ -21,6 +21,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Clock,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -31,6 +32,8 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const appendAgentMessage = useAutumnStore((s) => s.appendAgentMessage);
   const setAgentStatus = useAutumnStore((s) => s.setAgentStatus);
+  const setAgentHistoryFor = useAutumnStore((s) => s.setAgentHistoryFor);
+  const setAgentHistoryOpen = useAutumnStore((s) => s.setAgentHistoryOpen);
   const busHistory = useAutumnStore((s) => s.busHistory);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
@@ -121,6 +124,19 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
             {data.harness} · {data.model ?? "default"}
           </div>
         </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-[11px] gap-1 text-muted-foreground"
+          onClick={() => {
+            setAgentHistoryFor(nodeId);
+            setAgentHistoryOpen(true);
+          }}
+          title="View this agent's execution history"
+        >
+          <History className="size-3" />
+          History
+        </Button>
         <Button
           size="sm"
           variant={isRunning ? "secondary" : "default"}

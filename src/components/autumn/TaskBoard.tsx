@@ -20,10 +20,10 @@ import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import { runAgentForNode } from "@/lib/autumn/agent-runner";
 
 const STATUS_META = {
-  open: { icon: Circle, color: "text-zinc-400", label: "Open" },
-  blocked: { icon: Lock, color: "text-rose-400", label: "Blocked" },
-  in_progress: { icon: Clock, color: "text-amber-400", label: "In progress" },
-  done: { icon: CheckCircle2, color: "text-emerald-400", label: "Done" },
+  open: { icon: Circle, color: "text-zinc-400", label: "Open", accent: "oklch(0.7 0.02 55)" },
+  blocked: { icon: Lock, color: "text-rose-400", label: "Blocked", accent: "oklch(0.65 0.22 16)" },
+  in_progress: { icon: Clock, color: "text-amber-400", label: "In progress", accent: "oklch(0.78 0.18 55)" },
+  done: { icon: CheckCircle2, color: "text-emerald-400", label: "Done", accent: "oklch(0.72 0.19 150)" },
 } as const;
 
 export function TaskBoard() {
@@ -40,30 +40,73 @@ export function TaskBoard() {
   const done = tasks.filter((t) => t.status === "done").length;
   const inProgress = tasks.filter((t) => t.status === "in_progress").length;
   const blocked = tasks.filter((t) => t.status === "blocked").length;
+  const total = tasks.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 p-3 border-b border-border/50">
-        <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-2 py-1.5">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-            Done
+      {/* Progress bar */}
+      {total > 0 && (
+        <div className="px-3 pt-2.5 pb-1.5 border-b border-border/50">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Board progress
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400">
+              {pct}%
+            </span>
           </div>
-          <div className="text-base font-semibold text-emerald-400">{done}</div>
-        </div>
-        <div className="rounded-md bg-amber-500/5 border border-amber-500/20 px-2 py-1.5">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-            Active
+          <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500/70 to-emerald-400 task-progress-fill rounded-full"
+              style={{ width: `${pct}%` }}
+            />
           </div>
-          <div className="text-base font-semibold text-amber-400">{inProgress}</div>
-        </div>
-        <div className="rounded-md bg-rose-500/5 border border-rose-500/20 px-2 py-1.5">
-          <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-            Blocked
+          <div className="flex items-center gap-3 mt-1.5 text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              {done} done
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="size-1.5 rounded-full bg-amber-400" />
+              {inProgress} active
+            </span>
+            {blocked > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-rose-400" />
+                {blocked} blocked
+              </span>
+            )}
+            <span className="ml-auto text-muted-foreground/60">
+              {done}/{total}
+            </span>
           </div>
-          <div className="text-base font-semibold text-rose-400">{blocked}</div>
         </div>
-      </div>
+      )}
+
+      {/* Stats (legacy — kept for visual density when board is empty) */}
+      {total === 0 && (
+        <div className="grid grid-cols-3 gap-2 p-3 border-b border-border/50">
+          <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-2 py-1.5">
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+              Done
+            </div>
+            <div className="text-base font-semibold text-emerald-400">{done}</div>
+          </div>
+          <div className="rounded-md bg-amber-500/5 border border-amber-500/20 px-2 py-1.5">
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+              Active
+            </div>
+            <div className="text-base font-semibold text-amber-400">{inProgress}</div>
+          </div>
+          <div className="rounded-md bg-rose-500/5 border border-rose-500/20 px-2 py-1.5">
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
+              Blocked
+            </div>
+            <div className="text-base font-semibold text-rose-400">{blocked}</div>
+          </div>
+        </div>
+      )}
 
       {/* List */}
       <div className="flex-1 overflow-y-auto autumn-scroll p-3 space-y-2">
@@ -82,11 +125,12 @@ export function TaskBoard() {
             <div
               key={t.id}
               className={cn(
-                "rounded-lg border bg-card/60 p-2.5 space-y-1.5 transition-colors",
+                "rounded-lg border bg-card/60 p-2.5 pl-3 space-y-1.5 transition-colors task-card-accent",
                 t.status === "done"
                   ? "border-emerald-500/20 opacity-70"
                   : "border-border/50 hover:border-border",
               )}
+              style={{ "--task-accent": meta.accent } as React.CSSProperties}
             >
               <div className="flex items-start gap-2">
                 <Icon className={cn("size-4 mt-0.5 shrink-0", meta.color)} />

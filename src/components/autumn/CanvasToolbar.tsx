@@ -4,7 +4,6 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,7 @@ import {
   ZoomIn,
   Copy,
 } from "lucide-react";
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, useStore } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
 
 export function CanvasToolbar() {
@@ -40,22 +39,16 @@ export function CanvasToolbar() {
   const duplicateNode = useAutumnStore((s) => s.duplicateNode);
   const clearSelection = useAutumnStore((s) => s.clearSelection);
   const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
-  const { fitView, getZoom } = useReactFlow();
-  const [zoom, setZoom] = useState(1);
-
-  // Subscribe to react-flow viewport changes to update the zoom indicator.
-  useEffect(() => {
-    const updateZoom = () => setZoom(getZoom());
-    updateZoom();
-    const id = setInterval(updateZoom, 300);
-    return () => clearInterval(id);
-  }, [getZoom]);
+  const { fitView } = useReactFlow();
+  // Subscribe to the react-flow viewport transform for a reactive zoom reading.
+  const zoom = useStore((s) => s.transform[2]);
 
   const hasMulti = selectedNodeIds.length > 0;
   const zoomPct = Math.round(zoom * 100);
 
   return (
     <TooltipProvider delayDuration={200}>
+      <ZoomChip />
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-xl border border-border/50 bg-card/80 backdrop-blur-md px-1.5 py-1 shadow-2xl">
         {/* Quick add */}
         <div className="flex items-center gap-0.5 pr-1 border-r border-border/40">
@@ -211,6 +204,34 @@ function ToolbarButton({
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
         {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ZoomChip — small bottom-left chip that shows the current zoom level as a
+// percentage. Click to reset to 100%. Reactively subscribes to the react-flow
+// viewport transform so it updates the moment the user zooms.
+function ZoomChip() {
+  const zoom = useStore((s) => s.transform[2]);
+  const { zoomTo } = useReactFlow();
+  const zoomPct = Math.round(zoom * 100);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => zoomTo(1, { duration: 300 })}
+          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/80 backdrop-blur-md px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
+          aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
+        >
+          <ZoomIn className="size-2.5" />
+          <span>{zoomPct}%</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        Reset to 100%
       </TooltipContent>
     </Tooltip>
   );
