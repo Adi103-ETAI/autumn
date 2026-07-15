@@ -5,6 +5,7 @@
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   HelpCircle,
-  Leaf,
   MoreVertical,
   Pencil,
   RotateCcw,
@@ -73,9 +73,7 @@ export function TopBar() {
   return (
     <header className="autumn-topbar-gradient h-14 shrink-0 border-b border-border/50 backdrop-blur-md flex items-center px-3 gap-3">
       <div className="flex items-center gap-2">
-        <div className="topbar-logo-shimmer gradient-hue-rotate size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-          <Leaf className="size-4 text-white relative z-10" />
-        </div>
+        <AutumnLogo size={28} priority />
         <div className="leading-tight">
           <div className="text-sm font-semibold tracking-tight">Autumn</div>
           <div className="text-[10px] text-muted-foreground -mt-0.5">

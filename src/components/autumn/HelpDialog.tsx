@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Leaf, Sparkles, Mic, Bot, Cable, Terminal } from "lucide-react";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 
 const EXAMPLES = [
   {
@@ -46,9 +47,7 @@ export function HelpDialog() {
       <DialogContent className="max-w-2xl bg-card/95 backdrop-blur">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
-            <div className="size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg">
-              <Leaf className="size-4 text-white" />
-            </div>
+            <AutumnLogo size={28} />
             <DialogTitle className="text-xl">Welcome to Autumn</DialogTitle>
           </div>
           <DialogDescription className="text-sm leading-relaxed">

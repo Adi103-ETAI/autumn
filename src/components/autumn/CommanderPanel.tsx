@@ -26,8 +26,8 @@ import {
   Trash2,
   Hash,
   Copy,
-  Leaf,
 } from "lucide-react";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { cn } from "@/lib/utils";
 
 const QUICK_TEMPLATES: { label: string; cmd: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
@@ -251,9 +251,7 @@ export function CommanderPanel() {
     <div className="flex flex-col h-full">
       {/* Gradient header with Autumn logo and title */}
       <div className="commander-header-gradient border-b border-border/40 px-3 py-2 flex items-center gap-2">
-        <div className="size-6 rounded-md bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow">
-          <Leaf className="size-3 text-white" />
-        </div>
+        <AutumnLogo size={22} />
         <div className="flex-1">
           <div className="text-xs font-semibold">Commander</div>
           <div className="text-[9px] text-muted-foreground/60">orchestrate your agents</div>

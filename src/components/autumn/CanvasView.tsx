@@ -37,7 +37,8 @@ import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
-import { Cable, Sparkles, Bot, Leaf, Terminal } from "lucide-react";
+import { Cable, Sparkles, Bot, Terminal } from "lucide-react";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -318,10 +319,8 @@ function CanvasInner() {
               {/* Animated gradient border container */}
               <div className="relative rounded-2xl p-[2px] breathing-border bg-gradient-to-r from-amber-500/40 via-orange-500/20 to-amber-500/40">
                 <div className="rounded-2xl bg-background/95 backdrop-blur-md px-8 py-10">
-                  {/* Autumn leaf icon */}
-                  <div className="size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-500/10">
-                    <Leaf className="size-8 text-amber-400" />
-                  </div>
+                  {/* Autumn maple-leaf logo */}
+                  <AutumnLogo size={56} glow className="mx-auto mb-5" />
                   <h3 className="text-xl font-semibold mb-2">Your canvas is empty</h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
                     Start by adding an agent or typing a command to the Commander.
