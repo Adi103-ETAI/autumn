@@ -116,6 +116,11 @@ export interface AutumnStore {
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
 
+  // Round 9 — canvas themes + bus message detail dialog
+  canvasTheme: "autumn" | "midnight" | "forest" | "neon";
+  selectedBusMessageId: string | null; // when set, BusMessageDetailDialog shows this entry
+  isRunAllInProgress: boolean; // true while "Run All" is dispatching agents sequentially
+
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -173,6 +178,11 @@ export interface AutumnStore {
   setShowMinimap: (v: boolean) => void;
   updateEdgeLabel: (edgeId: string, label: string) => void;
   selectAllNodes: () => void;
+
+  // Round 9 — canvas themes + bus message detail + run all
+  setCanvasTheme: (theme: "autumn" | "midnight" | "forest" | "neon") => void;
+  setSelectedBusMessage: (id: string | null) => void;
+  setIsRunAllInProgress: (v: boolean) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -273,6 +283,11 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
+
+  // Round 9 — canvas themes + bus message detail + run all
+  canvasTheme: "autumn",
+  selectedBusMessageId: null,
+  isRunAllInProgress: false,
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -489,6 +504,23 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       selectedNodeIds: s.nodes.map((n) => n.id),
       selectedNodeId: s.nodes.length > 0 ? s.nodes[0].id : null,
     })),
+
+  // Round 9 — canvas themes + bus message detail + run all
+  setCanvasTheme: (theme) => {
+    set({ canvasTheme: theme });
+    // Persist to localStorage so theme survives reloads.
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("autumn-canvas-theme", theme);
+      } catch {
+        /* ignore */
+      }
+    }
+    toast.success(`Theme: ${theme}`, { duration: 1500 });
+  },
+  setSelectedBusMessage: (id) => set({ selectedBusMessageId: id }),
+  setIsRunAllInProgress: (v) => set({ isRunAllInProgress: v }),
+
   duplicateNode: (id) => {
     const node = get().nodes.find((n) => n.id === id);
     if (!node) return null;
