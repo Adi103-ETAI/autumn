@@ -133,3 +133,38 @@ Priority recommendations for next round:
 - Add a "replay task" button on agent history entries.
 - Add canvas workspace themes (dark/warm/cool color palettes).
 - Add a "snapshot comparison" feature for agent runs (diff against previous run).
+
+---
+
+Task ID: 9-push-to-github
+Agent: main
+Task: Push the Autumn app work to GitHub on branch `autumn-o1`.
+
+Work Log:
+- Inspected project state: main Next.js app lives in `/home/z/my-project` (already committed locally on `main`, 13 commits / 307 tracked files). `autumn-repo/` is a nested git repo (reference docs) tracked as a gitlink.
+- Verified the provided GitHub PAT belongs to `Adi103-ETAI` (matches the `autumn` repo owner) → push access confirmed.
+- Security audit: found `.env` (only a local SQLite `DATABASE_URL`, no API keys) and junk (`upload/*.mp4`, `download/qa-*.png`, `tool-results/`, `db/custom.db`) were tracked on `main`. Source code scanned — no hardcoded secrets.
+- Decided on a clean orphan-branch push to avoid leaking `.env` from history and to keep the GitHub branch focused on the application.
+- `git checkout --orphan autumn-o1` → cleared index → staged ONLY curated app source: `src/`, `prisma/`, `public/`, `mini-services/`, `examples/`, `.zscripts/*.sh`, config files, `package.json`, `bun.lock`, `Caddyfile`, `worklog.md`, `.gitignore`. Excluded: `.env`, `node_modules`, `.next`, `db/*.db`, `upload/`, `download/`, `tool-results/`, `agent-ctx/`, `autumn-repo/` gitlink, `skills/`, logs.
+- Verified staged set: 121 files, 98 in `src/`, zero secrets/junk.
+- Committed: `41a0f88 feat: Autumn — spatial canvas workshop for orchestrating AI coding agents`.
+- Pushed via one-shot authenticated URL (token not persisted in `.git/config`): `git push https://Adi103-ETAI:$GH_TOKEN@github.com/Adi103-ETAI/autumn.git autumn-o1:autumn-o1` → success.
+- Verified via GitHub API: branch `autumn-o1` exists at SHA `41a0f88f5734e4c2c2a0e0215582286eb82cea26`.
+- Restored working state: `git checkout -f main` (back on `main`, only pre-existing `autumn-repo` gitlink modification remains).
+
+Stage Summary:
+- **Branch live**: https://github.com/Adi103-ETAI/autumn/tree/autumn-o1 (commit `41a0f88`)
+- **PR link offered by GitHub**: https://github.com/Adi103-ETAI/autumn/pull/new/autumn-o1
+- Clean single-commit export of the Autumn Next.js app — no secrets, no media, no nested-repo gitlink, no build artifacts.
+- Working/dev state on `main` is unchanged; dev server continues to run off the filesystem.
+
+Unresolved issues / risks:
+- The shared GitHub PAT (`ghp_…`) was pasted in plaintext in chat — **user must revoke it at https://github.com/settings/tokens** and rotate any secrets that may have been near it.
+- The local `main` branch still tracks `.env`, `upload/`, `download/`, `tool-results/`, `db/custom.db` in history. If we ever push `main` to a public remote, history rewrite (git filter-repo / BFG) would be needed to purge `.env`.
+- `autumn-o1` is a snapshot; ongoing dev on `main` is not auto-synced. Consider a follow-up to push updates, or wire a git remote + push workflow.
+
+Priority recommendations for next round:
+- Revoke & rotate the exposed PAT.
+- Open a PR `autumn-o1 → main` on GitHub to review/diff the app against the docs-only `main`.
+- Add a top-level `README.md` to `autumn-o1` describing setup (`bun install`, `bun run db:push`, `bun run dev`) — currently excluded per "no proactive docs" rule, but worth adding once the user confirms.
+- Continue cron-driven feature/QA rounds (styling detail + more features) on the live app.
