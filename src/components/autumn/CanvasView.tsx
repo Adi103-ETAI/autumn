@@ -1,6 +1,6 @@
 // Autumn — CanvasView (react-flow canvas).
 // Hosts the 7 node types + 2 edge types, with bus traffic visualization,
-// auto-arrange, minimap, controls, and persistence of position changes.
+// auto-arrange, minimap (togglable), controls, and persistence of position changes.
 
 "use client";
 
@@ -36,6 +36,7 @@ import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
+import { QuickSpawnMenu } from "./QuickSpawnMenu";
 import { Cable, Sparkles, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -77,6 +78,7 @@ function CanvasInner() {
   const clearSelection = useAutumnStore((s) => s.clearSelection);
   const searchMatchIds = useAutumnStore((s) => s.searchMatchIds);
   const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
+  const showMinimap = useAutumnStore((s) => s.showMinimap);
   const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
@@ -85,6 +87,12 @@ function CanvasInner() {
   const [ctxMenu, setCtxMenu] = useState<CanvasContextMenuState>(INITIAL_CONTEXT_MENU);
   // Edge inspector state (double-click on bus edge label).
   const [inspectedEdge, setInspectedEdge] = useState<string | null>(null);
+  // QuickSpawnMenu state (from context menu "Add agent here").
+  const [quickSpawnState, setQuickSpawnState] = useState<{
+    open: boolean;
+    screenPos: { x: number; y: number } | undefined;
+    canvasPos: { x: number; y: number } | undefined;
+  }>({ open: false, screenPos: undefined, canvasPos: undefined });
 
   // Listen for "autumn:inspect-edge" custom events from the BusEdge label.
   useEffect(() => {
@@ -283,6 +291,15 @@ function CanvasInner() {
     [],
   );
 
+  // Handle "Add agent here" from context menu — open the QuickSpawnMenu
+  const handleAddAgentHere = useCallback((canvasPosition: { x: number; y: number }) => {
+    setQuickSpawnState({
+      open: true,
+      screenPos: { x: ctxMenu.x, y: ctxMenu.y },
+      canvasPos: canvasPosition,
+    });
+  }, [ctxMenu.x, ctxMenu.y]);
+
   return (
     <div className="absolute inset-0 autumn-canvas">
       {/* Empty state */}
@@ -366,25 +383,35 @@ function CanvasInner() {
           className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg !backdrop-blur"
           showInteractive={false}
         />
-        <MiniMap
-          className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
-          nodeColor={(n) =>
-            MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
-          }
-          maskColor="oklch(0.13 0.005 55 / 0.7)"
-          pannable
-          zoomable
-        />
+        {showMinimap && (
+          <MiniMap
+            className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
+            nodeColor={(n) =>
+              MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
+            }
+            maskColor="oklch(0.13 0.005 55 / 0.7)"
+            pannable
+            zoomable
+          />
+        )}
         <CanvasToolbar />
       </ReactFlow>
       <CanvasContextMenu
         state={ctxMenu}
         onClose={() => setCtxMenu((s) => ({ ...s, open: false }))}
+        onAddAgentHere={handleAddAgentHere}
       />
       <EdgeInspector
         edgeId={inspectedEdge}
         open={inspectedEdge !== null}
         onOpenChange={(v) => !v && setInspectedEdge(null)}
+      />
+      {/* QuickSpawnMenu from context menu "Add agent here" */}
+      <QuickSpawnMenu
+        open={quickSpawnState.open}
+        onClose={() => setQuickSpawnState({ open: false, screenPos: undefined, canvasPos: undefined })}
+        screenPosition={quickSpawnState.screenPos}
+        canvasPosition={quickSpawnState.canvasPos}
       />
     </div>
   );

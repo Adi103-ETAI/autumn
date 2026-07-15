@@ -16,8 +16,19 @@ import {
   Search,
   Keyboard,
   Radio,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Format a timestamp as a relative time string (e.g. "2m ago") */
+function relativeTime(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
 
 export function StatusBar() {
   const nodes = useAutumnStore((s) => s.nodes);
@@ -56,9 +67,19 @@ export function StatusBar() {
         onClick={() => setShowActivityLog(true)}
         title="Open activity timeline"
       >
-        <CircleDot className="size-3 text-emerald-400" />
+        <CircleDot className="size-3 text-emerald-400 status-online-pulse" />
         <span>autumn v0.1.0</span>
       </button>
+      {/* Thinking spinner in status bar */}
+      {isThinking && (
+        <>
+          <div className="h-3 w-px bg-border/60" />
+          <span className="flex items-center gap-1 text-amber-400">
+            <Loader2 className="size-2.5 status-thinking-spinner" />
+            <span>commander</span>
+          </span>
+        </>
+      )}
       <div className="h-3 w-px bg-border/60" />
       <div className="flex items-center gap-1.5">
         <Cpu className="size-3" />
@@ -116,6 +137,9 @@ export function StatusBar() {
           <div className="hidden md:flex items-center gap-1 text-muted-foreground/60">
             <Wifi className="size-2.5 text-emerald-400" />
             <span className="font-mono text-[9px]">{canvasId.slice(0, 12)}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <Clock className="size-2 text-muted-foreground/40" />
+            <span className="text-[9px]">{relativeTime(lastSavedAt)}</span>
           </div>
         </>
       )}

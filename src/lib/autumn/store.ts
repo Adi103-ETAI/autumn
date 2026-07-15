@@ -81,7 +81,7 @@ export interface AutumnStore {
   isAgentRunning: Record<string, boolean>; // nodeId -> running
 
   // ui
-  rightPanelTab: "commander" | "tasks" | "bus";
+  rightPanelTab: "commander" | "tasks" | "bus" | "stats";
   isListening: boolean; // voice
   showHelp: boolean;
   commandHistory: string[]; // recent user commands for quick-chips
@@ -108,10 +108,13 @@ export interface AutumnStore {
   agentHistoryOpen: boolean;
   agentHistoryFor: string | null; // nodeId currently being viewed in the history panel
 
+  // minimap + edge labels (Task 4-c)
+  showMinimap: boolean;
+
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
-  setRightPanelTab: (t: "commander" | "tasks" | "bus") => void;
+  setRightPanelTab: (t: "commander" | "tasks" | "bus" | "stats") => void;
   setListening: (v: boolean) => void;
   setShowHelp: (v: boolean) => void;
   setSettingsNode: (id: string | null) => void;
@@ -152,6 +155,11 @@ export interface AutumnStore {
   setAgentHistoryOpen: (v: boolean) => void;
   setAgentHistoryFor: (id: string | null) => void;
 
+  // minimap + edge labels (Task 4-c)
+  setShowMinimap: (v: boolean) => void;
+  updateEdgeLabel: (edgeId: string, label: string) => void;
+  selectAllNodes: () => void;
+
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
   updateNodeData: (id: string, patch: Record<string, unknown>) => void;
@@ -173,6 +181,7 @@ export interface AutumnStore {
 
   pushCommanderMessage: (m: Omit<CommanderChatMessage, "id" | "ts">) => string;
   updateCommanderMessage: (id: string, patch: Partial<CommanderChatMessage>) => void;
+  clearCommanderMessages: () => void;
   setCommanderThinking: (v: boolean) => void;
   pushRecentAction: (a: string) => void;
 
@@ -244,6 +253,9 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   // per-agent execution history panel (Task 2-a)
   agentHistoryOpen: false,
   agentHistoryFor: null,
+
+  // minimap + edge labels (Task 4-c)
+  showMinimap: true,
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -370,6 +382,17 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     })),
   setAgentHistoryOpen: (v) => set({ agentHistoryOpen: v }),
   setAgentHistoryFor: (id) => set({ agentHistoryFor: id }),
+
+  setShowMinimap: (v) => set({ showMinimap: v }),
+  updateEdgeLabel: (edgeId, label) =>
+    set((s) => ({
+      edges: s.edges.map((e) => (e.id === edgeId ? { ...e, label } : e)),
+    })),
+  selectAllNodes: () =>
+    set((s) => ({
+      selectedNodeIds: s.nodes.map((n) => n.id),
+      selectedNodeId: s.nodes.length > 0 ? s.nodes[0].id : null,
+    })),
   duplicateNode: (id) => {
     const node = get().nodes.find((n) => n.id === id);
     if (!node) return null;
@@ -893,6 +916,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         m.id === id ? { ...m, ...patch } : m,
       ),
     })),
+
+  clearCommanderMessages: () => set({ commanderMessages: [] }),
 
   setCommanderThinking: (v) => set({ isCommanderThinking: v }),
 

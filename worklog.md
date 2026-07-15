@@ -754,3 +754,177 @@ Priority recommendations for next round:
 - Add pagination / "load more" to the Activity Timeline for canvases with >200 persisted events.
 
 Tech stack unchanged: Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + @xyflow/react + Zustand + z-ai-web-dev-sdk + Prisma/SQLite + cmdk + react-markdown + Web Speech API + sonner + pako (new this round) + date-fns.
+
+---
+Task ID: 4-a
+Agent: full-stack-developer
+Task: Add Workspace Stats Dashboard panel
+
+Work Log:
+- Updated `store.ts`: Changed `rightPanelTab` type from `"commander" | "tasks" | "bus"` to `"commander" | "tasks" | "bus" | "stats"` and updated `setRightPanelTab` signature accordingly
+- Updated `RightPanelTabs.tsx`: Added 4th "Stats" tab with BarChart3 icon, changed grid to 4 columns, added total runs count badge
+- Updated `use-keyboard-shortcuts.ts`: Added ⌘4 keyboard shortcut for switching to Stats tab, updated comment header
+- Updated `ShortcutHelpOverlay.tsx`: Added ⌘4 → "Switch to Stats tab" entry in the Panel tabs group
+- Created `StatsDashboard.tsx` component at `src/components/autumn/StatsDashboard.tsx` with:
+  - Overview Cards (2x2 grid): Total Agents (with online/running/offline breakdown), Total Bus Messages (sent/recv), Task Completion Rate (with mini progress bar), Avg Response Time (from agent session start/stop pairs)
+  - Agent Performance Table: scrollable table with columns for Persona glyph+Name, Status (color-coded dot), Messages, Tasks Completed, Handoffs Sent/Received, Last Active — sorted by tasks completed descending
+  - Bus Activity Heatmap: matrix grid with rows=source agents, columns=target agents, cell intensity proportional to message count, persona-colored glyphs on axes
+  - Recent Activity Feed: last 5 entries from activityLog with icon + text + relative timestamp
+- Updated `page.tsx`: Imported StatsDashboard and added rendering when tab === "stats"
+- Ran `bun run lint` — passes cleanly with no errors
+
+Stage Summary:
+- Stats tab fully wired as 4th right-panel tab with ⌘4 shortcut
+- StatsDashboard component provides comprehensive workspace analytics without any new store state or DB schema changes
+- All styling consistent with existing Autumn dark theme (amber/orange primary, glassmorphism panels, persona-colored accents)
+- Lint passes, dev server compiling successfully
+
+---
+Task ID: 4-b
+Agent: full-stack-developer
+Task: Enhance ChatNode with drag-to-connect handles, tool-use visualization, and polish styling across components
+
+Work Log:
+- Added 9 new CSS keyframe animations and utility classes to `globals.css`:
+  - `handle-pulse` — subtle scale/opacity pulse for connect handles on idle nodes
+  - `handle-glow-source` — amber glow for source handles in connect mode
+  - `handle-glow-target` — emerald glow for target handles in connect mode
+  - `gradient-border-rotate` + `@property --gradient-angle` — rotating conic gradient border for dock hover
+  - `commander-thinking-ring` — pulsing amber ring around the Commander thinking indicator
+  - `tool-badge-enter` — pop-in animation for tool use badges
+  - `dock-count-badge` — absolute-positioned count badge styling for dock buttons
+  - `dock-btn-active` / `dock-btn-flash` — brief highlight flash when a node was just added
+  - `input-gradient-rotate` + `commander-input-focus-ring` — rotating gradient border on Commander textarea focus
+  - `status-online-pulse` — subtle opacity pulse for the version button
+  - `status-thinking-spinner` — rotation animation for the thinking spinner
+  - Enhanced `.react-flow__handle-chat-*` styles for larger 10px handles with border rings
+- Enhanced ChatNode (`ChatNode.tsx`) with:
+  - Larger, persona-colored handles (10px, border ring, persona color with opacity)
+  - `handle-pulse` animation on idle nodes to hint draggability
+  - `handle-glow-source` / `handle-glow-target` glow animations in connect mode
+  - Tooltips on hover: "Drag to connect" / "Drop to connect" / "Now pick a target"
+  - Tool-use visualization: `extractToolBadges()` parses last assistant message for patterns like TodoWrite, Read, Edit, Write, Bash, Glob, Grep, etc.
+  - Compact "tool badge strip" at bottom of node body: small colored badges (file ops=amber, search=sky, code gen=emerald) with icon + name
+- Enhanced Dock (`Dock.tsx`) with:
+  - `dock-btn-gradient-border` rotating gradient border on hover
+  - `dock-btn-active` flash animation when a node of that kind was just added
+  - Count badge next to the Agent dock button showing how many chat nodes are on canvas
+- Enhanced CommanderPanel (`CommanderPanel.tsx`) with:
+  - `commander-input-focus-ring` — rotating gradient border around textarea on focus
+  - Command count badge showing total commands sent (using `commandHistory.length`)
+  - Dramatic skeleton state: `commander-thinking-ring` pulsing amber ring around the sparkle icon
+  - "Clear chat" button in top-right corner of messages area (only when messages exist)
+- Enhanced StatusBar (`StatusBar.tsx`) with:
+  - `status-online-pulse` animated green pulse on the version button
+  - Spinning `Loader2` indicator when commander is thinking
+  - "Last saved" relative timestamp next to the canvas ID (e.g., "saved 2m ago") using `relativeTime()` helper
+- Added `clearCommanderMessages` method to the Zustand store interface and implementation
+- All changes are purely additive — no existing functionality was broken
+- `bun run lint` passes cleanly
+- No new npm packages added
+
+Stage Summary:
+- ChatNode handles are now interactive with pulse, glow, and tooltip feedback
+- Tool-use badges provide at-a-glance visibility into agent activity
+- Dock buttons have rich hover effects and contextual count badge
+- Commander panel has polished focus states and clear functionality
+- Status bar shows live thinking state and relative save timestamps
+- All new CSS animations are self-contained and don't interfere with existing styles
+
+---
+Task ID: 4-c
+Agent: full-stack-developer
+Task: Add edge labels, quick spawn presets, and enhance the CanvasToolbar and CanvasContextMenu
+
+Work Log:
+- Added `updateEdgeLabel`, `showMinimap`, `setShowMinimap`, `selectAllNodes` actions to the Zustand store
+- Added `showMinimap` state (default: true) to the store
+- Enhanced `Edges.tsx` with inline label editing: double-click on bus/nav edge labels opens an inline input; Enter/blur commits the label; Escape cancels
+- Added direction arrow indicators to both BusEdge and NavigationEdge: a small SVG arrow positioned above the edge label, colored with the source persona's color; bus edges get an animated flowing arrow via CSS `edge-arrow-flow` animation
+- Created `QuickSpawnMenu.tsx`: a dropdown/popover with 6 preset agent configurations (Full Stack Dev, Code Reviewer, Backend API, Frontend UI, Test Engineer, Data Analyst) plus a "Custom…" option; each preset shows icon, name, harness·model, and effort badge; clicking a preset calls `nextPersona()` and overrides harness/model/effort from the preset
+- Enhanced `CanvasToolbar.tsx`: replaced simple "Add agent" button with QuickSpawnMenu trigger (with chevron-down indicator); added "Select all" button (⌘A); added GroupIndicator showing node counts by kind with colored dots; glassmorphism styling (rounded-full, backdrop-blur-xl, subtle amber box-shadow); uses `cn` from `@/lib/utils`
+- Enhanced `CanvasContextMenu.tsx`: added pane context menu items — "Add agent here…" (opens QuickSpawnMenu), "Search nodes" (⌘F), "Select all nodes" (⌘A), "Zoom to fit" (⌘1), "Toggle minimap" (⌘M); added node context menu items — "Focus on this node" (⌘L, dispatches autumn:center-node), "Copy node ID" (clipboard); added logical separators and keyboard shortcut hints; all new items use Lucide icons; fixed `Map` import shadowing by renaming to `MapIcon`
+- Integrated `showMinimap` toggle into `CanvasView.tsx`: MiniMap component is conditionally rendered based on `showMinimap` state
+- Added QuickSpawnMenu integration in CanvasView for context menu "Add agent here": stores both screen coordinates (for menu positioning) and canvas coordinates (for node placement) separately
+- Added `edge-arrow-flow` CSS animation to `globals.css` for the animated direction arrow on bus edges
+- Fixed runtime error: `Map` import from lucide-react shadowed the global `Map` constructor — renamed to `MapIcon` in both CanvasToolbar and CanvasContextMenu
+- All lint checks pass
+
+Stage Summary:
+- Edge labels are now editable inline via double-click (both bus and navigation edges)
+- Direction arrows appear above edge labels, colored by source persona, with animated flow on bus edges
+- QuickSpawnMenu provides 6 preset agent configurations for rapid spawning
+- CanvasToolbar has glassmorphism styling, QuickSpawnMenu trigger, Select All, and group indicators
+- CanvasContextMenu has new canvas actions (select all, zoom to fit, toggle minimap) and node actions (focus, copy ID)
+- Minimap visibility is togglable via context menu or store
+- All changes are additive — no existing functionality was broken
+
+---
+Task ID: 7-round
+Agent: main (cron-webDevReview round 7)
+Task: QA test via agent-browser, fix bugs, add new features (Stats dashboard, enhanced ChatNode with handles/tool badges, QuickSpawn presets, edge labels, context menu enhancements), and polish styling across all components.
+
+Work Log:
+- **QA testing (agent-browser, 1440x900)**: Opened the app, tested all 4 right-panel tabs (Commander/Tasks/Bus/Stats), tested all 7 dock buttons, tested chat node dropdown menus, tested the full E2E Commander flow ("spawn Juno and connect her to Atlas"), tested Save button, Export dialog, Help dialog. Console is clean throughout, all API routes return 200.
+- **E2E verified**: Commander command "add a sticky note saying ship it" → Commander produces correct DO_ACTIONS plan → plan executes → sticky note appears on canvas. No errors.
+- **Critical bug found & fixed**: `CanvasToolbar.tsx` imported `Map as MapIcon` from lucide-react which shadowed the JavaScript `Map` constructor, causing `new Map<string, number>()` to throw `TypeError: Map is not a constructor`. Removed the unused `Map as MapIcon` import. App was returning 500 before fix; now returns 200.
+- **New feature: Stats Dashboard tab** (4th right panel tab):
+  - Overview Cards (2x2 grid): Total Agents (online/running/offline), Bus Messages (sent/recv), Task Completion Rate (progress bar + %), Avg Response Time
+  - Agent Performance Table: persona glyph + name, status dot, messages, tasks completed, handoffs sent/received, last active — sorted by tasks completed
+  - Bus Activity Heatmap: matrix where rows=source agents, columns=target agents; cell brightness proportional to message count; persona-colored glyphs on axes
+  - Recent Activity Feed: last 5 entries from activityLog with kind-specific icons and relative timestamps
+  - ⌘4 keyboard shortcut to switch to Stats tab
+- **New feature: Enhanced ChatNode**:
+  - Drag-to-connect handles: larger 10px handles with persona-colored rings, pulse animation on idle nodes, source handle glows amber in connect mode, target handles glow emerald
+  - Tool-use badge strip: extracts tool patterns (TodoWrite, Read, Edit, Write, Bash, Glob, Grep) from last assistant message and shows colored badges at bottom of node body
+  - Handle tooltips ("Drag to connect", "Drop to connect", "Now pick a target")
+- **New feature: QuickSpawnMenu** (`QuickSpawnMenu.tsx`):
+  - 6 preset agent configurations: Full Stack Dev, Code Reviewer, Backend API, Frontend UI, Test Engineer, Data Analyst
+  - Each preset shows icon, name, harness·model, and effort badge
+  - "Custom…" option creates a default agent
+  - Triggered from CanvasToolbar "Add agent" button and canvas context menu "Add agent here…"
+- **New feature: Edge label editing** (`Edges.tsx`):
+  - Double-click on any edge label to rename it inline
+  - Direction arrow indicator above each edge label, colored with source persona's color
+  - Animated flowing arrow for bus edges
+  - `updateEdgeLabel` action added to store
+- **New feature: Enhanced CanvasContextMenu**:
+  - Pane context menu: "Add agent here…", "Search nodes", "Select all nodes", "Zoom to fit", "Toggle minimap"
+  - Node context menu: "Focus on this node", "Copy node ID" (new actions)
+  - Keyboard shortcut hints on all items, icons, logical separators
+- **New feature: Enhanced CanvasToolbar**:
+  - QuickSpawnMenu trigger on "Add agent" button
+  - "Select all" button (⌘A)
+  - GroupIndicator: shows node counts by kind with colored dots
+  - Glassmorphism background, rounded-full buttons
+- **Store additions**: `showMinimap`, `updateEdgeLabel`, `setShowMinimap`, `selectAllNodes`, `clearCommanderMessages`
+- **Styling polish (main thread)**:
+  - 15+ new CSS animations/classes in globals.css: stats-card-hover, heatmap-cell hover glow, spawn-menu-enter, spawn-preset-item slide, ctx-menu-enter, perf-row-hover, stats-value-enter, canvas vignette, activity-entry-hover, right-panel-tab-selected, toast-slide-up, dock-separator gradient, quick-template-chip glow, right-panel-inner glow
+  - Applied new classes to StatsDashboard (overview cards, heatmap cells, performance rows, activity entries), QuickSpawnMenu (entrance + preset hover), CanvasContextMenu (entrance animation), CommanderPanel (template chip hover), Dock (amber gradient separator), RightPanelTabs (inner glow)
+
+Stage Summary:
+- **All QA passes.** Console is clean (no errors/warnings), all API routes return 200, lint passes.
+- **1 critical bug fixed**: `Map` import shadowing caused 500 errors on page load.
+- **5 new features delivered this round**:
+  1. **Stats Dashboard** — 4th right panel tab with overview cards, agent performance table, bus activity heatmap, and recent activity feed
+  2. **Enhanced ChatNode** — drag-to-connect handles with glow/pulse animations, tool-use badge strip
+  3. **QuickSpawnMenu** — 6 preset agent configurations for fast agent creation
+  4. **Edge label editing + direction arrows** — inline editing on double-click, animated direction indicators
+  5. **Enhanced CanvasContextMenu** — new pane/node actions with keyboard shortcuts and icons
+- **Enhanced CanvasToolbar** — QuickSpawnMenu trigger, select all, group indicator, glassmorphism
+- **15+ new CSS animations/classes** — hover effects, entrance animations, visual polish across all new components
+
+Unresolved issues / risks:
+- The `Map as MapIcon` import was removed from CanvasContextMenu.tsx but is still used there for the minimap toggle icon. Need to verify it doesn't use `new Map()` anywhere — checked, no `new Map` usage, so it's safe.
+- The heatmap matrix uses `new Map()` in StatsDashboard.tsx — this is fine because no `Map` icon is imported there.
+- The vignette overlay (::after on .autumn-canvas) may interfere with node clicks if z-index isn't properly handled — set to z-index:0 with pointer-events:none so it should be fine.
+
+Priority recommendations for next round:
+- Add dagre/elkjs-based auto-layout for the "Arrange nodes" action (currently BFS-based tiered layout)
+- Add real-time collaboration indicator (would require websocket mini-service)
+- Add a "replay task" button on each agent history entry
+- Add a per-canvas "execution stats" summary showing total runs, total chars, busiest agent
+- Add "import from URL" command in the Command Palette
+- Persist `busHistory` to Prisma DB (currently in-memory only, cleared on reload)
+- Add pagination to Activity Timeline for canvases with >200 persisted events
+- Add voice fallback for non-Chrome browsers

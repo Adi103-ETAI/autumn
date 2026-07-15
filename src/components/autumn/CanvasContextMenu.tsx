@@ -1,7 +1,8 @@
 // Autumn — Canvas context menu.
 // A floating context menu that appears at the cursor when right-clicking on
-// the canvas pane or on a chat node. Supports quick-add nodes (with position
-// set to the click point), run/connect/duplicate/remove on chat nodes, etc.
+// the canvas pane or on a chat node. Supports quick-add nodes, run/connect/
+// duplicate/remove, plus new canvas actions (select all, zoom to fit, toggle
+// minimap) and node actions (copy node ID, focus on node).
 
 "use client";
 
@@ -26,6 +27,11 @@ import {
   Trash2,
   MessageSquare,
   Search,
+  CheckSquare,
+  Maximize2,
+  Map as MapIcon,
+  Focus,
+  Clipboard,
 } from "lucide-react";
 
 export interface CanvasContextMenuState {
@@ -68,9 +74,11 @@ const PANE_ITEMS: {
 export function CanvasContextMenu({
   state,
   onClose,
+  onAddAgentHere,
 }: {
   state: CanvasContextMenuState;
   onClose: () => void;
+  onAddAgentHere?: (position: { x: number; y: number }) => void;
 }) {
   const addNode = useAutumnStore((s) => s.addNode);
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
@@ -81,6 +89,9 @@ export function CanvasContextMenu({
   const removeNode = useAutumnStore((s) => s.removeNode);
   const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
   const nodes = useAutumnStore((s) => s.nodes);
+  const selectAllNodes = useAutumnStore((s) => s.selectAllNodes);
+  const showMinimap = useAutumnStore((s) => s.showMinimap);
+  const setShowMinimap = useAutumnStore((s) => s.setShowMinimap);
 
   const ref = useRef<HTMLDivElement>(null);
   // Position the menu so it never overflows the viewport.
@@ -90,7 +101,7 @@ export function CanvasContextMenu({
     if (!state.open) return;
     // Adjust position to keep menu within viewport bounds.
     const menuW = 220;
-    const menuH = state.kind === "pane" ? 320 : 260;
+    const menuH = state.kind === "pane" ? 420 : 360;
     let x = state.x;
     let y = state.y;
     if (x + menuW > window.innerWidth - 8) x = window.innerWidth - menuW - 8;
@@ -133,11 +144,33 @@ export function CanvasContextMenu({
     onClose();
   };
 
+  const handleCopyNodeId = async (nodeId: string) => {
+    try {
+      await navigator.clipboard.writeText(nodeId);
+    } catch {
+      // Fallback: no-op
+    }
+    onClose();
+  };
+
+  const handleFocusNode = (nodeId: string) => {
+    // Dispatch a custom event that CanvasView listens to
+    window.dispatchEvent(
+      new CustomEvent("autumn:center-node", { detail: { id: nodeId } }),
+    );
+    onClose();
+  };
+
+  const handleZoomToFit = () => {
+    window.dispatchEvent(new CustomEvent("autumn:fit-view"));
+    onClose();
+  };
+
   return (
     <div
       ref={ref}
       role="menu"
-      className="fixed z-50 w-[220px] rounded-lg border border-border/60 bg-popover/95 backdrop-blur-md shadow-2xl py-1.5 fade-in-up"
+      className="fixed z-50 w-[220px] rounded-lg border border-border/60 bg-popover/95 backdrop-blur-md shadow-2xl py-1.5 ctx-menu-enter"
       style={{ left: pos.x, top: pos.y }}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -147,28 +180,66 @@ export function CanvasContextMenu({
             Add node at cursor
           </div>
           <div className="h-px bg-border/40 my-0.5" />
-          {PANE_ITEMS.map((item) => (
-            <button
+          {/* Add agent here — opens QuickSpawnMenu */}
+          <MenuItem
+            icon={Bot}
+            label="Add agent here…"
+            shortcut="⌘⇧A"
+            onClick={() => {
+              if (onAddAgentHere) {
+                onAddAgentHere({ x: state.canvasX, y: state.canvasY });
+              } else {
+                addAt("chat");
+              }
+            }}
+            color="text-amber-300"
+          />
+          {PANE_ITEMS.filter((item) => item.kind !== "chat").map((item) => (
+            <MenuItem
               key={item.kind}
+              icon={item.icon}
+              label={item.label}
               onClick={() => addAt(item.kind)}
-              className="flex w-full items-center gap-2.5 px-2.5 py-1.5 text-xs hover:bg-accent/60 transition-colors text-left"
-            >
-              <item.icon className={cn("size-3.5", item.color)} />
-              <span className="flex-1">{item.label}</span>
-            </button>
+              color={item.color}
+            />
           ))}
           <div className="h-px bg-border/40 my-0.5" />
-          <button
+          <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+            Canvas
+          </div>
+          <MenuItem
+            icon={Search}
+            label="Search nodes"
+            shortcut="⌘F"
             onClick={() => {
               setShowNodeSearch(true);
               onClose();
             }}
-            className="flex w-full items-center gap-2.5 px-2.5 py-1.5 text-xs hover:bg-accent/60 transition-colors text-left"
-          >
-            <Search className="size-3.5 text-muted-foreground" />
-            <span>Search nodes</span>
-            <span className="ml-auto text-[9px] text-muted-foreground/60 font-mono">⌘F</span>
-          </button>
+          />
+          <MenuItem
+            icon={CheckSquare}
+            label="Select all nodes"
+            shortcut="⌘A"
+            onClick={() => {
+              selectAllNodes();
+              onClose();
+            }}
+          />
+          <MenuItem
+            icon={Maximize2}
+            label="Zoom to fit"
+            shortcut="⌘1"
+            onClick={handleZoomToFit}
+          />
+          <MenuItem
+            icon={MapIcon}
+            label={showMinimap ? "Hide minimap" : "Show minimap"}
+            shortcut="⌘M"
+            onClick={() => {
+              setShowMinimap(!showMinimap);
+              onClose();
+            }}
+          />
         </>
       ) : (
         node && (
@@ -249,6 +320,19 @@ export function CanvasContextMenu({
                 }}
               />
             )}
+            {/* Node-specific actions */}
+            <div className="h-px bg-border/40 my-0.5" />
+            <MenuItem
+              icon={Focus}
+              label="Focus on this node"
+              shortcut="⌘L"
+              onClick={() => handleFocusNode(node.id)}
+            />
+            <MenuItem
+              icon={Clipboard}
+              label="Copy node ID"
+              onClick={() => void handleCopyNodeId(node.id)}
+            />
             <div className="h-px bg-border/40 my-0.5" />
             <MenuItem
               icon={Trash2}
@@ -272,12 +356,14 @@ function MenuItem({
   onClick,
   shortcut,
   variant = "default",
+  color,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
   shortcut?: string;
   variant?: "default" | "destructive";
+  color?: string;
 }) {
   return (
     <button
@@ -287,7 +373,14 @@ function MenuItem({
         variant === "destructive" && "text-rose-400 hover:bg-rose-500/10",
       )}
     >
-      <Icon className={cn("size-3.5", variant === "destructive" ? "text-rose-400" : "text-muted-foreground")} />
+      <Icon
+        className={cn(
+          "size-3.5",
+          variant === "destructive"
+            ? "text-rose-400"
+            : color ?? "text-muted-foreground",
+        )}
+      />
       <span className="flex-1">{label}</span>
       {shortcut && (
         <span className="text-[9px] text-muted-foreground/60 font-mono">{shortcut}</span>

@@ -8,7 +8,7 @@
 //                      → if multi-select active, removes all selected
 //   Shift+D         → duplicate selected node
 //   Escape          → deselect / close dialogs / cancel connect mode / close search
-//   ⌘1 / ⌘2 / ⌘3    → switch right panel tab (commander / tasks / bus)
+//   ⌘1 / ⌘2 / ⌘3 / ⌘4 → switch right panel tab (commander / tasks / bus / stats)
 //   C               → enter connect mode (when a chat node is selected)
 //   R               → run selected agent
 //   A               → arrange nodes
@@ -75,11 +75,11 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // ⌘1 / ⌘2 / ⌘3 — panel tabs
-      if (mod && (e.key === "1" || e.key === "2" || e.key === "3")) {
+      // ⌘1 / ⌘2 / ⌘3 / ⌘4 — panel tabs
+      if (mod && (e.key === "1" || e.key === "2" || e.key === "3" || e.key === "4")) {
         e.preventDefault();
-        const map = { "1": "commander", "2": "tasks", "3": "bus" } as const;
-        s.setRightPanelTab(map[e.key]);
+        const map = { "1": "commander", "2": "tasks", "3": "bus", "4": "stats" } as const;
+        s.setRightPanelTab(map[e.key as "1" | "2" | "3" | "4"]);
         return;
       }
 

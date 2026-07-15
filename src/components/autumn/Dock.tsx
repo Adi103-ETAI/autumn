@@ -1,11 +1,12 @@
 // Autumn — Left Dock (tool rail).
 // Mirrors October's dock: quick-add buttons for each node kind.
 // Each button has a rich tooltip (label + description), a hover-lift +
-// warm gradient (autumn-dock-btn), and an amber active/pressed ring.
+// warm gradient (autumn-dock-btn), rotating gradient border on hover,
+// an active flash when a node was just added, and a count badge for Agents.
 
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
   Globe,
   Clapperboard,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DockTool {
   kind: NodeKind;
@@ -87,6 +89,27 @@ const TOOLS: DockTool[] = [
 
 export function Dock() {
   const addNode = useAutumnStore((s) => s.addNode);
+  const nodes = useAutumnStore((s) => s.nodes);
+  const chatCount = nodes.filter((n) => n.kind === "chat").length;
+
+  // Track which dock button was just activated (for flash animation)
+  const [activeKind, setActiveKind] = useState<NodeKind | null>(null);
+  const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAddNode = (kind: NodeKind) => {
+    addNode({ kind });
+    // Flash the corresponding dock button
+    setActiveKind(kind);
+    if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
+    activeTimeoutRef.current = setTimeout(() => setActiveKind(null), 600);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (activeTimeoutRef.current) clearTimeout(activeTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -101,20 +124,31 @@ export function Dock() {
             {i === 1 && (
               <div
                 aria-hidden
-                className="w-7 h-px bg-border/50 my-0.5"
+                className="w-7 h-px my-0.5 dock-separator"
               />
             )}
             <Tooltip side="right">
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="autumn-dock-btn size-9 rounded-lg group"
-                  onClick={() => addNode({ kind: t.kind })}
-                  aria-label={`Add ${t.label}`}
-                >
-                  <t.icon className={`size-4 ${t.color}`} />
-                </Button>
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "autumn-dock-btn dock-btn-gradient-border size-9 rounded-lg group relative",
+                      activeKind === t.kind && "dock-btn-active",
+                    )}
+                    onClick={() => handleAddNode(t.kind)}
+                    aria-label={`Add ${t.label}`}
+                  >
+                    <t.icon className={`size-4 ${t.color}`} />
+                  </Button>
+                  {/* Count badge for Agent dock button */}
+                  {t.kind === "chat" && chatCount > 0 && (
+                    <span className="dock-count-badge">
+                      {chatCount > 9 ? "9+" : chatCount}
+                    </span>
+                  )}
+                </div>
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs max-w-[220px]">
                 <div className="font-medium">Add {t.label}</div>

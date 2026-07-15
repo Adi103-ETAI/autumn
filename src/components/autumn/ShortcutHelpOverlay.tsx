@@ -57,6 +57,7 @@ const GROUPS: ShortcutGroup[] = [
       { keys: ["⌘", "1"], label: "Switch to Commander tab" },
       { keys: ["⌘", "2"], label: "Switch to Tasks tab" },
       { keys: ["⌘", "3"], label: "Switch to Bus tab" },
+      { keys: ["⌘", "4"], label: "Switch to Stats tab" },
     ],
   },
   {

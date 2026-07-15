@@ -936,3 +936,354 @@ textarea:focus-visible {
   background: var(--task-accent, oklch(0.7 0.02 55));
   transition: background 0.2s ease-out;
 }
+
+/* ---- Round 7 styling polish (Task 4-b: Handle pulse, gradient border, thinking ring, tool badges, dock count) ---- */
+
+/* 1. handle-pulse — subtle scale/opacity pulse for connect handles on idle nodes.
+   Suggests to the user that the handle is draggable to create a connection. */
+@keyframes handle-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
+.handle-pulse {
+  animation: handle-pulse 2.4s ease-in-out infinite;
+}
+
+/* Handle glow when in connect mode — source glows amber */
+@keyframes handle-glow-source {
+  0%, 100% { box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.3), 0 0 8px oklch(0.78 0.18 55 / 0.4); }
+  50% { box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.15), 0 0 14px oklch(0.78 0.18 55 / 0.6); }
+}
+.handle-glow-source {
+  animation: handle-glow-source 1.4s ease-in-out infinite;
+}
+
+/* Handle glow when in connect mode — target glows emerald */
+@keyframes handle-glow-target {
+  0%, 100% { box-shadow: 0 0 0 2px oklch(0.7 0.2 150 / 0.3), 0 0 8px oklch(0.7 0.2 150 / 0.4); }
+  50% { box-shadow: 0 0 0 4px oklch(0.7 0.2 150 / 0.15), 0 0 14px oklch(0.7 0.2 150 / 0.6); }
+}
+.handle-glow-target {
+  animation: handle-glow-target 1.4s ease-in-out infinite;
+}
+
+/* 2. gradient-border-rotate — rotating conic gradient border for dock button hover.
+   Uses a pseudo-element trick with a conic-gradient that rotates. */
+@keyframes gradient-border-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.dock-btn-gradient-border {
+  position: relative;
+  z-index: 0;
+}
+.dock-btn-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    oklch(0.78 0.18 55 / 0.6),
+    oklch(0.7 0.22 16 / 0.4),
+    oklch(0.62 0.2 280 / 0.3),
+    oklch(0.78 0.18 55 / 0.6)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: gradient-border-rotate 2s linear infinite;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  z-index: -1;
+}
+.dock-btn-gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* 3. commander-thinking-ring — a pulsing amber ring around the thinking indicator
+   in CommanderPanel. */
+@keyframes commander-thinking-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px oklch(0.78 0.18 55 / 0);
+  }
+}
+.commander-thinking-ring {
+  animation: commander-thinking-ring 1.6s ease-out infinite;
+  border-radius: 50%;
+}
+
+/* 4. tool-badge-enter — pop-in animation for tool use badges. */
+@keyframes tool-badge-enter {
+  0% { opacity: 0; transform: scale(0.5) translateY(4px); }
+  70% { transform: scale(1.1) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.tool-badge-enter {
+  animation: tool-badge-enter 0.3s ease-out;
+}
+
+/* 5. dock-count-badge — styling for the count badge on dock buttons. */
+.dock-count-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 8px;
+  line-height: 14px;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 999px;
+  background: oklch(0.78 0.18 55);
+  color: oklch(0.16 0.02 55);
+  box-shadow: 0 0 0 1.5px oklch(0.16 0.02 55);
+  pointer-events: none;
+}
+
+/* 6. dock-btn-active — brief highlight when a node of that kind was just added. */
+@keyframes dock-btn-flash {
+  0% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.6); }
+  50% { box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3); }
+  100% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0); }
+}
+.dock-btn-active {
+  animation: dock-btn-flash 0.6s ease-out;
+}
+
+/* 7. Commander input gradient border on focus. */
+@keyframes input-gradient-rotate {
+  0% { --input-gradient-angle: 0deg; }
+  100% { --input-gradient-angle: 360deg; }
+}
+@property --input-gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.commander-input-focus-ring {
+  position: relative;
+}
+.commander-input-focus-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius) + 1px);
+  padding: 1px;
+  background: conic-gradient(
+    from var(--input-gradient-angle),
+    oklch(0.78 0.18 55 / 0.5),
+    oklch(0.7 0.22 16 / 0.3),
+    oklch(0.62 0.2 280 / 0.2),
+    oklch(0.78 0.18 55 / 0.5)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: input-gradient-rotate 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+}
+.commander-input-focus-ring:focus-within::after {
+  opacity: 1;
+}
+
+/* 8. Status bar online pulse — subtle green pulse on the version button. */
+@keyframes status-online-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-online-pulse {
+  animation: status-online-pulse 2s ease-in-out infinite;
+}
+
+/* 9. Status bar thinking spinner. */
+@keyframes status-thinking-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.status-thinking-spinner {
+  animation: status-thinking-spin 1s linear infinite;
+}
+
+/* Enhanced handle styles — larger, with ring, persona-colored */
+.react-flow__handle-chat-target,
+.react-flow__handle-chat-source {
+  width: 10px;
+  height: 10px;
+  border: 2px solid oklch(0.16 0.02 55);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.react-flow__handle-chat-target:hover,
+.react-flow__handle-chat-source:hover {
+  transform: scale(1.4);
+}
+
+/* Clear chat button hover */
+.clear-chat-btn:hover {
+  color: oklch(0.68 0.22 22);
+}
+
+/* ---- Task 4-c styling (Edge direction arrows, QuickSpawn, enhanced toolbar/context menu) ---- */
+
+/* Edge direction arrow flow animation — subtle horizontal oscillation for bus edges */
+@keyframes edge-arrow-flow {
+  0%, 100% { transform: translateX(0); opacity: 0.7; }
+  50% { transform: translateX(2px); opacity: 1; }
+}
+.edge-arrow-flow {
+  animation: edge-arrow-flow 1.4s ease-in-out infinite;
+}
+
+/* ---- Round 7 additional styling polish ---- */
+
+/* Stats dashboard — card hover lift */
+.stats-card-hover {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.stats-card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.2);
+}
+
+/* Heatmap cell hover glow */
+.heatmap-cell {
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+.heatmap-cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px oklch(0.78 0.18 55 / 0.4);
+  z-index: 1;
+}
+
+/* Quick spawn menu — entrance animation */
+@keyframes spawn-menu-enter {
+  0% { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.spawn-menu-enter {
+  animation: spawn-menu-enter 0.15s ease-out;
+}
+
+/* Quick spawn preset — hover slide-right */
+.spawn-preset-item {
+  transition: transform 0.12s ease-out, background-color 0.12s ease-out, padding-left 0.12s ease-out;
+}
+.spawn-preset-item:hover {
+  transform: translateX(2px);
+  padding-left: 12px;
+}
+
+/* Canvas context menu — entrance animation */
+@keyframes ctx-menu-enter {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.ctx-menu-enter {
+  animation: ctx-menu-enter 0.12s ease-out;
+}
+
+/* Agent performance table row hover — subtle accent bar */
+.perf-row-hover {
+  transition: background-color 0.12s ease-out, padding-left 0.12s ease-out;
+}
+.perf-row-hover:hover {
+  padding-left: 4px;
+}
+
+/* Overview card value — subtle counter animation */
+@keyframes count-up {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.stats-value-enter {
+  animation: count-up 0.3s ease-out;
+}
+
+/* Ambient canvas vignette — darker corners for depth */
+.autumn-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    oklch(0.13 0.005 55 / 0.3) 100%
+  );
+  z-index: 0;
+}
+
+/* Refined activity feed entry — left accent bar on hover */
+.activity-entry-hover {
+  transition: background-color 0.12s ease-out, padding-left 0.12s ease-out;
+  border-left: 2px solid transparent;
+}
+.activity-entry-hover:hover {
+  border-left-color: oklch(0.78 0.18 55 / 0.5);
+  padding-left: 12px;
+}
+
+/* Right panel tab — subtle gradient underline on selected */
+.right-panel-tab-selected {
+  position: relative;
+}
+.right-panel-tab-selected::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, oklch(0.78 0.18 55 / 0.6), transparent);
+  border-radius: 1px;
+}
+
+/* Toast notification entrance — slide up from bottom */
+@keyframes toast-slide-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Canvas node subtle inner shadow for depth */
+.react-flow__node-chat > div:first-child {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06);
+}
+
+/* Dock separator — subtle amber gradient */
+.dock-separator {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    oklch(0.78 0.18 55 / 0.2) 50%,
+    transparent 100%
+  );
+}
+
+/* Quick template chip — subtle glow on hover */
+.quick-template-chip {
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background-color 0.12s ease-out;
+}
+.quick-template-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px -2px oklch(0.78 0.18 55 / 0.3);
+}
+
+/* Right panel — subtle inner top border glow */
+.right-panel-inner {
+  box-shadow: inset 0 1px 0 oklch(0.78 0.18 55 / 0.08);
+}

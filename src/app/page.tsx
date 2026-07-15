@@ -14,6 +14,7 @@ import { CommanderPanel } from "@/components/autumn/CommanderPanel";
 import { AgentChatPanel } from "@/components/autumn/AgentChatPanel";
 import { TaskBoard } from "@/components/autumn/TaskBoard";
 import { BusTrafficPanel } from "@/components/autumn/BusTrafficPanel";
+import { StatsDashboard } from "@/components/autumn/StatsDashboard";
 import { StatusBar } from "@/components/autumn/StatusBar";
 import { HelpDialog } from "@/components/autumn/HelpDialog";
 import { AgentSettingsDialog } from "@/components/autumn/AgentSettingsDialog";
@@ -96,6 +97,8 @@ export default function Home() {
               <CommanderPanel />
             ) : tab === "tasks" ? (
               <TaskBoard />
+            ) : tab === "stats" ? (
+              <StatsDashboard />
             ) : (
               <BusTrafficPanel />
             )}

@@ -23,6 +23,8 @@ import {
   StickyNote,
   Workflow,
   Zap,
+  Trash2,
+  Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +44,7 @@ export function CommanderPanel() {
   const pushMessage = useAutumnStore((s) => s.pushCommanderMessage);
   const updateMessage = useAutumnStore((s) => s.updateCommanderMessage);
   const setThinking = useAutumnStore((s) => s.setCommanderThinking);
+  const clearMessages = useAutumnStore((s) => s.clearCommanderMessages);
   const applyPlan = useAutumnStore((s) => s.applyCommanderPlan);
   const recentActions = useAutumnStore((s) => s.recentActions);
   const nodes = useAutumnStore((s) => s.nodes);
@@ -245,10 +248,21 @@ export function CommanderPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto autumn-scroll p-3 space-y-3"
-      >
+      <div className="relative flex-1 overflow-y-auto autumn-scroll p-3 space-y-3">
+        {/* Clear chat button — top-right, only when there are messages */}
+        {messages.length > 0 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 size-6 text-muted-foreground/50 hover:text-foreground clear-chat-btn z-10"
+            onClick={clearMessages}
+            aria-label="Clear chat"
+            title="Clear chat"
+          >
+            <Trash2 className="size-3" />
+          </Button>
+        )}
+
         {messages.map((m) => (
           <div
             key={m.id}
@@ -279,7 +293,10 @@ export function CommanderPanel() {
               {m.pending ? (
                 <div className="space-y-2 min-w-[220px]">
                   <div className="flex items-center gap-1.5 text-[10px] text-amber-300/80 uppercase tracking-wider">
-                    <Sparkles className="size-2.5 animate-pulse" />
+                    {/* Dramatic thinking ring around the sparkle icon */}
+                    <span className="commander-thinking-ring inline-flex items-center justify-center size-5 rounded-full bg-amber-500/20">
+                      <Sparkles className="size-2.5 animate-pulse text-amber-400" />
+                    </span>
                     <span>planning</span>
                   </div>
                   <div className="space-y-1.5">
@@ -370,7 +387,7 @@ export function CommanderPanel() {
               <button
                 key={t.label}
                 onClick={() => void send(t.cmd)}
-                className="flex items-center gap-1 text-[10px] rounded-full bg-muted/30 hover:bg-amber-500/10 border border-border/40 hover:border-amber-500/40 px-2 py-0.5 text-muted-foreground hover:text-amber-200 transition-all disabled:opacity-40 group"
+                className="flex items-center gap-1 text-[10px] rounded-full bg-muted/30 hover:bg-amber-500/10 border border-border/40 hover:border-amber-500/40 px-2 py-0.5 text-muted-foreground hover:text-amber-200 transition-all disabled:opacity-40 group quick-template-chip"
                 title={t.cmd}
               >
                 <t.icon className={cn("size-2.5", t.color, "group-hover:scale-110 transition-transform")} />
@@ -379,7 +396,7 @@ export function CommanderPanel() {
             ))}
           </div>
         )}
-        <div className="relative">
+        <div className="commander-input-focus-ring rounded-md">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -426,6 +443,13 @@ export function CommanderPanel() {
                 ))}
               </div>
             </div>
+          )}
+          {/* Command count badge */}
+          {commandHistory.length > 0 && (
+            <Badge variant="outline" className="text-[9px] h-5 px-1.5 gap-0.5">
+              <Hash className="size-2.5" />
+              {commandHistory.length}
+            </Badge>
           )}
           <div className="flex-1" />
           <Badge variant="outline" className="text-[9px] h-5 px-1.5">
