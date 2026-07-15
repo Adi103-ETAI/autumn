@@ -32,6 +32,11 @@ export async function runAgentForNode(nodeId: string, task?: string) {
 
   store.setAgentRunning(nodeId, true);
   store.setAgentStatus(nodeId, "thinking", "Reading the task…");
+  store.pushActivity({
+    kind: "agent_status",
+    text: `${persona.name} started thinking about: ${finalTask.slice(0, 60)}${finalTask.length > 60 ? "…" : ""}`,
+    nodeId,
+  });
 
   // 1) Fetch peer context from the bus (drains the inbox).
   let peerContext = "";
@@ -97,6 +102,11 @@ export async function runAgentForNode(nodeId: string, task?: string) {
 
   store.updateAgentMessage(nodeId, msgId, { streaming: false });
   store.setAgentStatus(nodeId, "done", "Finished — awaiting next task.");
+  store.pushActivity({
+    kind: "agent_message",
+    text: `${persona.name} finished and produced a ${text.length}-char response.`,
+    nodeId,
+  });
 
   // 5) Parse [autumn-bus] message_peer handoff lines and route them.
   routeBusHandoffs(nodeId, text);
@@ -184,6 +194,15 @@ function routeBusHandoffs(nodeId: string, text: string) {
       authorName: useAutumnStore
         .getState()
         .nodes.find((n) => n.id === nodeId)?.name,
+    });
+
+    // Record in the activity log.
+    const fromName = useAutumnStore.getState().nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
+    store.pushActivity({
+      kind: "bus_message_peer",
+      text: `${fromName} → ${peerNode.name}: ${message.slice(0, 80)}${message.length > 80 ? "…" : ""}`,
+      nodeId: peerNode.id,
+      meta: { fromNodeId: nodeId, toNodeId: peerNode.id, edgeId: edge.id },
     });
   }
 }

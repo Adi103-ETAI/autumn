@@ -3,6 +3,7 @@
 
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { cn } from "@/lib/utils";
@@ -164,17 +165,43 @@ const STICKY_COLORS: Record<string, string> = {
   violet: "bg-violet-400/90 text-violet-950 border-violet-300",
   cyan: "bg-cyan-400/90 text-cyan-950 border-cyan-300",
 };
+const STICKY_ROTATIONS = ["-2deg", "1deg", "-1deg", "2deg", "0deg"];
 export function StickyNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StickyData;
   const colorClass = STICKY_COLORS[d.color ?? "amber"] ?? STICKY_COLORS.amber;
   const removeNode = useAutumnStore((s) => s.removeNode);
+  const updateNodeData = useAutumnStore((s) => s.updateNodeData);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(d.text);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (editing && taRef.current) {
+      taRef.current.focus();
+      taRef.current.select();
+    }
+  }, [editing]);
+
+  // Stable rotation per node id.
+  const rotation =
+    STICKY_ROTATIONS[
+      id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) %
+        STICKY_ROTATIONS.length
+    ];
+
+  const commit = () => {
+    updateNodeData(id, { text: draft.trim() || "New note" });
+    setEditing(false);
+  };
+
   return (
     <div
       className={cn(
-        "w-[200px] rounded-sm border shadow-md transition-all rotate-[-1deg] hover:rotate-0",
+        "w-[200px] rounded-sm border shadow-md transition-all hover:rotate-0 hover:scale-[1.02]",
         colorClass,
         selected && "ring-2 ring-amber-500/50",
       )}
+      style={{ transform: `rotate(${rotation})` }}
     >
       <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
       <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
@@ -192,9 +219,36 @@ export function StickyNode({ id, data, selected }: NodeProps) {
             <X className="size-3" />
           </button>
         </div>
-        <div className="text-xs leading-relaxed whitespace-pre-wrap">
-          {d.text}
-        </div>
+        {editing ? (
+          <textarea
+            ref={taRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                commit();
+              }
+              if (e.key === "Escape") {
+                setDraft(d.text);
+                setEditing(false);
+              }
+            }}
+            className="w-full bg-white/40 border border-black/20 rounded-sm p-1 text-xs leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-black/40 min-h-[60px]"
+          />
+        ) : (
+          <div
+            onDoubleClick={() => {
+              setDraft(d.text);
+              setEditing(true);
+            }}
+            className="text-xs leading-relaxed whitespace-pre-wrap cursor-text"
+            title="Double-click to edit"
+          >
+            {d.text}
+          </div>
+        )}
       </div>
     </div>
   );

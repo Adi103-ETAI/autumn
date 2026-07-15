@@ -39,6 +39,7 @@ export function HelpDialog() {
   const show = useAutumnStore((s) => s.showHelp);
   const setShow = useAutumnStore((s) => s.setShowHelp);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
+  const setPendingCommand = useAutumnStore((s) => s.setPendingCommand);
 
   return (
     <Dialog open={show} onOpenChange={setShow}>
@@ -97,15 +98,13 @@ export function HelpDialog() {
                 <button
                   key={i}
                   onClick={() => {
-                    useAutumnStore.setState({
-                      // prefill the commander input by switching tab + setting a hint
-                    });
                     setRightPanelTab("commander");
+                    setPendingCommand(ex.text);
                     setShow(false);
                   }}
-                  className="w-full text-left rounded-md border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-border px-3 py-2 transition-colors"
+                  className="w-full text-left rounded-md border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-amber-500/40 px-3 py-2 transition-colors group"
                 >
-                  <div className="text-sm font-medium text-amber-200">
+                  <div className="text-sm font-medium text-amber-200 group-hover:text-amber-100">
                     "{ex.text}"
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">

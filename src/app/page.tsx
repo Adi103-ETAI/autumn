@@ -5,6 +5,7 @@
 
 import { useEffect } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
 import { TopBar } from "@/components/autumn/TopBar";
 import { Dock } from "@/components/autumn/Dock";
 import { CanvasView } from "@/components/autumn/CanvasView";
@@ -16,8 +17,14 @@ import { StatusBar } from "@/components/autumn/StatusBar";
 import { HelpDialog } from "@/components/autumn/HelpDialog";
 import { AgentSettingsDialog } from "@/components/autumn/AgentSettingsDialog";
 import { CanvasSwitcher } from "@/components/autumn/CanvasSwitcher";
+import { CommandPalette } from "@/components/autumn/CommandPalette";
+import { ExportImportDialog } from "@/components/autumn/ExportImportDialog";
+import { ActivityTimeline } from "@/components/autumn/ActivityTimeline";
+import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
 
 export default function Home() {
+  useKeyboardShortcuts();
+
   const tab = useAutumnStore((s) => s.rightPanelTab);
   const showHelp = useAutumnStore((s) => s.showHelp);
   const setShowHelp = useAutumnStore((s) => s.setShowHelp);
@@ -29,6 +36,8 @@ export default function Home() {
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
   const showCanvasSwitcher = useAutumnStore((s) => s.showCanvasSwitcher);
   const setShowCanvasSwitcher = useAutumnStore((s) => s.setShowCanvasSwitcher);
+  const showActivityLog = useAutumnStore((s) => s.showActivityLog);
+  const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
 
   // Open help on first visit.
   useEffect(() => {
@@ -53,15 +62,18 @@ export default function Home() {
           <CanvasView />
         </main>
         <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
-          {showAgentChat && selectedNodeId ? (
-            <AgentChatPanel nodeId={selectedNodeId} />
-          ) : tab === "commander" ? (
-            <CommanderPanel />
-          ) : tab === "tasks" ? (
-            <TaskBoard />
-          ) : (
-            <BusTrafficPanel />
-          )}
+          <RightPanelTabs />
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {showAgentChat && selectedNodeId ? (
+              <AgentChatPanel nodeId={selectedNodeId} />
+            ) : tab === "commander" ? (
+              <CommanderPanel />
+            ) : tab === "tasks" ? (
+              <TaskBoard />
+            ) : (
+              <BusTrafficPanel />
+            )}
+          </div>
         </aside>
       </div>
       <StatusBar />
@@ -74,6 +86,12 @@ export default function Home() {
       <CanvasSwitcher
         open={showCanvasSwitcher}
         onOpenChange={setShowCanvasSwitcher}
+      />
+      <CommandPalette />
+      <ExportImportDialog />
+      <ActivityTimeline
+        open={showActivityLog}
+        onOpenChange={setShowActivityLog}
       />
     </div>
   );

@@ -27,6 +27,9 @@ import {
   Check,
   Trash2,
   LayoutGrid,
+  Download,
+  Clock,
+  Command as CommandIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +39,9 @@ export function TopBar() {
   const resetCanvas = useAutumnStore((s) => s.resetCanvas);
   const setShowHelp = useAutumnStore((s) => s.setShowHelp);
   const setShowCanvasSwitcher = useAutumnStore((s) => s.setShowCanvasSwitcher);
+  const setShowCommandPalette = useAutumnStore((s) => s.setShowCommandPalette);
+  const setShowExportDialog = useAutumnStore((s) => s.setShowExportDialog);
+  const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
   const saveCanvas = useAutumnStore((s) => s.saveCanvas);
   const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
   const isSaving = useAutumnStore((s) => s.isSaving);
@@ -122,7 +128,25 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground"
+          className="gap-1.5 text-muted-foreground h-8"
+          onClick={() => setShowActivityLog(true)}
+        >
+          <Clock className="size-4" />
+          <span className="hidden md:inline">Activity</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground h-8"
+          onClick={() => setShowExportDialog(true)}
+        >
+          <Download className="size-4" />
+          <span className="hidden md:inline">Export</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground h-8"
           onClick={() => setShowHelp(true)}
         >
           <HelpCircle className="size-4" />
@@ -166,15 +190,37 @@ export function TopBar() {
             <DropdownMenuLabel>Canvas actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              onClick={() => setShowCommandPalette(true)}
+              className="gap-2"
+            >
+              <CommandIcon className="size-4" />
+              Command palette
+              <span className="ml-auto text-[9px] text-muted-foreground font-mono">⌘K</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => setShowCanvasSwitcher(true)}
               className="gap-2"
             >
               <FolderOpen className="size-4" />
               Open canvas switcher
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setShowExportDialog(true)}
+              className="gap-2"
+            >
+              <Download className="size-4" />
+              Export / import JSON
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={arrangeNodes} className="gap-2">
               <LayoutGrid className="size-4" />
               Arrange nodes
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setShowActivityLog(true)}
+              className="gap-2"
+            >
+              <Clock className="size-4" />
+              Activity timeline
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setShowHelp(true)}

@@ -25,6 +25,29 @@ import {
 import { defaultModelFor } from "./harness-meta";
 import { buildSeedCanvas } from "./seed";
 
+export interface ActivityEntry {
+  id: string;
+  ts: number;
+  kind:
+    | "commander_plan"
+    | "agent_status"
+    | "agent_message"
+    | "bus_message_peer"
+    | "task_claim"
+    | "task_complete"
+    | "task_add"
+    | "node_added"
+    | "node_removed"
+    | "edge_added"
+    | "edge_removed"
+    | "canvas_saved"
+    | "canvas_loaded"
+    | "canvas_cleared";
+  text: string;
+  nodeId?: string;
+  meta?: Record<string, unknown>;
+}
+
 export interface CommanderChatMessage {
   id: string;
   role: "user" | "commander";
@@ -62,6 +85,12 @@ export interface AutumnStore {
   saveError: string | null;
   settingsNodeId: string | null; // chat node currently being edited in settings dialog
   showCanvasSwitcher: boolean;
+  showCommandPalette: boolean;
+  showExportDialog: boolean;
+  showActivityLog: boolean;
+  pendingCommand: string | null; // when set, CommanderPanel will auto-send this command
+  connectMode: { from: string | null } | null; // when active, next clicked chat node becomes the target
+  activityLog: ActivityEntry[]; // global append-only activity timeline
 
   // ---- actions ----
   setCanvasName: (name: string) => void;
@@ -71,11 +100,21 @@ export interface AutumnStore {
   setShowHelp: (v: boolean) => void;
   setSettingsNode: (id: string | null) => void;
   setShowCanvasSwitcher: (v: boolean) => void;
+  setShowCommandPalette: (v: boolean) => void;
+  setShowExportDialog: (v: boolean) => void;
+  setShowActivityLog: (v: boolean) => void;
+  setPendingCommand: (cmd: string | null) => void;
+  setConnectMode: (m: { from: string | null } | null) => void;
+  pushActivity: (e: Omit<ActivityEntry, "id" | "ts">) => void;
+  clearActivity: () => void;
   pushCommandHistory: (cmd: string) => void;
   arrangeNodes: () => void;
   clearCanvas: () => void;
   saveCanvas: () => Promise<void>;
   loadCanvas: (id: string) => Promise<void>;
+  duplicateCanvas: (id: string) => Promise<void>;
+  exportCanvas: () => string; // returns JSON string
+  importCanvas: (json: string) => boolean; // returns success
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -142,6 +181,19 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   saveError: null,
   settingsNodeId: null,
   showCanvasSwitcher: false,
+  showCommandPalette: false,
+  showExportDialog: false,
+  showActivityLog: false,
+  pendingCommand: null,
+  connectMode: null,
+  activityLog: [
+    {
+      id: "seed-act-1",
+      ts: Date.now(),
+      kind: "node_added",
+      text: "Workshop seeded with Atlas, Apollo, Orion, and a screen preview.",
+    },
+  ],
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
@@ -150,6 +202,20 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   setShowHelp: (v) => set({ showHelp: v }),
   setSettingsNode: (id) => set({ settingsNodeId: id }),
   setShowCanvasSwitcher: (v) => set({ showCanvasSwitcher: v }),
+  setShowCommandPalette: (v) => set({ showCommandPalette: v }),
+  setShowExportDialog: (v) => set({ showExportDialog: v }),
+  setShowActivityLog: (v) => set({ showActivityLog: v }),
+  setPendingCommand: (cmd) => set({ pendingCommand: cmd }),
+  setConnectMode: (m) => set({ connectMode: m }),
+
+  pushActivity: (e) =>
+    set((s) => ({
+      activityLog: [
+        ...s.activityLog,
+        { ...e, id: `act-${nanoid(8)}`, ts: Date.now() },
+      ].slice(-200),
+    })),
+  clearActivity: () => set({ activityLog: [] }),
 
   pushCommandHistory: (cmd) =>
     set((s) => ({
@@ -157,30 +223,119 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     })),
 
   arrangeNodes: () => {
-    // Simple auto-layout: chat nodes in a row, other nodes below in a grid.
+    // Tiered auto-layout:
+    //   Tier 0 — chat nodes with no incoming bus edges (roots)
+    //   Tier 1 — chat nodes reached from tier 0 via bus edges
+    //   Tier 2 — chat nodes reached from tier 1 (and so on)
+    //   Tier 3+ — non-chat nodes (terminal, screen, sticky, analytics, browser, remotion)
+    //             grouped by kind, in a grid below.
     const nodes = get().nodes;
-    const chats = nodes.filter((n) => n.kind === "chat");
-    const others = nodes.filter((n) => n.kind !== "chat");
+    const edges = get().edges;
+    const busEdges = edges.filter((e) => e.kind === "bus");
+
+    const chatNodes = nodes.filter((n) => n.kind === "chat");
+    const otherNodes = nodes.filter((n) => n.kind !== "chat");
+
+    // Build adjacency for chat nodes via bus edges.
+    const incoming = new Map<string, string[]>();
+    const outgoing = new Map<string, string[]>();
+    for (const n of chatNodes) {
+      incoming.set(n.id, []);
+      outgoing.set(n.id, []);
+    }
+    for (const e of busEdges) {
+      if (incoming.has(e.target) && outgoing.has(e.source)) {
+        incoming.get(e.target)!.push(e.source);
+        outgoing.get(e.source)!.push(e.target);
+      }
+    }
+
+    // BFS tiers from roots (no incoming).
+    const tierOf = new Map<string, number>();
+    const roots = chatNodes.filter((n) => incoming.get(n.id)!.length === 0);
+    let queue: string[] = roots.map((n) => n.id);
+    roots.forEach((n) => tierOf.set(n.id, 0));
+    while (queue.length) {
+      const next: string[] = [];
+      for (const id of queue) {
+        const t = tierOf.get(id) ?? 0;
+        for (const child of outgoing.get(id) ?? []) {
+          if (!tierOf.has(child)) {
+            tierOf.set(child, t + 1);
+            next.push(child);
+          }
+        }
+      }
+      queue = next;
+    }
+    // Any disconnected chats go to tier 0.
+    for (const n of chatNodes) if (!tierOf.has(n.id)) tierOf.set(n.id, 0);
+
+    // Group chats by tier.
+    const tiers = new Map<number, string[]>();
+    for (const n of chatNodes) {
+      const t = tierOf.get(n.id) ?? 0;
+      if (!tiers.has(t)) tiers.set(t, []);
+      tiers.get(t)!.push(n.id);
+    }
+
     const updated: AutumnNode[] = [];
-    chats.forEach((n, i) => {
-      updated.push({
-        ...n,
-        position: { x: 80 + i * 360, y: 140 },
+    const COL_W = 320;
+    const ROW_H = 220;
+    const PAD_X = 80;
+    const PAD_Y = 80;
+
+    // Place chats tier-by-tier (rows), spread horizontally within each tier.
+    const tierKeys = Array.from(tiers.keys()).sort((a, b) => a - b);
+    tierKeys.forEach((t) => {
+      const ids = tiers.get(t)!;
+      ids.forEach((id, i) => {
+        const n = nodes.find((x) => x.id === id)!;
+        updated.push({
+          ...n,
+          position: {
+            x: PAD_X + i * COL_W,
+            y: PAD_Y + t * ROW_H,
+          },
+        });
       });
     });
-    others.forEach((n, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      updated.push({
-        ...n,
-        position: { x: 80 + col * 360, y: 460 + row * 260 },
+
+    // Non-chat nodes: grouped by kind, in a grid below all chat tiers.
+    const NON_CHAT_ROW = PAD_Y + tierKeys.length * ROW_H + 40;
+    const byKind = new Map<string, typeof otherNodes>();
+    for (const n of otherNodes) {
+      if (!byKind.has(n.kind)) byKind.set(n.kind, []);
+      byKind.get(n.kind)!.push(n);
+    }
+    let col = 0;
+    for (const [, group] of byKind) {
+      group.forEach((n, i) => {
+        updated.push({
+          ...n,
+          position: {
+            x: PAD_X + col * (COL_W * 0.7),
+            y: NON_CHAT_ROW + i * 100,
+          },
+        });
       });
-    });
+      col += 1;
+    }
+
     set({ nodes: updated });
+    get().pushActivity({
+      kind: "commander_plan",
+      text: `Auto-arranged ${updated.length} node${updated.length === 1 ? "" : "s"} into a tiered layout.`,
+    });
   },
 
-  clearCanvas: () =>
-    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], selectedNodeId: null }),
+  clearCanvas: () => {
+    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], selectedNodeId: null });
+    get().pushActivity({
+      kind: "canvas_cleared",
+      text: "Cleared all nodes, edges, and tasks from the canvas.",
+    });
+  },
 
   saveCanvas: async () => {
     const s = get();
@@ -204,6 +359,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       if (!r.ok) throw new Error(`save ${r.status}`);
       const j = await r.json();
       set({ isSaving: false, lastSavedAt: Date.now(), canvasId: j.id ?? s.canvasId });
+      get().pushActivity({
+        kind: "canvas_saved",
+        text: `Saved "${s.canvasName}" to the local database.`,
+      });
     } catch (err) {
       set({
         isSaving: false,
@@ -231,11 +390,83 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         isSaving: false,
         lastSavedAt: Date.now(),
       });
+      get().pushActivity({
+        kind: "canvas_loaded",
+        text: `Loaded "${j.name ?? "Untitled Canvas"}" from the database.`,
+      });
     } catch (err) {
       set({
         isSaving: false,
         saveError: err instanceof Error ? err.message : "load failed",
       });
+    }
+  },
+
+  duplicateCanvas: async (id) => {
+    try {
+      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
+      if (!r.ok) throw new Error(`fetch ${r.status}`);
+      const j = await r.json();
+      const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
+      const newId = `canvas-${nanoid(10)}`;
+      const newName = `${j.name ?? "Untitled Canvas"} (copy)`;
+      const r2 = await fetch("/api/canvas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: newId, name: newName, state: JSON.stringify(state) }),
+      });
+      if (!r2.ok) throw new Error(`dup ${r2.status}`);
+      get().pushActivity({
+        kind: "canvas_saved",
+        text: `Duplicated canvas as "${newName}".`,
+      });
+    } catch (err) {
+      set({
+        saveError: err instanceof Error ? err.message : "duplicate failed",
+      });
+    }
+  },
+
+  exportCanvas: () => {
+    const s = get();
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: "autumn",
+      canvas: {
+        id: s.canvasId,
+        name: s.canvasName,
+        nodes: s.nodes,
+        edges: s.edges,
+        tasks: s.tasks,
+        taskSeq: s.taskSeq,
+      },
+    };
+    return JSON.stringify(payload, null, 2);
+  },
+
+  importCanvas: (json) => {
+    try {
+      const parsed = JSON.parse(json);
+      const c = parsed.canvas ?? parsed;
+      if (!Array.isArray(c.nodes) || !Array.isArray(c.edges)) return false;
+      set({
+        canvasId: `canvas-${nanoid(10)}`,
+        canvasName: c.name ?? "Imported Canvas",
+        nodes: c.nodes,
+        edges: c.edges,
+        tasks: c.tasks ?? [],
+        taskSeq: c.taskSeq ?? 0,
+        pulses: [],
+        selectedNodeId: null,
+      });
+      get().pushActivity({
+        kind: "canvas_loaded",
+        text: `Imported canvas with ${c.nodes.length} nodes and ${c.edges.length} edges.`,
+      });
+      return true;
+    } catch {
+      return false;
     }
   },
 
@@ -250,6 +481,11 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       createdAt: Date.now(),
     };
     set((s) => ({ nodes: [...s.nodes, node] }));
+    get().pushActivity({
+      kind: "node_added",
+      text: `Added ${node.kind} node "${node.name}".`,
+      nodeId: id,
+    });
     return id;
   },
 
@@ -266,11 +502,24 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     })),
 
   removeNode: (id) =>
-    set((s) => ({
-      nodes: s.nodes.filter((n) => n.id !== id),
-      edges: s.edges.filter((e) => e.source !== id && e.target !== id),
-      selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
-    })),
+    set((s) => {
+      const node = s.nodes.find((n) => n.id === id);
+      if (node) {
+        // Defer the activity log to after the state set.
+        queueMicrotask(() =>
+          get().pushActivity({
+            kind: "node_removed",
+            text: `Removed ${node.kind} node "${node.name}".`,
+            nodeId: id,
+          }),
+        );
+      }
+      return {
+        nodes: s.nodes.filter((n) => n.id !== id),
+        edges: s.edges.filter((e) => e.source !== id && e.target !== id),
+        selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
+      };
+    }),
 
   moveNode: (id, x, y) =>
     set((s) => ({
@@ -301,6 +550,12 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       animated: kind === "bus",
     };
     set((s) => ({ edges: [...s.edges, edge] }));
+    const fromName = get().nodes.find((n) => n.id === from)?.name ?? from;
+    const toName = get().nodes.find((n) => n.id === to)?.name ?? to;
+    get().pushActivity({
+      kind: "edge_added",
+      text: `Connected ${fromName} → ${toName} (${kind}).`,
+    });
   },
 
   disconnectNodes: (from, to) =>
@@ -334,6 +589,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       updatedAt: Date.now(),
     };
     set((s) => ({ tasks: [...s.tasks, task], taskSeq: seq }));
+    get().pushActivity({
+      kind: "task_add",
+      text: `Added task t${seq}: "${description.slice(0, 60)}".`,
+    });
     return id;
   },
 
@@ -443,6 +702,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       if (createdId) createdIds.push(createdId);
       get().pushRecentAction(`${step.action}(${JSON.stringify(step.args).slice(0, 60)})`);
     }
+    get().pushActivity({
+      kind: "commander_plan",
+      text: `Commander executed ${plan.steps.length} action${plan.steps.length === 1 ? "" : "s"}: ${plan.steps.map((s) => s.action).join(", ")}.`,
+    });
     return createdIds;
   },
 

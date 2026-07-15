@@ -12,11 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   Send,
   Mic,
   MicOff,
@@ -25,7 +20,6 @@ import {
   Volume2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 
 export function CommanderPanel() {
   const messages = useAutumnStore((s) => s.commanderMessages);
@@ -39,11 +33,10 @@ export function CommanderPanel() {
   const recentActions = useAutumnStore((s) => s.recentActions);
   const nodes = useAutumnStore((s) => s.nodes);
   const edges = useAutumnStore((s) => s.edges);
-  const tasks = useAutumnStore((s) => s.tasks);
-  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
-  const tab = useAutumnStore((s) => s.rightPanelTab);
   const commandHistory = useAutumnStore((s) => s.commandHistory);
   const pushCommandHistory = useAutumnStore((s) => s.pushCommandHistory);
+  const pendingCommand = useAutumnStore((s) => s.pendingCommand);
+  const setPendingCommand = useAutumnStore((s) => s.setPendingCommand);
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,6 +50,15 @@ export function CommanderPanel() {
       behavior: "smooth",
     });
   }, [messages.length, isThinking]);
+
+  // Watch for pending commands (from Help dialog examples, command palette, etc.).
+  useEffect(() => {
+    if (pendingCommand && !isThinking) {
+      const cmd = pendingCommand;
+      setPendingCommand(null);
+      void send(cmd);
+    }
+  }, [pendingCommand, isThinking, setPendingCommand]);
 
   const buildSnapshot = (): CanvasSnapshot => ({
     nodes: nodes
@@ -84,8 +86,8 @@ export function CommanderPanel() {
       .map((e) => ({ from: e.source, to: e.target })),
   });
 
-  const send = async () => {
-    const cmd = input.trim();
+  const send = async (overrideCmd?: string) => {
+    const cmd = (overrideCmd ?? input).trim();
     if (!cmd || isThinking) return;
     setInput("");
     pushCommandHistory(cmd);
@@ -229,24 +231,6 @@ export function CommanderPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tabs */}
-      <div className="border-b border-border/50 px-2 py-2">
-        <Tabs value={tab} onValueChange={(v) => setRightPanelTab(v as "commander" | "tasks" | "bus")}>
-          <TabsList className="grid w-full grid-cols-3 bg-muted/30">
-            <TabsTrigger value="commander" className="text-xs gap-1">
-              <Sparkles className="size-3" />
-              Commander
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs">
-              Tasks ({tasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="bus" className="text-xs">
-              Bus
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}

@@ -6,11 +6,6 @@
 
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import {
@@ -27,8 +22,6 @@ export function BusTrafficPanel() {
   const edges = useAutumnStore((s) => s.edges);
   const nodes = useAutumnStore((s) => s.nodes);
   const clearPulses = useAutumnStore((s) => s.clearPulses);
-  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
-  const tab = useAutumnStore((s) => s.rightPanelTab);
 
   const nodeName = (id: string) => {
     const n = nodes.find((x) => x.id === id);
@@ -40,23 +33,6 @@ export function BusTrafficPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border/50 px-2 py-2">
-        <Tabs value={tab} onValueChange={(v) => setRightPanelTab(v as "commander" | "tasks" | "bus")}>
-          <TabsList className="grid w-full grid-cols-3 bg-muted/30">
-            <TabsTrigger value="commander" className="text-xs">
-              Commander
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs">
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="bus" className="text-xs gap-1">
-              <Radio className="size-3" />
-              Bus
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
       {/* Bus overview */}
       <div className="p-3 border-b border-border/50 space-y-2">
         <div className="flex items-center gap-2 text-xs">

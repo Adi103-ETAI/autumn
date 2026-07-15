@@ -7,11 +7,6 @@ import { useAutumnStore } from "@/lib/autumn/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
   CheckCircle2,
   Circle,
   Clock,
@@ -37,8 +32,6 @@ export function TaskBoard() {
   const addTask = useAutumnStore((s) => s.addTask);
   const completeTask = useAutumnStore((s) => s.completeTask);
   const claimTask = useAutumnStore((s) => s.claimTask);
-  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
-  const tab = useAutumnStore((s) => s.rightPanelTab);
 
   const [newTask, setNewTask] = useState("");
   const [showInput, setShowInput] = useState(false);
@@ -50,22 +43,6 @@ export function TaskBoard() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border/50 px-2 py-2">
-        <Tabs value={tab} onValueChange={(v) => setRightPanelTab(v as "commander" | "tasks" | "bus")}>
-          <TabsList className="grid w-full grid-cols-3 bg-muted/30">
-            <TabsTrigger value="commander" className="text-xs">
-              Commander
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs">
-              Tasks ({tasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="bus" className="text-xs">
-              Bus
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 p-3 border-b border-border/50">
         <div className="rounded-md bg-emerald-500/5 border border-emerald-500/20 px-2 py-1.5">

@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -12,6 +12,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  useReactFlow,
   type Node,
   type Edge,
   type NodeChange,
@@ -33,6 +34,8 @@ import {
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { Cable, Sparkles, Bot } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const nodeTypes = {
   chat: ChatNode,
@@ -65,6 +68,20 @@ function CanvasInner() {
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const moveNode = useAutumnStore((s) => s.moveNode);
   const connectNodes = useAutumnStore((s) => s.connectNodes);
+  const connectMode = useAutumnStore((s) => s.connectMode);
+  const setConnectMode = useAutumnStore((s) => s.setConnectMode);
+  const addNode = useAutumnStore((s) => s.addNode);
+  const resetCanvas = useAutumnStore((s) => s.resetCanvas);
+  const { fitView } = useReactFlow();
+  const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
+  const isEmpty = nodes.length === 0;
+
+  // Listen for "autumn:fit-view" custom events from the Command Palette.
+  useEffect(() => {
+    const handler = () => fitView({ padding: 0.2, duration: 400 });
+    window.addEventListener("autumn:fit-view", handler);
+    return () => window.removeEventListener("autumn:fit-view", handler);
+  }, [fitView]);
 
   // Convert Autumn domain model → react-flow nodes/edges.
   const rfNodes: Node[] = useMemo(
@@ -93,6 +110,20 @@ function CanvasInner() {
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      const store = useAutumnStore.getState();
+      // If we're in connect mode, intercept selection events to wire nodes.
+      if (store.connectMode?.from) {
+        for (const c of changes) {
+          if (c.type === "select" && c.selected && c.id !== store.connectMode.from) {
+            const targetNode = store.nodes.find((n) => n.id === c.id);
+            if (targetNode && targetNode.kind === "chat") {
+              store.connectNodes(store.connectMode.from, c.id, "bus");
+              store.setConnectMode(null);
+              return;
+            }
+          }
+        }
+      }
       // Apply position changes back to the store.
       for (const c of changes) {
         if (c.type === "position" && c.position) {
@@ -134,6 +165,56 @@ function CanvasInner() {
 
   return (
     <div className="absolute inset-0 autumn-canvas">
+      {/* Empty state */}
+      {isEmpty && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="text-center max-w-md px-6 pointer-events-auto fade-in-up">
+            <div className="size-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/10">
+              <Sparkles className="size-6 text-amber-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-1.5">An empty workshop</h3>
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Add a node from the left dock, ask the Commander to spawn one, or reset to the seed canvas to get started.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => addNode({ kind: "chat" })}
+              >
+                <Bot className="size-3.5" />
+                Add an agent
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => resetCanvas()}
+              >
+                Reset to seed
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Connect-mode banner */}
+      {connectMode?.from && fromNode && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 fade-in-up">
+          <div className="flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/15 backdrop-blur-md px-3 py-1.5 shadow-lg">
+            <Cable className="size-3.5 text-amber-300 animate-pulse" />
+            <span className="text-xs text-amber-100">
+              Click another agent to wire{" "}
+              <strong className="font-semibold">{fromNode.name}</strong>{" "}
+              → them
+            </span>
+            <button
+              onClick={() => setConnectMode(null)}
+              className="ml-1 text-[10px] text-amber-200/70 hover:text-amber-100 underline"
+            >
+              cancel
+            </button>
+          </div>
+        </div>
+      )}
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}

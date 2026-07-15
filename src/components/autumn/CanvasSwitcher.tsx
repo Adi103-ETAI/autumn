@@ -23,6 +23,7 @@ import {
   FileBox,
   Loader2,
   Plus,
+  Copy,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -42,6 +43,7 @@ export function CanvasSwitcher({
 }) {
   const loadCanvas = useAutumnStore((s) => s.loadCanvas);
   const resetCanvas = useAutumnStore((s) => s.resetCanvas);
+  const duplicateCanvas = useAutumnStore((s) => s.duplicateCanvas);
   const currentId = useAutumnStore((s) => s.canvasId);
 
   const [list, setList] = useState<SavedCanvas[]>([]);
@@ -81,6 +83,11 @@ export function CanvasSwitcher({
     } catch {
       /* ignore */
     }
+  };
+
+  const handleDuplicate = async (id: string, name: string) => {
+    await duplicateCanvas(id);
+    void refresh();
   };
 
   const handleNew = () => {
@@ -185,6 +192,15 @@ export function CanvasSwitcher({
                     aria-label="Load canvas"
                   >
                     <FolderOpen className="size-3.5 text-amber-400" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => void handleDuplicate(c.id, c.name)}
+                    aria-label="Duplicate canvas"
+                  >
+                    <Copy className="size-3.5 text-sky-400" />
                   </Button>
                   <Button
                     variant="ghost"

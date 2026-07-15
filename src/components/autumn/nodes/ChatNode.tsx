@@ -19,6 +19,7 @@ import {
   Bot,
   Settings2,
   Trash2,
+  Cable,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -55,7 +56,12 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
+  const setConnectMode = useAutumnStore((s) => s.setConnectMode);
   const isRunning = useAutumnStore((s) => s.isAgentRunning[id] ?? false);
+  const connectMode = useAutumnStore((s) => s.connectMode);
+  const isConnectSource = connectMode?.from === id;
+  const isConnectTargetCandidate =
+    connectMode?.from !== null && connectMode?.from !== undefined && connectMode?.from !== id;
 
   const status = STATUS_STYLES[d.status] ?? STATUS_STYLES.idle;
   const lastMsg = d.messages[d.messages.length - 1];
@@ -63,6 +69,12 @@ export function ChatNode({ id, data, selected }: NodeProps) {
     lastMsg?.role === "assistant" || lastMsg?.role === "peer"
       ? lastMsg.text
       : d.doing ?? "Standing by.";
+  const peerCount = useAutumnStore(
+    (s) =>
+      s.edges.filter(
+        (e) => e.kind === "bus" && (e.source === id || e.target === id),
+      ).length,
+  );
 
   const handleOpen = () => {
     setSelectedNode(id);
@@ -73,6 +85,11 @@ export function ChatNode({ id, data, selected }: NodeProps) {
     void runAgentForNode(id);
   };
 
+  const handleStartConnect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConnectMode({ from: id });
+  };
+
   return (
     <div
       className={cn(
@@ -81,6 +98,9 @@ export function ChatNode({ id, data, selected }: NodeProps) {
           ? "border-amber-500/70 ring-2 ring-amber-500/30"
           : "border-border/60 hover:border-border",
         d.status === "working" && "agent-active",
+        isConnectSource && "ring-2 ring-amber-400/80 animate-pulse",
+        isConnectTargetCandidate &&
+          "ring-2 ring-emerald-400/60 cursor-crosshair hover:ring-emerald-400",
       )}
       style={{
         boxShadow: persona
@@ -146,6 +166,10 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             <DropdownMenuItem onClick={handleRun} className="gap-2">
               {isRunning ? "Re-run" : "Run now"}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleStartConnect} className="gap-2">
+              <Cable className="size-3.5" />
+              Connect to…
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setSettingsNode(id)}
               className="gap-2"
@@ -173,6 +197,15 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             {status.label}
           </span>
           <div className="flex-1" />
+          {peerCount > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[9px] text-muted-foreground/70"
+              title={`${peerCount} peer${peerCount === 1 ? "" : "s"} connected`}
+            >
+              <Cable className="size-2.5" />
+              {peerCount}
+            </span>
+          )}
           {d.effort && (
             <Badge variant="outline" className="text-[9px] h-4 px-1">
               {d.effort}
