@@ -221,3 +221,82 @@
   animation: wave-bar 0.8s ease-in-out infinite;
   transform-origin: center;
 }
+
+/* Node hover lift */
+.react-flow__node:not(.react-flow__node-selected):hover {
+  transition: transform 0.15s ease-out;
+}
+
+/* Glassmorphism panel helper */
+.glass-panel {
+  background: oklch(0.175 0.008 55 / 70%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.32 0.012 55 / 40%);
+}
+
+/* Subtle shimmer for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0.01 55 / 30%) 0%,
+    oklch(0.3 0.02 55 / 50%) 50%,
+    oklch(0.22 0.01 55 / 30%) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Fade-in animation for new nodes/messages */
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fade-in-up 0.25s ease-out;
+}
+
+/* Slide-in from right for panels */
+@keyframes slide-in-right {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+/* Pulse ring for bus live indicator */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 oklch(0.65 0.2 150 / 0.5); }
+  70% { box-shadow: 0 0 0 6px oklch(0.65 0.2 150 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.65 0.2 150 / 0); }
+}
+.pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Gradient text helper */
+.gradient-text-amber {
+  background: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Refined react-flow controls */
+.react-flow__controls-button {
+  border-bottom: 1px solid oklch(0.28 0.012 55 / 45%) !important;
+}
+.react-flow__controls-button svg {
+  fill: oklch(0.96 0.008 60);
+}
+
+/* MiniMap refinement */
+.react-flow__minimap {
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+}

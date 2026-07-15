@@ -14,6 +14,8 @@ import { TaskBoard } from "@/components/autumn/TaskBoard";
 import { BusTrafficPanel } from "@/components/autumn/BusTrafficPanel";
 import { StatusBar } from "@/components/autumn/StatusBar";
 import { HelpDialog } from "@/components/autumn/HelpDialog";
+import { AgentSettingsDialog } from "@/components/autumn/AgentSettingsDialog";
+import { CanvasSwitcher } from "@/components/autumn/CanvasSwitcher";
 
 export default function Home() {
   const tab = useAutumnStore((s) => s.rightPanelTab);
@@ -23,6 +25,10 @@ export default function Home() {
   const selectedNode = useAutumnStore((s) =>
     s.nodes.find((n) => n.id === s.selectedNodeId),
   );
+  const settingsNodeId = useAutumnStore((s) => s.settingsNodeId);
+  const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
+  const showCanvasSwitcher = useAutumnStore((s) => s.showCanvasSwitcher);
+  const setShowCanvasSwitcher = useAutumnStore((s) => s.setShowCanvasSwitcher);
 
   // Open help on first visit.
   useEffect(() => {
@@ -36,9 +42,7 @@ export default function Home() {
 
   // Show agent chat panel when a chat node is selected AND we're on the commander tab.
   const showAgentChat =
-    tab === "commander" &&
-    selectedNodeId &&
-    selectedNode?.kind === "chat";
+    tab === "commander" && selectedNodeId && selectedNode?.kind === "chat";
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -62,6 +66,15 @@ export default function Home() {
       </div>
       <StatusBar />
       {showHelp && <HelpDialog />}
+      <AgentSettingsDialog
+        nodeId={settingsNodeId}
+        open={settingsNodeId !== null}
+        onOpenChange={(v) => !v && setSettingsNode(null)}
+      />
+      <CanvasSwitcher
+        open={showCanvasSwitcher}
+        onOpenChange={setShowCanvasSwitcher}
+      />
     </div>
   );
 }

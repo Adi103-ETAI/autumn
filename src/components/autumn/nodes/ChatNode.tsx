@@ -17,6 +17,8 @@ import {
   Square,
   MoreHorizontal,
   Bot,
+  Settings2,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -52,6 +54,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   const removeNode = useAutumnStore((s) => s.removeNode);
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
+  const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
   const isRunning = useAutumnStore((s) => s.isAgentRunning[id] ?? false);
 
   const status = STATUS_STYLES[d.status] ?? STATUS_STYLES.idle;
@@ -73,7 +76,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "w-[280px] rounded-xl border bg-card/95 backdrop-blur shadow-xl transition-all",
+        "w-[280px] rounded-xl border bg-card/95 backdrop-blur shadow-xl transition-all relative overflow-hidden",
         selected
           ? "border-amber-500/70 ring-2 ring-amber-500/30"
           : "border-border/60 hover:border-border",
@@ -85,6 +88,15 @@ export function ChatNode({ id, data, selected }: NodeProps) {
           : undefined,
       }}
     >
+      {/* Gradient top accent */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px]"
+        style={{
+          background: persona
+            ? `linear-gradient(90deg, ${persona.color}, ${persona.color}40, ${persona.color})`
+            : undefined,
+        }}
+      />
       <Handle
         type="target"
         position={Position.Left}
@@ -127,16 +139,26 @@ export function ChatNode({ id, data, selected }: NodeProps) {
               <MoreHorizontal className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={handleOpen}>Open chat</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleRun}>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleOpen} className="gap-2">
+              Open chat
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRun} className="gap-2">
               {isRunning ? "Re-run" : "Run now"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setSettingsNode(id)}
+              className="gap-2"
+            >
+              <Settings2 className="size-3.5" />
+              Settings…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => removeNode(id)}
-              className="text-rose-400"
+              className="gap-2 text-rose-400"
             >
+              <Trash2 className="size-3.5" />
               Remove agent
             </DropdownMenuItem>
           </DropdownMenuContent>

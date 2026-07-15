@@ -42,6 +42,8 @@ export function CommanderPanel() {
   const tasks = useAutumnStore((s) => s.tasks);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
   const tab = useAutumnStore((s) => s.rightPanelTab);
+  const commandHistory = useAutumnStore((s) => s.commandHistory);
+  const pushCommandHistory = useAutumnStore((s) => s.pushCommandHistory);
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -86,6 +88,7 @@ export function CommanderPanel() {
     const cmd = input.trim();
     if (!cmd || isThinking) return;
     setInput("");
+    pushCommandHistory(cmd);
     pushMessage({ role: "user", text: cmd });
     const pendingId = pushMessage({
       role: "commander",
@@ -331,6 +334,25 @@ export function CommanderPanel() {
 
       {/* Input */}
       <div className="border-t border-border/50 p-3 space-y-2">
+        {/* Command history quick-chips */}
+        {commandHistory.length > 0 && !input && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider mr-1">
+              recent
+            </span>
+            {commandHistory.slice(0, 4).map((cmd, i) => (
+              <button
+                key={i}
+                onClick={() => setInput(cmd)}
+                disabled={isThinking}
+                className="max-w-[140px] truncate text-[10px] rounded-full bg-muted/40 hover:bg-muted/70 border border-border/40 hover:border-border px-2 py-0.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                title={cmd}
+              >
+                {cmd}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="relative">
           <Textarea
             value={input}

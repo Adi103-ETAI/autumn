@@ -32,6 +32,7 @@ import {
   RemotionNode,
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
+import { CanvasToolbar } from "./CanvasToolbar";
 
 const nodeTypes = {
   chat: ChatNode,
@@ -169,6 +170,7 @@ function CanvasInner() {
           pannable
           zoomable
         />
+        <CanvasToolbar />
       </ReactFlow>
     </div>
   );

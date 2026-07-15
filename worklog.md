@@ -90,3 +90,73 @@ Stage Summary:
 - Console is clean (no errors). Lint passes. Dev server runs on port 3000.
 - **Tech stack used:** Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + @xyflow/react (react-flow v12) + Zustand + z-ai-web-dev-sdk (LLM) + Prisma/SQLite + react-markdown + Web Speech API (voice).
 - **Architecture mirrors October Desktop:** 7 node types (chat/terminal/screen/sticky/analytics/youtube/remotion), 2 edge types (bus/navigation), Commander with 30 DO_ACTIONS, AutumnBus with /mcp + /hook/* contract (adapted to /api/bus), message_peer coordination, shared task board with dependency edges, named agent personas with STT-robustness aliases.
+
+---
+Task ID: 2-polish-and-features
+Agent: cron-webDevReview (round 2)
+Task: QA testing via agent-browser, fix bugs, add new features (canvas persistence, agent settings, canvas toolbar, command history), and improve styling.
+
+Work Log:
+- **QA testing**: Opened the app in agent-browser (1440x900 viewport), tested all dock buttons (add agent/terminal/screen/note/analytics/browser/remotion), tested all 3 right-panel tabs (Commander/Tasks/Bus), tested chat node dropdown, tested the full E2E Commander flow. Console is clean, all API routes return 200. No runtime errors.
+- **Bug found**: New chat nodes created via the dock or `add_chat` action showed "default" as the model name instead of a real model. Root cause: `defaultDataForKind` and `executeStep` for `add_chat`/`add_agents` didn't set the `model` field.
+- **Bug fix**: Created `src/lib/autumn/harness-meta.ts` with `HARNESS_META` mapping each harness to its label, default model, available models, and color. Updated `store.ts` `defaultDataForKind`, `add_chat`, and `add_agents` to use `defaultModelFor(harness)`. New agents now show e.g. "claude-sonnet-4" or "gpt-5-codex". Also added `effort: "medium"` and `permission: "ask"` defaults.
+- **New feature: Canvas persistence** (Prisma DB):
+  - Created `src/app/api/canvas/route.ts` — GET (list single by id, or list all), POST (upsert save), DELETE. Uses `db.canvas` from Prisma.
+  - Added `saveCanvas()`, `loadCanvas(id)` async store actions that call the API. Added `isSaving`, `lastSavedAt`, `saveError` state. Added `clearCanvas()` and `arrangeNodes()` actions.
+  - TopBar "Save" button now actually saves (with toast feedback via sonner). Shows a spinner while saving and a "saved" indicator when done.
+  - Created `CanvasSwitcher.tsx` dialog — lists all saved canvases from DB with "updated X ago" timestamps, load/delete buttons, "current" badge, and "New canvas" button. Triggered from TopBar "Canvases" button + dropdown menu.
+  - Added `showCanvasSwitcher` + `setShowCanvasSwitcher` to store. Rendered at page level.
+- **New feature: Agent Settings dialog** (`AgentSettingsDialog.tsx`):
+  - Edit a chat node's display name, harness, model, effort (low/medium/high), and permission (ask/auto/yolo).
+  - Harness dropdown shows all 9 harnesses with color dots. Model dropdown updates dynamically based on selected harness (uses `HARNESS_META[harness].models`).
+  - Permission descriptions shown inline ("Confirms each tool use" / "Auto-approves safe file edits" / "No confirmation").
+  - Persona preview card at top with glyph + specialty.
+  - Triggered from chat node dropdown "Settings…" menu item. Added `settingsNodeId` + `setSettingsNode` to store. Rendered at page level.
+  - Wired the `set_chat_option` DO_ACTION in the store's `executeStep` — it patches model/effort/permission/harness on the node.
+- **New feature: Floating canvas toolbar** (`CanvasToolbar.tsx`):
+  - Bottom-center overlay inside the react-flow canvas (rendered inside `<ReactFlow>` so it has access to `useReactFlow` context).
+  - Quick-add buttons: agent (fuchsia), screen (sky), note (amber).
+  - Canvas actions: arrange nodes (emerald, calls `arrangeNodes()`), fit view (violet, calls `fitView()`).
+  - Danger zone: clear canvas (rose, with confirm dialog).
+  - Live stats: node count + edge count with colored dots.
+  - All buttons have tooltips.
+- **New feature: Command history quick-chips** (in CommanderPanel):
+  - Added `commandHistory` + `pushCommandHistory` to store (keeps last 8 unique commands).
+  - When the input is empty, shows up to 4 recent commands as clickable chips above the textarea. Clicking a chip prefills the input.
+  - Commands are pushed to history when sent.
+- **Styling polish** (globals.css):
+  - Added `.glass-panel` helper class for glassmorphism (backdrop-blur + semi-transparent bg + subtle border).
+  - Added `.shimmer` loading animation.
+  - Added `.fade-in-up` animation (for new messages/nodes).
+  - Added `.slide-in-right` animation (for panels).
+  - Added `.pulse-ring` animation (for live indicators).
+  - Added `.gradient-text-amber` helper (gradient clip text).
+  - Refined react-flow controls button styling (border + svg fill).
+  - Refined minimap with rounded corners + overflow hidden.
+  - Chat nodes now have a gradient top accent bar using the persona color.
+- **TopBar enhancements**: Added "Canvases" button, working "Save" button with spinner + status, arrange/clear in dropdown menu, toast notifications for save/share.
+- **Bug fix**: Initial CanvasToolbar was rendered outside `ReactFlowProvider` causing a client-side crash. Moved it inside the `<ReactFlow>` component in CanvasView.
+
+Stage Summary:
+- **All QA passes.** Console is clean (no errors/warnings), all API routes return 200, lint passes.
+- **Bug fixed**: New chat nodes now show real model names (claude-sonnet-4, gpt-5-codex, etc.) instead of "default".
+- **4 new features added**:
+  1. Canvas persistence — Save/Load/Delete canvases to Prisma SQLite DB via `/api/canvas` REST API + Canvas Switcher dialog.
+  2. Agent Settings dialog — edit name/harness/model/effort/permission per chat node, with dynamic model lists per harness.
+  3. Floating canvas toolbar — quick-add, arrange, fit view, clear canvas, live stats.
+  4. Command history quick-chips — recent commands as clickable chips in the Commander panel.
+- **E2E verified**: "spawn Juno and connect her to Atlas, then tell Juno to write tests" → Juno spawned (with model "claude-sonnet-4"), connected to Atlas, tasked, ran to completion, sent `message_peer → Atlas` handoff ("Test suite implemented with Jest, React Testing Library"). Atlas's status updated with the handoff. Command history chip appeared.
+- **Styling improved**: glassmorphism helpers, fade-in/slide-in animations, gradient text, refined react-flow controls/minimap, persona-colored top accent on chat nodes.
+
+Unresolved issues / risks:
+- Canvas state is stored as a JSON string in the `Canvas.state` column — works for SQLite but large canvases could hit row size limits in production. Consider separate nodes/edges tables for a production deployment.
+- The bus state (`/api/bus`) is in-memory per process — a server restart clears inboxes. For production, persist bus state to DB or use Yjs.
+- Voice input (Web Speech API) only works in Chrome/Edge; other browsers show an alert. Could add a fallback.
+- The `arrangeNodes()` layout is a simple grid; could be upgraded to a dagre-based auto-layout for complex graphs.
+
+Priority recommendations for next round:
+- Add dagre-based auto-layout for the "Arrange nodes" action.
+- Add a "duplicate canvas" feature in the Canvas Switcher.
+- Add keyboard shortcuts (⌘K for command palette, ⌘S for save, Delete for selected node).
+- Add a minimap toggle + canvas zoom level indicator.
+- Add export/import canvas as JSON file.

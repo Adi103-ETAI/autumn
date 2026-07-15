@@ -22,6 +22,7 @@ import {
   personaByName,
   resolvePersonaName,
 } from "./personas";
+import { defaultModelFor } from "./harness-meta";
 import { buildSeedCanvas } from "./seed";
 
 export interface CommanderChatMessage {
@@ -55,6 +56,12 @@ export interface AutumnStore {
   rightPanelTab: "commander" | "tasks" | "bus";
   isListening: boolean; // voice
   showHelp: boolean;
+  commandHistory: string[]; // recent user commands for quick-chips
+  isSaving: boolean;
+  lastSavedAt: number | null;
+  saveError: string | null;
+  settingsNodeId: string | null; // chat node currently being edited in settings dialog
+  showCanvasSwitcher: boolean;
 
   // ---- actions ----
   setCanvasName: (name: string) => void;
@@ -62,6 +69,13 @@ export interface AutumnStore {
   setRightPanelTab: (t: "commander" | "tasks" | "bus") => void;
   setListening: (v: boolean) => void;
   setShowHelp: (v: boolean) => void;
+  setSettingsNode: (id: string | null) => void;
+  setShowCanvasSwitcher: (v: boolean) => void;
+  pushCommandHistory: (cmd: string) => void;
+  arrangeNodes: () => void;
+  clearCanvas: () => void;
+  saveCanvas: () => Promise<void>;
+  loadCanvas: (id: string) => Promise<void>;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -122,12 +136,108 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   rightPanelTab: "commander",
   isListening: false,
   showHelp: false,
+  commandHistory: [],
+  isSaving: false,
+  lastSavedAt: null,
+  saveError: null,
+  settingsNodeId: null,
+  showCanvasSwitcher: false,
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setRightPanelTab: (t) => set({ rightPanelTab: t }),
   setListening: (v) => set({ isListening: v }),
   setShowHelp: (v) => set({ showHelp: v }),
+  setSettingsNode: (id) => set({ settingsNodeId: id }),
+  setShowCanvasSwitcher: (v) => set({ showCanvasSwitcher: v }),
+
+  pushCommandHistory: (cmd) =>
+    set((s) => ({
+      commandHistory: [cmd, ...s.commandHistory.filter((c) => c !== cmd)].slice(0, 8),
+    })),
+
+  arrangeNodes: () => {
+    // Simple auto-layout: chat nodes in a row, other nodes below in a grid.
+    const nodes = get().nodes;
+    const chats = nodes.filter((n) => n.kind === "chat");
+    const others = nodes.filter((n) => n.kind !== "chat");
+    const updated: AutumnNode[] = [];
+    chats.forEach((n, i) => {
+      updated.push({
+        ...n,
+        position: { x: 80 + i * 360, y: 140 },
+      });
+    });
+    others.forEach((n, i) => {
+      const col = i % 3;
+      const row = Math.floor(i / 3);
+      updated.push({
+        ...n,
+        position: { x: 80 + col * 360, y: 460 + row * 260 },
+      });
+    });
+    set({ nodes: updated });
+  },
+
+  clearCanvas: () =>
+    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], selectedNodeId: null }),
+
+  saveCanvas: async () => {
+    const s = get();
+    set({ isSaving: true, saveError: null });
+    try {
+      const payload = {
+        id: s.canvasId,
+        name: s.canvasName,
+        state: JSON.stringify({
+          nodes: s.nodes,
+          edges: s.edges,
+          tasks: s.tasks,
+          taskSeq: s.taskSeq,
+        }),
+      };
+      const r = await fetch("/api/canvas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) throw new Error(`save ${r.status}`);
+      const j = await r.json();
+      set({ isSaving: false, lastSavedAt: Date.now(), canvasId: j.id ?? s.canvasId });
+    } catch (err) {
+      set({
+        isSaving: false,
+        saveError: err instanceof Error ? err.message : "save failed",
+      });
+    }
+  },
+
+  loadCanvas: async (id) => {
+    set({ isSaving: true, saveError: null });
+    try {
+      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
+      if (!r.ok) throw new Error(`load ${r.status}`);
+      const j = await r.json();
+      const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
+      set({
+        canvasId: j.id ?? id,
+        canvasName: j.name ?? "Untitled Canvas",
+        nodes: state.nodes ?? [],
+        edges: state.edges ?? [],
+        tasks: state.tasks ?? [],
+        taskSeq: state.taskSeq ?? 0,
+        pulses: [],
+        selectedNodeId: null,
+        isSaving: false,
+        lastSavedAt: Date.now(),
+      });
+    } catch (err) {
+      set({
+        isSaving: false,
+        saveError: err instanceof Error ? err.message : "load failed",
+      });
+    }
+  },
 
   addNode: (partial) => {
     const id = partial.id ?? `node-${nanoid(8)}`;
@@ -413,6 +523,9 @@ function defaultDataForKind(kind: NodeKind): unknown {
       return {
         harness: p.harness,
         personaId: p.id,
+        model: defaultModelFor(p.harness),
+        effort: "medium" as const,
+        permission: "ask" as const,
         status: "idle",
         doing: "Standing by.",
         messages: [
@@ -479,6 +592,9 @@ function executeStep(
         data: {
           harness,
           personaId: persona.id,
+          model: defaultModelFor(harness),
+          effort: "medium",
+          permission: "ask",
           status: "idle",
           doing: "Standing by.",
           messages: [
@@ -511,6 +627,9 @@ function executeStep(
             data: {
               harness,
               personaId: persona.id,
+              model: defaultModelFor(harness),
+              effort: "medium",
+              permission: "ask",
               status: "idle",
               doing: "Standing by.",
               messages: [
@@ -628,6 +747,22 @@ function executeStep(
       const description = (args.description as string) ?? "Untitled task";
       const afterIds = (args.after as number[]) ?? [];
       store.addTask(description, afterIds);
+      return null;
+    }
+    case "set_chat_option": {
+      const id = store.resolveNodeRef(args.id as string, createdIds);
+      if (id) {
+        const patch: Record<string, unknown> = {};
+        if (args.model) patch.model = args.model;
+        if (args.effort) patch.effort = args.effort;
+        if (args.permission) patch.permission = args.permission;
+        if (args.harness) {
+          patch.harness = args.harness;
+          // update model default when harness changes
+          patch.model = defaultModelFor(args.harness as import("./types").AgentHarness);
+        }
+        store.updateNodeData(id, patch);
+      }
       return null;
     }
     case "arrange_nodes":
