@@ -1,0 +1,277 @@
+// Autumn — Agent chat panel (shown when a chat node is selected).
+// Shows the agent's message history and lets the user send it a new task.
+
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useAutumnStore } from "@/lib/autumn/store";
+import { runAgentForNode } from "@/lib/autumn/agent-runner";
+import { PERSONA_BY_ID } from "@/lib/autumn/personas";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  ArrowLeft,
+  Send,
+  Play,
+  Square,
+  Bot,
+  Sparkles,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+
+export function AgentChatPanel({ nodeId }: { nodeId: string }) {
+  const node = useAutumnStore((s) => s.nodes.find((n) => n.id === nodeId));
+  const isRunning = useAutumnStore((s) => s.isAgentRunning[nodeId] ?? false);
+  const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
+  const appendAgentMessage = useAutumnStore((s) => s.appendAgentMessage);
+  const setAgentStatus = useAutumnStore((s) => s.setAgentStatus);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
+
+  const data = node?.data as {
+    harness?: string;
+    personaId?: string;
+    status?: string;
+    doing?: string;
+    model?: string;
+    effort?: string;
+    messages: {
+      id: string;
+      role: string;
+      text: string;
+      authorName?: string;
+      streaming?: boolean;
+      ts: number;
+    }[];
+  };
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [data?.messages.length, isRunning]);
+
+  if (!node || node.kind !== "chat") {
+    return (
+      <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground">
+        Select an agent to view its chat.
+      </div>
+    );
+  }
+
+  const persona = PERSONA_BY_ID[data.personaId ?? ""];
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || isRunning) return;
+    setInput("");
+    appendAgentMessage(nodeId, { role: "user", text, authorName: "You" });
+    setAgentStatus(nodeId, "working", "Task received.");
+    await runAgentForNode(nodeId, text);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void send();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="border-b border-border/50 px-3 py-2 flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={() => setSelectedNode(null)}
+        >
+          <ArrowLeft className="size-3.5" />
+        </Button>
+        <div
+          className="size-7 rounded-md flex items-center justify-center text-white text-xs font-bold shadow"
+          style={{ background: persona?.color }}
+        >
+          {persona?.glyph ?? <Bot className="size-3.5" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold leading-tight truncate">
+            {persona?.name ?? node.name}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {data.harness} · {data.model ?? "default"}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant={isRunning ? "secondary" : "default"}
+          className="h-7 text-[11px] gap-1"
+          onClick={() => void runAgentForNode(nodeId)}
+          disabled={isRunning}
+        >
+          {isRunning ? (
+            <>
+              <Square className="size-3" /> Running
+            </>
+          ) : (
+            <>
+              <Play className="size-3" /> Run
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Persona tagline */}
+      <div className="px-3 py-1.5 border-b border-border/50 bg-muted/20">
+        <div className="text-[10px] text-muted-foreground italic">
+          {persona?.tagline} · {persona?.specialty}
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              data.status === "working" && "bg-emerald-400 animate-pulse",
+              data.status === "thinking" && "bg-amber-400 animate-pulse",
+              data.status === "done" && "bg-zinc-400",
+              data.status === "idle" && "bg-zinc-500",
+              data.status === "error" && "bg-rose-500",
+            )}
+          />
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+            {data.status ?? "idle"}
+          </span>
+          {data.doing && (
+            <span className="text-[10px] text-muted-foreground/70 truncate">
+              · {data.doing}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto autumn-scroll p-3 space-y-3"
+      >
+        {data.messages.map((m) => (
+          <MessageBubble key={m.id} message={m} personaColor={persona?.color} />
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-border/50 p-3 space-y-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={`Send a task to ${persona?.name ?? "this agent"}…`}
+          className="min-h-[50px] max-h-[120px] resize-none bg-muted/30 border-border/50 text-sm"
+          disabled={isRunning}
+        />
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[9px] h-5 px-1.5">
+            ⏎ send
+          </Badge>
+          <div className="flex-1" />
+          <Button
+            size="sm"
+            className="h-7 gap-1.5"
+            onClick={() => void send()}
+            disabled={isRunning || !input.trim()}
+          >
+            <Send className="size-3" />
+            Send task
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({
+  message,
+  personaColor,
+}: {
+  message: {
+    id: string;
+    role: string;
+    text: string;
+    authorName?: string;
+    streaming?: boolean;
+    ts: number;
+  };
+  personaColor?: string;
+}) {
+  const isUser = message.role === "user";
+  const isPeer = message.role === "peer";
+  const isSystem = message.role === "system";
+  const isAssistant = message.role === "assistant";
+
+  if (isSystem) {
+    return (
+      <div className="text-center">
+        <span className="text-[10px] text-muted-foreground/60 bg-muted/30 rounded-full px-2 py-0.5">
+          {message.text}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex gap-2.5",
+        isUser ? "flex-row-reverse" : "flex-row",
+      )}
+    >
+      <div
+        className={cn(
+          "size-6 shrink-0 rounded-md flex items-center justify-center text-[10px] font-bold shadow",
+          isUser
+            ? "bg-zinc-700 text-zinc-100"
+            : isPeer
+              ? "bg-sky-500/80 text-white"
+              : "text-white",
+        )}
+        style={
+          !isUser && !isPeer && personaColor
+            ? { background: personaColor }
+            : undefined
+        }
+      >
+        {isUser ? "You" : isPeer ? "↗" : <Sparkles className="size-3" />}
+      </div>
+      <div
+        className={cn(
+          "rounded-xl px-3 py-2 max-w-[85%] text-sm leading-relaxed",
+          isUser
+            ? "bg-zinc-700/60 text-zinc-100 border border-zinc-600/40"
+            : isPeer
+              ? "bg-sky-500/10 border border-sky-500/30"
+              : "bg-muted/40 border border-border/40",
+        )}
+      >
+        {message.authorName && !isUser && (
+          <div className="text-[10px] font-semibold text-muted-foreground mb-0.5">
+            {message.authorName}
+            {isPeer && " → message_peer"}
+          </div>
+        )}
+        <div className="prose prose-sm prose-invert max-w-none [&_code]:text-amber-300 [&_code]:bg-amber-500/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono [&_pre]:bg-muted/40 [&_pre]:border [&_pre]:border-border/40 [&_pre]:rounded-md [&_pre]:p-2 [&_pre]:text-[11px] [&_pre]:overflow-x-auto">
+          <ReactMarkdown>{message.text || "…"}</ReactMarkdown>
+        </div>
+        {message.streaming && (
+          <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+            <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
+            <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
+            <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

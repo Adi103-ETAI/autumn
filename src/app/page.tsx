@@ -1,31 +1,67 @@
-'use client'
+// Autumn — page shell.
+// Single-route app: a spatial canvas workshop with a Commander panel.
+
+"use client";
+
+import { useEffect } from "react";
+import { useAutumnStore } from "@/lib/autumn/store";
+import { TopBar } from "@/components/autumn/TopBar";
+import { Dock } from "@/components/autumn/Dock";
+import { CanvasView } from "@/components/autumn/CanvasView";
+import { CommanderPanel } from "@/components/autumn/CommanderPanel";
+import { AgentChatPanel } from "@/components/autumn/AgentChatPanel";
+import { TaskBoard } from "@/components/autumn/TaskBoard";
+import { BusTrafficPanel } from "@/components/autumn/BusTrafficPanel";
+import { StatusBar } from "@/components/autumn/StatusBar";
+import { HelpDialog } from "@/components/autumn/HelpDialog";
 
 export default function Home() {
+  const tab = useAutumnStore((s) => s.rightPanelTab);
+  const showHelp = useAutumnStore((s) => s.showHelp);
+  const setShowHelp = useAutumnStore((s) => s.setShowHelp);
+  const selectedNodeId = useAutumnStore((s) => s.selectedNodeId);
+  const selectedNode = useAutumnStore((s) =>
+    s.nodes.find((n) => n.id === s.selectedNodeId),
+  );
+
+  // Open help on first visit.
+  useEffect(() => {
+    const seen =
+      typeof window !== "undefined" && localStorage.getItem("autumn-seen");
+    if (!seen) {
+      setShowHelp(true);
+      localStorage.setItem("autumn-seen", "1");
+    }
+  }, [setShowHelp]);
+
+  // Show agent chat panel when a chat node is selected AND we're on the commander tab.
+  const showAgentChat =
+    tab === "commander" &&
+    selectedNodeId &&
+    selectedNode?.kind === "chat";
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      gap: '2rem',
-      padding: '1rem'
-    }}>
-      <div style={{
-        position: 'relative',
-        width: '6rem',
-        height: '6rem'
-      }}>
-        <img
-          src="/logo.svg"
-          alt="Z.ai Logo"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain'
-          }}
-        />
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <TopBar />
+      <div className="flex-1 flex overflow-hidden">
+        <Dock />
+        <main className="flex-1 relative overflow-hidden">
+          <CanvasView />
+        </main>
+        <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
+          {showAgentChat && selectedNodeId ? (
+            <AgentChatPanel nodeId={selectedNodeId} />
+          ) : tab === "commander" ? (
+            <CommanderPanel />
+          ) : tab === "tasks" ? (
+            <TaskBoard />
+          ) : (
+            <BusTrafficPanel />
+          )}
+        </aside>
       </div>
+      <StatusBar />
+      {showHelp && <HelpDialog />}
     </div>
-  )
+  );
 }
