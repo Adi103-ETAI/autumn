@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { MapPin, Terminal, Cable, Leaf } from "lucide-react";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 
 const WELCOME_KEY = "autumn-welcome-seen";
 
@@ -71,16 +72,14 @@ export function WelcomeSplash() {
 
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center max-w-2xl w-full px-6">
-            {/* Leaf logo */}
+            {/* Maple-leaf logo */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.5 }}
               className="mb-6"
             >
-              <div className="size-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center shadow-2xl shadow-amber-500/10">
-                <Leaf className="size-10 text-amber-400" />
-              </div>
+              <AutumnLogo size={72} glow priority />
             </motion.div>
 
             {/* Title */}

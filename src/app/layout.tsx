@@ -29,7 +29,10 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Autumn" }],
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/maple-leaf.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/maple-leaf.png", sizes: "512x512" }],
   },
 };
 
