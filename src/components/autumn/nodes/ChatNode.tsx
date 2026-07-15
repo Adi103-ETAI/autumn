@@ -20,6 +20,8 @@ import {
   Settings2,
   Trash2,
   Cable,
+  Copy,
+  Search,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,12 +49,15 @@ export interface ChatNodeRenderData {
   messages: { id: string; role: string; text: string; authorName?: string; streaming?: boolean }[];
   model?: string;
   effort?: string;
+  // injected by CanvasView for search highlighting
+  __searchMatch?: boolean;
 }
 
 export function ChatNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ChatNodeRenderData;
   const persona = PERSONA_BY_ID[d.personaId];
   const removeNode = useAutumnStore((s) => s.removeNode);
+  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
@@ -62,6 +67,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   const isConnectSource = connectMode?.from === id;
   const isConnectTargetCandidate =
     connectMode?.from !== null && connectMode?.from !== undefined && connectMode?.from !== id;
+  const isInMultiSelect = useAutumnStore((s) => s.selectedNodeIds.includes(id));
 
   const status = STATUS_STYLES[d.status] ?? STATUS_STYLES.idle;
   const lastMsg = d.messages[d.messages.length - 1];
@@ -90,6 +96,11 @@ export function ChatNode({ id, data, selected }: NodeProps) {
     setConnectMode({ from: id });
   };
 
+  const handleDuplicate = () => {
+    const newId = duplicateNode(id);
+    if (newId) setSelectedNode(newId);
+  };
+
   return (
     <div
       className={cn(
@@ -101,6 +112,8 @@ export function ChatNode({ id, data, selected }: NodeProps) {
         isConnectSource && "ring-2 ring-amber-400/80 animate-pulse",
         isConnectTargetCandidate &&
           "ring-2 ring-emerald-400/60 cursor-crosshair hover:ring-emerald-400",
+        d.__searchMatch && "ring-2 ring-emerald-400/70 search-match-pulse",
+        isInMultiSelect && !selected && "ring-2 ring-sky-400/60",
       )}
       style={{
         boxShadow: persona
@@ -136,14 +149,29 @@ export function ChatNode({ id, data, selected }: NodeProps) {
         }}
       >
         <div
-          className="size-7 rounded-md flex items-center justify-center text-white text-xs font-bold shadow"
+          className={cn(
+            "size-7 rounded-md flex items-center justify-center text-white text-xs font-bold shadow relative",
+            isRunning && "persona-glyph-active",
+          )}
           style={{ background: persona?.color }}
         >
           {persona?.glyph ?? <Bot className="size-4" />}
+          {isRunning && (
+            <span
+              className="absolute -inset-0.5 rounded-md ring-2 ring-offset-0"
+              style={{
+                borderColor: persona?.color,
+                boxShadow: `0 0 0 2px ${persona?.color}40`,
+              }}
+            />
+          )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold leading-tight truncate">
+          <div className="text-sm font-semibold leading-tight truncate flex items-center gap-1.5">
             {persona?.name ?? "Agent"}
+            {d.__searchMatch && (
+              <Search className="size-3 text-emerald-400 shrink-0" />
+            )}
           </div>
           <div className="text-[10px] text-muted-foreground truncate">
             {d.harness} · {d.model ?? "default"}
@@ -169,6 +197,10 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             <DropdownMenuItem onClick={handleStartConnect} className="gap-2">
               <Cable className="size-3.5" />
               Connect to…
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDuplicate} className="gap-2">
+              <Copy className="size-3.5" />
+              Duplicate
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setSettingsNode(id)}

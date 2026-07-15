@@ -1,11 +1,13 @@
 // Autumn — Floating canvas toolbar.
 // Bottom-center overlay on the canvas with quick actions: arrange, fit, clear,
-// and a live node/edge counter.
+// live node/edge counter, zoom level, and multi-select bulk actions.
 
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +22,9 @@ import {
   Bot,
   MonitorSmartphone,
   StickyNote,
+  Search,
+  ZoomIn,
+  Copy,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
@@ -30,7 +35,24 @@ export function CanvasToolbar() {
   const addNode = useAutumnStore((s) => s.addNode);
   const nodeCount = useAutumnStore((s) => s.nodes.length);
   const edgeCount = useAutumnStore((s) => s.edges.length);
-  const fitView = useReactFlow().fitView;
+  const selectedNodeIds = useAutumnStore((s) => s.selectedNodeIds);
+  const removeNodes = useAutumnStore((s) => s.removeNodes);
+  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
+  const clearSelection = useAutumnStore((s) => s.clearSelection);
+  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
+  const { fitView, getZoom } = useReactFlow();
+  const [zoom, setZoom] = useState(1);
+
+  // Subscribe to react-flow viewport changes to update the zoom indicator.
+  useEffect(() => {
+    const updateZoom = () => setZoom(getZoom());
+    updateZoom();
+    const id = setInterval(updateZoom, 300);
+    return () => clearInterval(id);
+  }, [getZoom]);
+
+  const hasMulti = selectedNodeIds.length > 0;
+  const zoomPct = Math.round(zoom * 100);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -60,6 +82,12 @@ export function CanvasToolbar() {
         {/* Canvas actions */}
         <div className="flex items-center gap-0.5 px-1 border-r border-border/40">
           <ToolbarButton
+            label="Search nodes (⌘F)"
+            onClick={() => setShowNodeSearch(true)}
+            icon={Search}
+            color="text-emerald-400"
+          />
+          <ToolbarButton
             label="Arrange nodes"
             onClick={arrangeNodes}
             icon={LayoutGrid}
@@ -72,6 +100,53 @@ export function CanvasToolbar() {
             color="text-violet-400"
           />
         </div>
+
+        {/* Multi-select bulk actions (only shown when something is selected) */}
+        {hasMulti && (
+          <div className="flex items-center gap-0.5 px-1 border-r border-border/40 fade-in-up">
+            <div className="px-1.5 flex items-center gap-1 text-[10px] text-sky-400">
+              <Badge
+                variant="outline"
+                className="h-5 px-1.5 text-[9px] border-sky-400/40 text-sky-300"
+              >
+                {selectedNodeIds.length} selected
+              </Badge>
+            </div>
+            <ToolbarButton
+              label="Duplicate all selected"
+              onClick={() => {
+                // Duplicate each in order; the store returns new ids.
+                const store = useAutumnStore.getState();
+                const ids = [...store.selectedNodeIds];
+                ids.forEach((id) => store.duplicateNode(id));
+              }}
+              icon={Copy}
+              color="text-amber-300"
+            />
+            <ToolbarButton
+              label="Remove all selected"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Remove ${selectedNodeIds.length} selected node${
+                      selectedNodeIds.length === 1 ? "" : "s"
+                    }?`,
+                  )
+                ) {
+                  removeNodes(selectedNodeIds);
+                }
+              }}
+              icon={Trash2}
+              color="text-rose-400"
+            />
+            <ToolbarButton
+              label="Clear selection"
+              onClick={clearSelection}
+              icon={Maximize2}
+              color="text-muted-foreground"
+            />
+          </div>
+        )}
 
         {/* Danger */}
         <div className="flex items-center gap-0.5 pl-1">
@@ -91,7 +166,7 @@ export function CanvasToolbar() {
           />
         </div>
 
-        {/* Stats */}
+        {/* Stats + zoom */}
         <div className="flex items-center gap-2 pl-2 pr-1 border-l border-border/40 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="size-1.5 rounded-full bg-fuchsia-400" />
@@ -100,6 +175,10 @@ export function CanvasToolbar() {
           <span className="flex items-center gap-1">
             <span className="size-1.5 rounded-full bg-amber-400" />
             {edgeCount}
+          </span>
+          <span className="flex items-center gap-1 font-mono text-[10px]">
+            <ZoomIn className="size-2.5 text-muted-foreground/70" />
+            {zoomPct}%
           </span>
         </div>
       </div>

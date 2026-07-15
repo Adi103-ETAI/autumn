@@ -419,3 +419,176 @@ kbd {
 .tab-indicator-dot {
   animation: tab-pulse 1.6s ease-in-out infinite;
 }
+
+/* ---- Round 4 styling polish ---- */
+
+/* Search match pulse — emerald ring that breathes on matched nodes */
+@keyframes search-match-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.2 150 / 0.5), 0 8px 24px -8px oklch(0.7 0.2 150 / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px oklch(0.7 0.2 150 / 0), 0 8px 24px -8px oklch(0.7 0.2 150 / 0.5);
+  }
+}
+.search-match-pulse {
+  animation: search-match-pulse 1.6s ease-out infinite;
+}
+
+/* Persona glyph active state — subtle ring rotation when agent is running */
+@keyframes persona-glyph-active {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+.persona-glyph-active {
+  animation: persona-glyph-active 1.4s ease-in-out infinite;
+}
+
+/* Activity timeline — date separator gradient line */
+.activity-date-sep {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.32 0.012 55 / 60%) 20%,
+    oklch(0.32 0.012 55 / 60%) 80%,
+    transparent 100%
+  );
+}
+
+/* Glassy chip used in status bar + toolbars */
+.glass-chip {
+  background: oklch(0.21 0.012 55 / 65%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid oklch(0.32 0.012 55 / 40%);
+}
+
+/* Refined hover state for chat node footer buttons */
+.react-flow__node-chat button:hover {
+  transform: translateY(-1px);
+  transition: transform 0.12s ease-out;
+}
+
+/* Sticky note rotation hover lift */
+.react-flow__node-sticky:hover {
+  z-index: 10 !important;
+}
+
+/* Multi-select halo for chat nodes */
+.react-flow__node.selected-multi {
+  filter: drop-shadow(0 0 10px oklch(0.7 0.18 240 / 0.45));
+}
+
+/* Connector handle glow when source is in connect mode */
+.react-flow__node.connect-source .react-flow__handle-source {
+  box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3);
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+/* Subtle dotted border on empty-state CTA */
+.empty-cta {
+  background-image: radial-gradient(
+    oklch(0.78 0.18 55 / 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 10px 10px;
+}
+
+/* Refined sheet/dialog overlay (subtle amber tint) */
+[data-state="open"].fixed[data-state="open"]::before {
+  background-color: oklch(0.13 0.005 55 / 0.7) !important;
+}
+
+/* Animated gradient text for headings */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-text-animated {
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55),
+    oklch(0.7 0.22 16),
+    oklch(0.78 0.18 55)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 4s ease-in-out infinite;
+}
+
+/* Node card subtle top sheen */
+.react-flow__node-chat > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.04) 0%,
+    transparent 30%
+  );
+  border-radius: inherit;
+}
+
+/* Refined scrollbar for sheet content */
+[data-state="open"] .autumn-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+[data-state="open"] .autumn-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.32 0.012 55 / 40%);
+  border-radius: 3px;
+}
+
+/* Subtle inner ring on canvas toolbar */
+.autumn-canvas-toolbar-inner {
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.05),
+    0 8px 24px -8px oklch(0 0 0 / 0.5);
+}
+
+/* Hover lift for non-chat node shells */
+.react-flow__node:not(.react-flow__node-chat):hover {
+  transform: translateY(-2px);
+  transition: transform 0.15s ease-out;
+}
+
+/* Bus edge label glow when pulsing */
+.react-flow__edge.animated .react-flow__edge-text {
+  filter: drop-shadow(0 0 4px oklch(0.78 0.18 55 / 0.5));
+}
+
+/* Active drag cursor refinement */
+.react-flow__pane.dragging {
+  cursor: grabbing !important;
+}
+
+/* Soft glow under selected chat node footer */
+.react-flow__node-chat.selected > div:last-child {
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.3);
+}
+
+/* Sticky note paper texture (subtle) */
+.react-flow__node-sticky > div {
+  background-image:
+    linear-gradient(
+      180deg,
+      oklch(1 0 0 / 0.08) 0%,
+      transparent 8%
+    );
+}
+
+/* Hide ugly outline on touch devices */
+@media (pointer: coarse) {
+  *:focus-visible {
+    outline: none;
+  }
+}
+
+/* Print-style monospace for activity log timestamps */
+.timestamp-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum";
+}

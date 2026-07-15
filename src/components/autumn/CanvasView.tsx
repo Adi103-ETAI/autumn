@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -72,9 +72,36 @@ function CanvasInner() {
   const setConnectMode = useAutumnStore((s) => s.setConnectMode);
   const addNode = useAutumnStore((s) => s.addNode);
   const resetCanvas = useAutumnStore((s) => s.resetCanvas);
-  const { fitView } = useReactFlow();
+  const clearSelection = useAutumnStore((s) => s.clearSelection);
+  const searchMatchIds = useAutumnStore((s) => s.searchMatchIds);
+  const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
+  const { fitView, setCenter, getNode } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
+
+  // Track whether Shift is currently held so onNodesChange can distinguish
+  // multi-select clicks from single-select clicks. react-flow's NodeChange
+  // doesn't include modifier state, so we maintain it ourselves.
+  const shiftHeldRef = useRef(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Shift") shiftHeldRef.current = true;
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Shift") shiftHeldRef.current = false;
+    };
+    const blur = () => {
+      shiftHeldRef.current = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, []);
 
   // Listen for "autumn:fit-view" custom events from the Command Palette.
   useEffect(() => {
@@ -83,16 +110,37 @@ function CanvasInner() {
     return () => window.removeEventListener("autumn:fit-view", handler);
   }, [fitView]);
 
+  // Listen for "autumn:center-node" events from the NodeSearchOverlay.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id?: string } | undefined;
+      if (!detail?.id) return;
+      const n = getNode(detail.id);
+      if (n) {
+        // setCenter expects absolute coordinates.
+        const x = n.position.x + 140;
+        const y = n.position.y + 80;
+        setCenter(x, y, { zoom: 1.1, duration: 400 });
+      }
+    };
+    window.addEventListener("autumn:center-node", handler);
+    return () => window.removeEventListener("autumn:center-node", handler);
+  }, [setCenter, getNode]);
+
   // Convert Autumn domain model → react-flow nodes/edges.
+  // Inject a `searchMatch` flag so node components can render an emerald ring.
   const rfNodes: Node[] = useMemo(
     () =>
       nodes.map((n) => ({
         id: n.id,
         type: n.kind,
         position: n.position,
-        data: n.data,
+        data: {
+          ...n.data,
+          __searchMatch: showNodeSearch && searchMatchIds.includes(n.id),
+        },
       })),
-    [nodes],
+    [nodes, searchMatchIds, showNodeSearch],
   );
 
   const rfEdges: Edge[] = useMemo(
@@ -130,14 +178,35 @@ function CanvasInner() {
           moveNode(c.id, c.position.x, c.position.y);
         }
         if (c.type === "select") {
-          setSelectedNode(c.selected ? c.id : null);
+          if (c.selected) {
+            if (shiftHeldRef.current) {
+              // Multi-select: preserve the previous primary by adding it to
+              // selectedNodeIds first (if not already there), then add the new one.
+              const prevPrimary = store.selectedNodeId;
+              if (prevPrimary && prevPrimary !== c.id && !store.selectedNodeIds.includes(prevPrimary)) {
+                store.addToSelection(prevPrimary);
+              }
+              store.addToSelection(c.id);
+              // Keep selectedNodeId on the newly-clicked node so the right panel
+              // and chat panel can react to it.
+              store.setSelectedNode(c.id);
+            } else {
+              // Single select: replace.
+              store.clearSelection();
+              store.setSelectedNode(c.id);
+            }
+          } else {
+            // Deselecting: remove from multi-select; only clear primary if it
+            // was the deselected one.
+            if (store.selectedNodeId === c.id) store.setSelectedNode(null);
+          }
         }
         if (c.type === "remove") {
           useAutumnStore.getState().removeNode(c.id);
         }
       }
     },
-    [moveNode, setSelectedNode],
+    [moveNode],
   );
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -161,7 +230,8 @@ function CanvasInner() {
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
-  }, [setSelectedNode]);
+    clearSelection();
+  }, [setSelectedNode, clearSelection]);
 
   return (
     <div className="absolute inset-0 autumn-canvas">
@@ -231,6 +301,8 @@ function CanvasInner() {
         proOptions={{ hideAttribution: true }}
         className="bg-transparent"
         defaultEdgeOptions={{ type: "bus" }}
+        multiSelectionKeyCode={["Shift"]}
+        selectNodesOnDrag={false}
       >
         <Background
           variant={BackgroundVariant.Dots}

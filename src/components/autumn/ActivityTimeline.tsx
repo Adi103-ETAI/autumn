@@ -28,6 +28,8 @@ import {
   FolderOpen,
   Eraser,
   CircleDot,
+  Copy,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,8 @@ const KIND_META: Partial<
   canvas_saved: { icon: Save, color: "text-amber-300", label: "Save" },
   canvas_loaded: { icon: FolderOpen, color: "text-sky-400", label: "Load" },
   canvas_cleared: { icon: Eraser, color: "text-rose-400", label: "Clear" },
+  duplicate_node: { icon: Copy, color: "text-amber-300", label: "Duplicate" },
+  search: { icon: Search, color: "text-emerald-400", label: "Search" },
 };
 
 export function ActivityTimeline({
@@ -101,7 +105,10 @@ export function ActivityTimeline({
             size="sm"
             variant="ghost"
             className="h-7 text-[10px] gap-1 text-muted-foreground"
-            onClick={clearActivity}
+            onClick={() => {
+              clearActivity();
+            }}
+            title="Clears both the in-memory timeline and the persisted log for this canvas"
           >
             <Eraser className="size-3" />
             Clear timeline

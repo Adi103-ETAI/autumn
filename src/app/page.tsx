@@ -21,6 +21,7 @@ import { CommandPalette } from "@/components/autumn/CommandPalette";
 import { ExportImportDialog } from "@/components/autumn/ExportImportDialog";
 import { ActivityTimeline } from "@/components/autumn/ActivityTimeline";
 import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
+import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -48,6 +49,13 @@ export default function Home() {
       localStorage.setItem("autumn-seen", "1");
     }
   }, [setShowHelp]);
+
+  // Load any persisted activity log entries for the current canvas on mount.
+  const loadActivity = useAutumnStore((s) => s.loadActivity);
+  const canvasId = useAutumnStore((s) => s.canvasId);
+  useEffect(() => {
+    void loadActivity(canvasId);
+  }, [loadActivity, canvasId]);
 
   // Show agent chat panel when a chat node is selected AND we're on the commander tab.
   const showAgentChat =
@@ -93,6 +101,7 @@ export default function Home() {
         open={showActivityLog}
         onOpenChange={setShowActivityLog}
       />
+      <NodeSearchOverlay />
     </div>
   );
 }

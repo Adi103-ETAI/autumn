@@ -13,6 +13,7 @@ import {
   Clock,
   Command as CommandIcon,
   Wifi,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +27,10 @@ export function StatusBar() {
   const running = useAutumnStore((s) => s.isAgentRunning);
   const canvasId = useAutumnStore((s) => s.canvasId);
   const lastSavedAt = useAutumnStore((s) => s.lastSavedAt);
+  const selectedNodeIds = useAutumnStore((s) => s.selectedNodeIds);
   const setShowCommandPalette = useAutumnStore((s) => s.setShowCommandPalette);
   const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
+  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
 
   const agentCount = nodes.filter((n) => n.kind === "chat").length;
   const runningCount = Object.values(running).filter(Boolean).length;
@@ -79,6 +82,17 @@ export function StatusBar() {
             <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span>
               {pulses.length} bus msg{pulses.length === 1 ? "" : "s"}
+            </span>
+          </div>
+        </>
+      )}
+      {selectedNodeIds.length > 0 && (
+        <>
+          <div className="h-3 w-px bg-border/60" />
+          <div className="flex items-center gap-1.5 text-sky-300">
+            <span className="size-1.5 rounded-full bg-sky-400" />
+            <span>
+              {selectedNodeIds.length} selected
             </span>
           </div>
         </>
@@ -182,6 +196,14 @@ export function StatusBar() {
       >
         <CommandIcon className="size-2.5" />
         <kbd className="font-mono">⌘K</kbd>
+      </button>
+      <button
+        className="hidden md:flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+        onClick={() => setShowNodeSearch(true)}
+        title="Search canvas nodes"
+      >
+        <Search className="size-2.5" />
+        <kbd className="font-mono">⌘F</kbd>
       </button>
 
       {lastAction && (

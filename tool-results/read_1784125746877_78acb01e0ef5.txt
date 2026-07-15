@@ -1,0 +1,1052 @@
+     1→// Autumn — Zustand store (client).
+     2→// Holds canvas state, task board, pulses, commander chat history, recent actions.
+     3→// Mirrors October's `useAppStore` (see 09-renderer-deep-dive.md) but trimmed to
+     4→// the parts we actually need for the web demo.
+     5→
+     6→"use client";
+     7→
+     8→import { create } from "zustand";
+     9→import { nanoid } from "nanoid";
+    10→import type {
+    11→  AgentMessage,
+    12→  AutumnEdge,
+    13→  AutumnNode,
+    14→  AutumnTask,
+    15→  BusPulse,
+    16→  CommanderResult,
+    17→  NodeKind,
+    18→} from "./types";
+    19→import {
+    20→  PERSONA_BY_ID,
+    21→  nextPersona,
+    22→  personaByName,
+    23→  resolvePersonaName,
+    24→} from "./personas";
+    25→import { defaultModelFor } from "./harness-meta";
+    26→import { buildSeedCanvas } from "./seed";
+    27→
+    28→export interface ActivityEntry {
+    29→  id: string;
+    30→  ts: number;
+    31→  kind:
+    32→    | "commander_plan"
+    33→    | "agent_status"
+    34→    | "agent_message"
+    35→    | "bus_message_peer"
+    36→    | "task_claim"
+    37→    | "task_complete"
+    38→    | "task_add"
+    39→    | "node_added"
+    40→    | "node_removed"
+    41→    | "edge_added"
+    42→    | "edge_removed"
+    43→    | "canvas_saved"
+    44→    | "canvas_loaded"
+    45→    | "canvas_cleared";
+    46→  text: string;
+    47→  nodeId?: string;
+    48→  meta?: Record<string, unknown>;
+    49→}
+    50→
+    51→export interface CommanderChatMessage {
+    52→  id: string;
+    53→  role: "user" | "commander";
+    54→  text: string;
+    55→  ts: number;
+    56→  plan?: CommanderResult;
+    57→  pending?: boolean;
+    58→  error?: string;
+    59→}
+    60→
+    61→export interface AutumnStore {
+    62→  // canvas
+    63→  canvasId: string;
+    64→  canvasName: string;
+    65→  nodes: AutumnNode[];
+    66→  edges: AutumnEdge[];
+    67→  selectedNodeId: string | null;
+    68→  pulses: BusPulse[];
+    69→  tasks: AutumnTask[];
+    70→  taskSeq: number;
+    71→
+    72→  // commander chat
+    73→  commanderMessages: CommanderChatMessage[];
+    74→  recentActions: string[];
+    75→  isCommanderThinking: boolean;
+    76→  isAgentRunning: Record<string, boolean>; // nodeId -> running
+    77→
+    78→  // ui
+    79→  rightPanelTab: "commander" | "tasks" | "bus";
+    80→  isListening: boolean; // voice
+    81→  showHelp: boolean;
+    82→  commandHistory: string[]; // recent user commands for quick-chips
+    83→  isSaving: boolean;
+    84→  lastSavedAt: number | null;
+    85→  saveError: string | null;
+    86→  settingsNodeId: string | null; // chat node currently being edited in settings dialog
+    87→  showCanvasSwitcher: boolean;
+    88→  showCommandPalette: boolean;
+    89→  showExportDialog: boolean;
+    90→  showActivityLog: boolean;
+    91→  pendingCommand: string | null; // when set, CommanderPanel will auto-send this command
+    92→  connectMode: { from: string | null } | null; // when active, next clicked chat node becomes the target
+    93→  activityLog: ActivityEntry[]; // global append-only activity timeline
+    94→
+    95→  // ---- actions ----
+    96→  setCanvasName: (name: string) => void;
+    97→  setSelectedNode: (id: string | null) => void;
+    98→  setRightPanelTab: (t: "commander" | "tasks" | "bus") => void;
+    99→  setListening: (v: boolean) => void;
+   100→  setShowHelp: (v: boolean) => void;
+   101→  setSettingsNode: (id: string | null) => void;
+   102→  setShowCanvasSwitcher: (v: boolean) => void;
+   103→  setShowCommandPalette: (v: boolean) => void;
+   104→  setShowExportDialog: (v: boolean) => void;
+   105→  setShowActivityLog: (v: boolean) => void;
+   106→  setPendingCommand: (cmd: string | null) => void;
+   107→  setConnectMode: (m: { from: string | null } | null) => void;
+   108→  pushActivity: (e: Omit<ActivityEntry, "id" | "ts">) => void;
+   109→  clearActivity: () => void;
+   110→  pushCommandHistory: (cmd: string) => void;
+   111→  arrangeNodes: () => void;
+   112→  clearCanvas: () => void;
+   113→  saveCanvas: () => Promise<void>;
+   114→  loadCanvas: (id: string) => Promise<void>;
+   115→  duplicateCanvas: (id: string) => Promise<void>;
+   116→  exportCanvas: () => string; // returns JSON string
+   117→  importCanvas: (json: string) => boolean; // returns success
+   118→
+   119→  addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
+   120→  updateNode: (id: string, patch: Partial<AutumnNode>) => void;
+   121→  updateNodeData: (id: string, patch: Record<string, unknown>) => void;
+   122→  removeNode: (id: string) => void;
+   123→  moveNode: (id: string, x: number, y: number) => void;
+   124→  renameNode: (id: string, name: string) => void;
+   125→
+   126→  connectNodes: (from: string, to: string, kind?: "bus" | "navigation") => void;
+   127→  disconnectNodes: (from: string, to: string) => void;
+   128→
+   129→  addTask: (description: string, afterIds?: number[]) => string;
+   130→  claimTask: (taskId: string, nodeId: string) => void;
+   131→  completeTask: (taskId: string, note?: string) => void;
+   132→
+   133→  pushPulse: (p: Omit<BusPulse, "id" | "ts">) => void;
+   134→  clearPulses: () => void;
+   135→
+   136→  pushCommanderMessage: (m: Omit<CommanderChatMessage, "id" | "ts">) => string;
+   137→  updateCommanderMessage: (id: string, patch: Partial<CommanderChatMessage>) => void;
+   138→  setCommanderThinking: (v: boolean) => void;
+   139→  pushRecentAction: (a: string) => void;
+   140→
+   141→  appendAgentMessage: (nodeId: string, message: Omit<AgentMessage, "id" | "ts">) => string;
+   142→  updateAgentMessage: (nodeId: string, msgId: string, patch: Partial<AgentMessage>) => void;
+   143→  setAgentRunning: (nodeId: string, v: boolean) => void;
+   144→  setAgentStatus: (nodeId: string, status: string, doing?: string) => void;
+   145→
+   146→  applyCommanderPlan: (plan: CommanderResult) => string[]; // returns created node ids (for @N refs)
+   147→  resolveNodeRef: (ref: string, createdIds: string[]) => string | null;
+   148→
+   149→  resetCanvas: () => void;
+   150→}
+   151→
+   152→const seed = buildSeedCanvas();
+   153→
+   154→export const useAutumnStore = create<AutumnStore>((set, get) => ({
+   155→  canvasId: "default",
+   156→  canvasName: "Medical App Workshop",
+   157→  nodes: seed.nodes,
+   158→  edges: seed.edges,
+   159→  selectedNodeId: null,
+   160→  pulses: [],
+   161→  tasks: seed.tasks,
+   162→  taskSeq: 3,
+   163→
+   164→  commanderMessages: [
+   165→    {
+   166→      id: "cmd-intro",
+   167→      role: "commander",
+   168→      text: "Autumn Commander online. Atlas, Apollo and Orion are on the canvas and wired via the bus. Tell me what to build — try \"spawn Juno and have her wire up tests for the medical app\".",
+   169→      ts: Date.now(),
+   170→    },
+   171→  ],
+   172→  recentActions: [],
+   173→  isCommanderThinking: false,
+   174→  isAgentRunning: {},
+   175→  rightPanelTab: "commander",
+   176→  isListening: false,
+   177→  showHelp: false,
+   178→  commandHistory: [],
+   179→  isSaving: false,
+   180→  lastSavedAt: null,
+   181→  saveError: null,
+   182→  settingsNodeId: null,
+   183→  showCanvasSwitcher: false,
+   184→  showCommandPalette: false,
+   185→  showExportDialog: false,
+   186→  showActivityLog: false,
+   187→  pendingCommand: null,
+   188→  connectMode: null,
+   189→  activityLog: [
+   190→    {
+   191→      id: "seed-act-1",
+   192→      ts: Date.now(),
+   193→      kind: "node_added",
+   194→      text: "Workshop seeded with Atlas, Apollo, Orion, and a screen preview.",
+   195→    },
+   196→  ],
+   197→
+   198→  setCanvasName: (name) => set({ canvasName: name }),
+   199→  setSelectedNode: (id) => set({ selectedNodeId: id }),
+   200→  setRightPanelTab: (t) => set({ rightPanelTab: t }),
+   201→  setListening: (v) => set({ isListening: v }),
+   202→  setShowHelp: (v) => set({ showHelp: v }),
+   203→  setSettingsNode: (id) => set({ settingsNodeId: id }),
+   204→  setShowCanvasSwitcher: (v) => set({ showCanvasSwitcher: v }),
+   205→  setShowCommandPalette: (v) => set({ showCommandPalette: v }),
+   206→  setShowExportDialog: (v) => set({ showExportDialog: v }),
+   207→  setShowActivityLog: (v) => set({ showActivityLog: v }),
+   208→  setPendingCommand: (cmd) => set({ pendingCommand: cmd }),
+   209→  setConnectMode: (m) => set({ connectMode: m }),
+   210→
+   211→  pushActivity: (e) =>
+   212→    set((s) => ({
+   213→      activityLog: [
+   214→        ...s.activityLog,
+   215→        { ...e, id: `act-${nanoid(8)}`, ts: Date.now() },
+   216→      ].slice(-200),
+   217→    })),
+   218→  clearActivity: () => set({ activityLog: [] }),
+   219→
+   220→  pushCommandHistory: (cmd) =>
+   221→    set((s) => ({
+   222→      commandHistory: [cmd, ...s.commandHistory.filter((c) => c !== cmd)].slice(0, 8),
+   223→    })),
+   224→
+   225→  arrangeNodes: () => {
+   226→    // Tiered auto-layout:
+   227→    //   Tier 0 — chat nodes with no incoming bus edges (roots)
+   228→    //   Tier 1 — chat nodes reached from tier 0 via bus edges
+   229→    //   Tier 2 — chat nodes reached from tier 1 (and so on)
+   230→    //   Tier 3+ — non-chat nodes (terminal, screen, sticky, analytics, browser, remotion)
+   231→    //             grouped by kind, in a grid below.
+   232→    const nodes = get().nodes;
+   233→    const edges = get().edges;
+   234→    const busEdges = edges.filter((e) => e.kind === "bus");
+   235→
+   236→    const chatNodes = nodes.filter((n) => n.kind === "chat");
+   237→    const otherNodes = nodes.filter((n) => n.kind !== "chat");
+   238→
+   239→    // Build adjacency for chat nodes via bus edges.
+   240→    const incoming = new Map<string, string[]>();
+   241→    const outgoing = new Map<string, string[]>();
+   242→    for (const n of chatNodes) {
+   243→      incoming.set(n.id, []);
+   244→      outgoing.set(n.id, []);
+   245→    }
+   246→    for (const e of busEdges) {
+   247→      if (incoming.has(e.target) && outgoing.has(e.source)) {
+   248→        incoming.get(e.target)!.push(e.source);
+   249→        outgoing.get(e.source)!.push(e.target);
+   250→      }
+   251→    }
+   252→
+   253→    // BFS tiers from roots (no incoming).
+   254→    const tierOf = new Map<string, number>();
+   255→    const roots = chatNodes.filter((n) => incoming.get(n.id)!.length === 0);
+   256→    let queue: string[] = roots.map((n) => n.id);
+   257→    roots.forEach((n) => tierOf.set(n.id, 0));
+   258→    while (queue.length) {
+   259→      const next: string[] = [];
+   260→      for (const id of queue) {
+   261→        const t = tierOf.get(id) ?? 0;
+   262→        for (const child of outgoing.get(id) ?? []) {
+   263→          if (!tierOf.has(child)) {
+   264→            tierOf.set(child, t + 1);
+   265→            next.push(child);
+   266→          }
+   267→        }
+   268→      }
+   269→      queue = next;
+   270→    }
+   271→    // Any disconnected chats go to tier 0.
+   272→    for (const n of chatNodes) if (!tierOf.has(n.id)) tierOf.set(n.id, 0);
+   273→
+   274→    // Group chats by tier.
+   275→    const tiers = new Map<number, string[]>();
+   276→    for (const n of chatNodes) {
+   277→      const t = tierOf.get(n.id) ?? 0;
+   278→      if (!tiers.has(t)) tiers.set(t, []);
+   279→      tiers.get(t)!.push(n.id);
+   280→    }
+   281→
+   282→    const updated: AutumnNode[] = [];
+   283→    const COL_W = 320;
+   284→    const ROW_H = 220;
+   285→    const PAD_X = 80;
+   286→    const PAD_Y = 80;
+   287→
+   288→    // Place chats tier-by-tier (rows), spread horizontally within each tier.
+   289→    const tierKeys = Array.from(tiers.keys()).sort((a, b) => a - b);
+   290→    tierKeys.forEach((t) => {
+   291→      const ids = tiers.get(t)!;
+   292→      ids.forEach((id, i) => {
+   293→        const n = nodes.find((x) => x.id === id)!;
+   294→        updated.push({
+   295→          ...n,
+   296→          position: {
+   297→            x: PAD_X + i * COL_W,
+   298→            y: PAD_Y + t * ROW_H,
+   299→          },
+   300→        });
+   301→      });
+   302→    });
+   303→
+   304→    // Non-chat nodes: grouped by kind, in a grid below all chat tiers.
+   305→    const NON_CHAT_ROW = PAD_Y + tierKeys.length * ROW_H + 40;
+   306→    const byKind = new Map<string, typeof otherNodes>();
+   307→    for (const n of otherNodes) {
+   308→      if (!byKind.has(n.kind)) byKind.set(n.kind, []);
+   309→      byKind.get(n.kind)!.push(n);
+   310→    }
+   311→    let col = 0;
+   312→    for (const [, group] of byKind) {
+   313→      group.forEach((n, i) => {
+   314→        updated.push({
+   315→          ...n,
+   316→          position: {
+   317→            x: PAD_X + col * (COL_W * 0.7),
+   318→            y: NON_CHAT_ROW + i * 100,
+   319→          },
+   320→        });
+   321→      });
+   322→      col += 1;
+   323→    }
+   324→
+   325→    set({ nodes: updated });
+   326→    get().pushActivity({
+   327→      kind: "commander_plan",
+   328→      text: `Auto-arranged ${updated.length} node${updated.length === 1 ? "" : "s"} into a tiered layout.`,
+   329→    });
+   330→  },
+   331→
+   332→  clearCanvas: () => {
+   333→    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], selectedNodeId: null });
+   334→    get().pushActivity({
+   335→      kind: "canvas_cleared",
+   336→      text: "Cleared all nodes, edges, and tasks from the canvas.",
+   337→    });
+   338→  },
+   339→
+   340→  saveCanvas: async () => {
+   341→    const s = get();
+   342→    set({ isSaving: true, saveError: null });
+   343→    try {
+   344→      const payload = {
+   345→        id: s.canvasId,
+   346→        name: s.canvasName,
+   347→        state: JSON.stringify({
+   348→          nodes: s.nodes,
+   349→          edges: s.edges,
+   350→          tasks: s.tasks,
+   351→          taskSeq: s.taskSeq,
+   352→        }),
+   353→      };
+   354→      const r = await fetch("/api/canvas", {
+   355→        method: "POST",
+   356→        headers: { "Content-Type": "application/json" },
+   357→        body: JSON.stringify(payload),
+   358→      });
+   359→      if (!r.ok) throw new Error(`save ${r.status}`);
+   360→      const j = await r.json();
+   361→      set({ isSaving: false, lastSavedAt: Date.now(), canvasId: j.id ?? s.canvasId });
+   362→      get().pushActivity({
+   363→        kind: "canvas_saved",
+   364→        text: `Saved "${s.canvasName}" to the local database.`,
+   365→      });
+   366→    } catch (err) {
+   367→      set({
+   368→        isSaving: false,
+   369→        saveError: err instanceof Error ? err.message : "save failed",
+   370→      });
+   371→    }
+   372→  },
+   373→
+   374→  loadCanvas: async (id) => {
+   375→    set({ isSaving: true, saveError: null });
+   376→    try {
+   377→      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
+   378→      if (!r.ok) throw new Error(`load ${r.status}`);
+   379→      const j = await r.json();
+   380→      const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
+   381→      set({
+   382→        canvasId: j.id ?? id,
+   383→        canvasName: j.name ?? "Untitled Canvas",
+   384→        nodes: state.nodes ?? [],
+   385→        edges: state.edges ?? [],
+   386→        tasks: state.tasks ?? [],
+   387→        taskSeq: state.taskSeq ?? 0,
+   388→        pulses: [],
+   389→        selectedNodeId: null,
+   390→        isSaving: false,
+   391→        lastSavedAt: Date.now(),
+   392→      });
+   393→      get().pushActivity({
+   394→        kind: "canvas_loaded",
+   395→        text: `Loaded "${j.name ?? "Untitled Canvas"}" from the database.`,
+   396→      });
+   397→    } catch (err) {
+   398→      set({
+   399→        isSaving: false,
+   400→        saveError: err instanceof Error ? err.message : "load failed",
+   401→      });
+   402→    }
+   403→  },
+   404→
+   405→  duplicateCanvas: async (id) => {
+   406→    try {
+   407→      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
+   408→      if (!r.ok) throw new Error(`fetch ${r.status}`);
+   409→      const j = await r.json();
+   410→      const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
+   411→      const newId = `canvas-${nanoid(10)}`;
+   412→      const newName = `${j.name ?? "Untitled Canvas"} (copy)`;
+   413→      const r2 = await fetch("/api/canvas", {
+   414→        method: "POST",
+   415→        headers: { "Content-Type": "application/json" },
+   416→        body: JSON.stringify({ id: newId, name: newName, state: JSON.stringify(state) }),
+   417→      });
+   418→      if (!r2.ok) throw new Error(`dup ${r2.status}`);
+   419→      get().pushActivity({
+   420→        kind: "canvas_saved",
+   421→        text: `Duplicated canvas as "${newName}".`,
+   422→      });
+   423→    } catch (err) {
+   424→      set({
+   425→        saveError: err instanceof Error ? err.message : "duplicate failed",
+   426→      });
+   427→    }
+   428→  },
+   429→
+   430→  exportCanvas: () => {
+   431→    const s = get();
+   432→    const payload = {
+   433→      version: 1,
+   434→      exportedAt: new Date().toISOString(),
+   435→      app: "autumn",
+   436→      canvas: {
+   437→        id: s.canvasId,
+   438→        name: s.canvasName,
+   439→        nodes: s.nodes,
+   440→        edges: s.edges,
+   441→        tasks: s.tasks,
+   442→        taskSeq: s.taskSeq,
+   443→      },
+   444→    };
+   445→    return JSON.stringify(payload, null, 2);
+   446→  },
+   447→
+   448→  importCanvas: (json) => {
+   449→    try {
+   450→      const parsed = JSON.parse(json);
+   451→      const c = parsed.canvas ?? parsed;
+   452→      if (!Array.isArray(c.nodes) || !Array.isArray(c.edges)) return false;
+   453→      set({
+   454→        canvasId: `canvas-${nanoid(10)}`,
+   455→        canvasName: c.name ?? "Imported Canvas",
+   456→        nodes: c.nodes,
+   457→        edges: c.edges,
+   458→        tasks: c.tasks ?? [],
+   459→        taskSeq: c.taskSeq ?? 0,
+   460→        pulses: [],
+   461→        selectedNodeId: null,
+   462→      });
+   463→      get().pushActivity({
+   464→        kind: "canvas_loaded",
+   465→        text: `Imported canvas with ${c.nodes.length} nodes and ${c.edges.length} edges.`,
+   466→      });
+   467→      return true;
+   468→    } catch {
+   469→      return false;
+   470→    }
+   471→  },
+   472→
+   473→  addNode: (partial) => {
+   474→    const id = partial.id ?? `node-${nanoid(8)}`;
+   475→    const node: AutumnNode = {
+   476→      id,
+   477→      kind: partial.kind,
+   478→      name: partial.name ?? defaultNameForKind(partial.kind),
+   479→      position: partial.position ?? randomPosition(),
+   480→      data: partial.data ?? defaultDataForKind(partial.kind),
+   481→      createdAt: Date.now(),
+   482→    };
+   483→    set((s) => ({ nodes: [...s.nodes, node] }));
+   484→    get().pushActivity({
+   485→      kind: "node_added",
+   486→      text: `Added ${node.kind} node "${node.name}".`,
+   487→      nodeId: id,
+   488→    });
+   489→    return id;
+   490→  },
+   491→
+   492→  updateNode: (id, patch) =>
+   493→    set((s) => ({
+   494→      nodes: s.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)),
+   495→    })),
+   496→
+   497→  updateNodeData: (id, patch) =>
+   498→    set((s) => ({
+   499→      nodes: s.nodes.map((n) =>
+   500→        n.id === id ? { ...n, data: { ...n.data, ...patch } as typeof n.data } : n,
+   501→      ),
+   502→    })),
+   503→
+   504→  removeNode: (id) =>
+   505→    set((s) => {
+   506→      const node = s.nodes.find((n) => n.id === id);
+   507→      if (node) {
+   508→        // Defer the activity log to after the state set.
+   509→        queueMicrotask(() =>
+   510→          get().pushActivity({
+   511→            kind: "node_removed",
+   512→            text: `Removed ${node.kind} node "${node.name}".`,
+   513→            nodeId: id,
+   514→          }),
+   515→        );
+   516→      }
+   517→      return {
+   518→        nodes: s.nodes.filter((n) => n.id !== id),
+   519→        edges: s.edges.filter((e) => e.source !== id && e.target !== id),
+   520→        selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
+   521→      };
+   522→    }),
+   523→
+   524→  moveNode: (id, x, y) =>
+   525→    set((s) => ({
+   526→      nodes: s.nodes.map((n) =>
+   527→        n.id === id ? { ...n, position: { x, y } } : n,
+   528→      ),
+   529→    })),
+   530→
+   531→  renameNode: (id, name) =>
+   532→    set((s) => ({
+   533→      nodes: s.nodes.map((n) => (n.id === id ? { ...n, name } : n)),
+   534→    })),
+   535→
+   536→  connectNodes: (from, to, kind = "bus") => {
+   537→    if (from === to) return;
+   538→    const exists = get().edges.some(
+   539→      (e) =>
+   540→        (e.source === from && e.target === to) ||
+   541→        (e.source === to && e.target === from),
+   542→    );
+   543→    if (exists) return;
+   544→    const edge: AutumnEdge = {
+   545→      id: `edge-${nanoid(8)}`,
+   546→      kind,
+   547→      source: from,
+   548→      target: to,
+   549→      label: kind === "bus" ? "bus" : "nav",
+   550→      animated: kind === "bus",
+   551→    };
+   552→    set((s) => ({ edges: [...s.edges, edge] }));
+   553→    const fromName = get().nodes.find((n) => n.id === from)?.name ?? from;
+   554→    const toName = get().nodes.find((n) => n.id === to)?.name ?? to;
+   555→    get().pushActivity({
+   556→      kind: "edge_added",
+   557→      text: `Connected ${fromName} → ${toName} (${kind}).`,
+   558→    });
+   559→  },
+   560→
+   561→  disconnectNodes: (from, to) =>
+   562→    set((s) => ({
+   563→      edges: s.edges.filter(
+   564→        (e) =>
+   565→          !(
+   566→            (e.source === from && e.target === to) ||
+   567→            (e.source === to && e.target === from)
+   568→          ),
+   569→      ),
+   570→    })),
+   571→
+   572→  addTask: (description, afterIds = []) => {
+   573→    const id = `task-${nanoid(8)}`;
+   574→    const seq = get().taskSeq + 1;
+   575→    const status = afterIds.some((s) =>
+   576→      get().tasks.some((t) => t.seq === s && t.status !== "done"),
+   577→    )
+   578→      ? "blocked"
+   579→      : "open";
+   580→    const task: AutumnTask = {
+   581→      id,
+   582→      seq,
+   583→      canvasId: get().canvasId,
+   584→      description,
+   585→      status,
+   586→      assigneeId: null,
+   587→      afterIds,
+   588→      createdAt: Date.now(),
+   589→      updatedAt: Date.now(),
+   590→    };
+   591→    set((s) => ({ tasks: [...s.tasks, task], taskSeq: seq }));
+   592→    get().pushActivity({
+   593→      kind: "task_add",
+   594→      text: `Added task t${seq}: "${description.slice(0, 60)}".`,
+   595→    });
+   596→    return id;
+   597→  },
+   598→
+   599→  claimTask: (taskId, nodeId) =>
+   600→    set((s) => ({
+   601→      tasks: s.tasks.map((t) =>
+   602→        t.id === taskId
+   603→          ? { ...t, assigneeId: nodeId, status: "in_progress", updatedAt: Date.now() }
+   604→          : t,
+   605→      ),
+   606→    })),
+   607→
+   608→  completeTask: (taskId, note) =>
+   609→    set((s) => ({
+   610→      tasks: s.tasks.map((t) =>
+   611→        t.id === taskId
+   612→          ? { ...t, status: "done", note, updatedAt: Date.now() }
+   613→          : t,
+   614→      ),
+   615→    })),
+   616→
+   617→  pushPulse: (p) => {
+   618→    const pulse: BusPulse = { ...p, id: `pulse-${nanoid(8)}`, ts: Date.now() };
+   619→    set((s) => ({ pulses: [...s.pulses, pulse].slice(-50) }));
+   620→    // auto-clear after 3.5s
+   621→    setTimeout(() => {
+   622→      set((s) => ({ pulses: s.pulses.filter((x) => x.id !== pulse.id) }));
+   623→    }, 3500);
+   624→  },
+   625→
+   626→  clearPulses: () => set({ pulses: [] }),
+   627→
+   628→  pushCommanderMessage: (m) => {
+   629→    const id = `cmd-${nanoid(8)}`;
+   630→    const msg: CommanderChatMessage = { ...m, id, ts: Date.now() };
+   631→    set((s) => ({ commanderMessages: [...s.commanderMessages, msg] }));
+   632→    return id;
+   633→  },
+   634→
+   635→  updateCommanderMessage: (id, patch) =>
+   636→    set((s) => ({
+   637→      commanderMessages: s.commanderMessages.map((m) =>
+   638→        m.id === id ? { ...m, ...patch } : m,
+   639→      ),
+   640→    })),
+   641→
+   642→  setCommanderThinking: (v) => set({ isCommanderThinking: v }),
+   643→
+   644→  pushRecentAction: (a) =>
+   645→    set((s) => ({ recentActions: [...s.recentActions, a].slice(-20) })),
+   646→
+   647→  appendAgentMessage: (nodeId, message) => {
+   648→    const id = `msg-${nanoid(8)}`;
+   649→    const msg: AgentMessage = { ...message, id, ts: Date.now() };
+   650→    set((s) => ({
+   651→      nodes: s.nodes.map((n) => {
+   652→        if (n.id !== nodeId) return n;
+   653→        if (n.kind !== "chat") return n;
+   654→        const data = n.data as { messages: AgentMessage[] };
+   655→        return { ...n, data: { ...data, messages: [...data.messages, msg] } };
+   656→      }),
+   657→    }));
+   658→    return id;
+   659→  },
+   660→
+   661→  updateAgentMessage: (nodeId, msgId, patch) =>
+   662→    set((s) => ({
+   663→      nodes: s.nodes.map((n) => {
+   664→        if (n.id !== nodeId || n.kind !== "chat") return n;
+   665→        const data = n.data as { messages: AgentMessage[] };
+   666→        return {
+   667→          ...n,
+   668→          data: {
+   669→            ...data,
+   670→            messages: data.messages.map((m) =>
+   671→              m.id === msgId ? { ...m, ...patch } : m,
+   672→            ),
+   673→          },
+   674→        };
+   675→      }),
+   676→    })),
+   677→
+   678→  setAgentRunning: (nodeId, v) =>
+   679→    set((s) => ({ isAgentRunning: { ...s.isAgentRunning, [nodeId]: v } })),
+   680→
+   681→  setAgentStatus: (nodeId, status, doing) =>
+   682→    set((s) => ({
+   683→      nodes: s.nodes.map((n) =>
+   684→        n.id === nodeId && n.kind === "chat"
+   685→          ? {
+   686→              ...n,
+   687→              data: {
+   688→                ...(n.data as Record<string, unknown>),
+   689→                status,
+   690→                doing: doing ?? (n.data as { doing?: string }).doing,
+   691→              } as typeof n.data,
+   692→            }
+   693→          : n,
+   694→      ),
+   695→    })),
+   696→
+   697→  applyCommanderPlan: (plan) => {
+   698→    if (plan.kind !== "steps") return [];
+   699→    const createdIds: string[] = [];
+   700→    for (const [i, step] of plan.steps.entries()) {
+   701→      const createdId = executeStep(get, set, step, createdIds, i + 1);
+   702→      if (createdId) createdIds.push(createdId);
+   703→      get().pushRecentAction(`${step.action}(${JSON.stringify(step.args).slice(0, 60)})`);
+   704→    }
+   705→    get().pushActivity({
+   706→      kind: "commander_plan",
+   707→      text: `Commander executed ${plan.steps.length} action${plan.steps.length === 1 ? "" : "s"}: ${plan.steps.map((s) => s.action).join(", ")}.`,
+   708→    });
+   709→    return createdIds;
+   710→  },
+   711→
+   712→  resolveNodeRef: (ref, createdIds) => {
+   713→    if (!ref) return null;
+   714→    if (typeof ref !== "string") return null;
+   715→    // @N
+   716→    const m = ref.match(/^@(\d+)$/);
+   717→    if (m) {
+   718→      const idx = parseInt(m[1], 10) - 1;
+   719→      return createdIds[idx] ?? null;
+   720→    }
+   721→    // existing node id
+   722→    const found = get().nodes.find((n) => n.id === ref);
+   723→    if (found) return found.id;
+   724→    // persona name
+   725→    const personaId = resolvePersonaName(ref);
+   726→    if (personaId) {
+   727→      const node = get().nodes.find(
+   728→        (n) => n.kind === "chat" && (n.data as { personaId?: string }).personaId === personaId,
+   729→      );
+   730→      if (node) return node.id;
+   731→    }
+   732→    // by name
+   733→    const byName = get().nodes.find(
+   734→      (n) => n.name.toLowerCase() === ref.toLowerCase(),
+   735→    );
+   736→    if (byName) return byName.id;
+   737→    return null;
+   738→  },
+   739→
+   740→  resetCanvas: () => {
+   741→    const fresh = buildSeedCanvas();
+   742→    set({
+   743→      nodes: fresh.nodes,
+   744→      edges: fresh.edges,
+   745→      tasks: fresh.tasks,
+   746→      taskSeq: 3,
+   747→      pulses: [],
+   748→      selectedNodeId: null,
+   749→    });
+   750→  },
+   751→}));
+   752→
+   753→// ---- helpers ----
+   754→
+   755→function defaultNameForKind(kind: NodeKind): string {
+   756→  switch (kind) {
+   757→    case "chat":
+   758→      return nextPersona().name;
+   759→    case "terminal":
+   760→      return "Terminal";
+   761→    case "screen":
+   762→      return "Screen";
+   763→    case "sticky":
+   764→      return "Note";
+   765→    case "analytics":
+   766→      return "Analytics";
+   767→    case "youtube":
+   768→      return "Browser";
+   769→    case "remotion":
+   770→      return "Remotion";
+   771→  }
+   772→}
+   773→
+   774→function randomPosition(): { x: number; y: number } {
+   775→  return {
+   776→    x: 200 + Math.random() * 400,
+   777→    y: 120 + Math.random() * 280,
+   778→  };
+   779→}
+   780→
+   781→function defaultDataForKind(kind: NodeKind): unknown {
+   782→  const now = Date.now();
+   783→  switch (kind) {
+   784→    case "chat": {
+   785→      const p = nextPersona();
+   786→      return {
+   787→        harness: p.harness,
+   788→        personaId: p.id,
+   789→        model: defaultModelFor(p.harness),
+   790→        effort: "medium" as const,
+   791→        permission: "ask" as const,
+   792→        status: "idle",
+   793→        doing: "Standing by.",
+   794→        messages: [
+   795→          {
+   796→            id: `m-${nanoid(6)}`,
+   797→            role: "system" as const,
+   798→            text: `${p.name} online · ${p.harness} · ${p.tagline}`,
+   799→            ts: now,
+   800→          },
+   801→        ],
+   802→      };
+   803→    }
+   804→    case "terminal":
+   805→      return {
+   806→        status: "idle",
+   807→        dir: "~/autumn",
+   808→        port: undefined,
+   809→        lines: [
+   810→          { text: "$ autumn shell ready", kind: "info" as const, ts: now },
+   811→        ],
+   812→      };
+   813→    case "screen":
+   814→      return { screenKind: "desktop", name: "Preview", route: "/", url: "/preview" };
+   815→    case "sticky":
+   816→      return { text: "New note", color: "amber" };
+   817→    case "analytics":
+   818→      return {
+   819→        title: "Canvas metrics",
+   820→        metrics: [
+   821→          { label: "Agents", value: "0" },
+   822→          { label: "Tasks done", value: "0" },
+   823→          { label: "Bus msgs", value: "0" },
+   824→        ],
+   825→      };
+   826→    case "youtube":
+   827→      return { url: "https://example.com", name: "Browser" };
+   828→    case "remotion":
+   829→      return { name: "Video", crew: [], status: "idle" };
+   830→  }
+   831→}
+   832→
+   833→// Execute a single Commander step. Returns the created node id if applicable.
+   834→function executeStep(
+   835→  get: () => AutumnStore,
+   836→  set: (partial: Partial<AutumnStore>) => void,
+   837→  step: { action: string; args: Record<string, unknown> },
+   838→  createdIds: string[],
+   839→  stepNum: number,
+   840→): string | null {
+   841→  const store = get();
+   842→  const { action, args } = step;
+   843→
+   844→  switch (action) {
+   845→    case "add_chat": {
+   846→      const personaArg = args.persona as string | undefined;
+   847→      const harnessArg = args.harness as string | undefined;
+   848→      const persona = personaArg
+   849→        ? PERSONA_BY_ID[resolvePersonaName(personaArg) ?? personaArg] ?? nextPersona()
+   850→        : nextPersona();
+   851→      const harness = harnessArg ?? persona.harness;
+   852→      const id = store.addNode({
+   853→        kind: "chat",
+   854→        name: args.name as string | undefined ?? persona.name,
+   855→        data: {
+   856→          harness,
+   857→          personaId: persona.id,
+   858→          model: defaultModelFor(harness),
+   859→          effort: "medium",
+   860→          permission: "ask",
+   861→          status: "idle",
+   862→          doing: "Standing by.",
+   863→          messages: [
+   864→            {
+   865→              id: `m-${nanoid(6)}`,
+   866→              role: "system",
+   867→              text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+   868→              ts: Date.now(),
+   869→            },
+   870→          ],
+   871→        },
+   872→        position: randomPosition(),
+   873→      });
+   874→      return id;
+   875→    }
+   876→    case "add_agents": {
+   877→      const count = Math.max(1, Number(args.count ?? 1));
+   878→      const agent = args.agent as string | undefined;
+   879→      const surface = (args.surface as string | undefined) ?? "chat";
+   880→      let lastId: string | null = null;
+   881→      for (let i = 0; i < count; i++) {
+   882→        if (surface === "terminal") {
+   883→          lastId = store.addNode({ kind: "terminal" });
+   884→        } else {
+   885→          const persona = nextPersona();
+   886→          const harness = agent ?? persona.harness;
+   887→          lastId = store.addNode({
+   888→            kind: "chat",
+   889→            name: persona.name,
+   890→            data: {
+   891→              harness,
+   892→              personaId: persona.id,
+   893→              model: defaultModelFor(harness),
+   894→              effort: "medium",
+   895→              permission: "ask",
+   896→              status: "idle",
+   897→              doing: "Standing by.",
+   898→              messages: [
+   899→                {
+   900→                  id: `m-${nanoid(6)}`,
+   901→                  role: "system",
+   902→                  text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+   903→                  ts: Date.now(),
+   904→                },
+   905→              ],
+   906→            },
+   907→            position: {
+   908→              x: 200 + i * 80 + Math.random() * 200,
+   909→              y: 120 + Math.random() * 280,
+   910→            },
+   911→          });
+   912→        }
+   913→      }
+   914→      return lastId;
+   915→    }
+   916→    case "add_terminal": {
+   917→      return store.addNode({ kind: "terminal", name: args.name as string | undefined });
+   918→    }
+   919→    case "add_screen": {
+   920→      const screenKind = (args.kind as "desktop" | "phone") ?? "desktop";
+   921→      return store.addNode({
+   922→        kind: "screen",
+   923→        name: args.name as string | undefined ?? `Preview · ${screenKind}`,
+   924→        data: {
+   925→          screenKind,
+   926→          name: args.name as string | undefined ?? "Preview",
+   927→          route: (args.route as string | undefined) ?? "/",
+   928→          url: "/preview",
+   929→        },
+   930→      });
+   931→    }
+   932→    case "add_note": {
+   933→      return store.addNode({
+   934→        kind: "sticky",
+   935→        name: "Note",
+   936→        data: {
+   937→          text: (args.text as string) ?? "New note",
+   938→          color: (args.color as "amber" | "rose" | "emerald" | "violet" | "cyan") ?? "amber",
+   939→        },
+   940→      });
+   941→    }
+   942→    case "add_browser": {
+   943→      const url = (args.url as string) ?? "https://example.com";
+   944→      return store.addNode({
+   945→        kind: "youtube",
+   946→        name: (args.name as string) ?? "Browser",
+   947→        data: { url, name: (args.name as string) ?? "Browser" },
+   948→      });
+   949→    }
+   950→    case "add_remotion": {
+   951→      return store.addNode({
+   952→        kind: "remotion",
+   953→        name: (args.name as string) ?? "Remotion",
+   954→        data: { name: "Remotion", crew: [], status: "idle" },
+   955→      });
+   956→    }
+   957→    case "connect_nodes": {
+   958→      const from = store.resolveNodeRef(args.from as string, createdIds);
+   959→      const to = store.resolveNodeRef(args.to as string, createdIds);
+   960→      if (from && to) store.connectNodes(from, to, "bus");
+   961→      return null;
+   962→    }
+   963→    case "disconnect_nodes": {
+   964→      const from = store.resolveNodeRef(args.from as string, createdIds);
+   965→      const to = store.resolveNodeRef(args.to as string, createdIds);
+   966→      if (from && to) store.disconnectNodes(from, to);
+   967→      return null;
+   968→    }
+   969→    case "rename_node": {
+   970→      const id = store.resolveNodeRef(args.id as string, createdIds);
+   971→      if (id) store.renameNode(id, args.name as string);
+   972→      return null;
+   973→    }
+   974→    case "move_node": {
+   975→      const id = store.resolveNodeRef(args.id as string, createdIds);
+   976→      if (id) store.moveNode(id, Number(args.x), Number(args.y));
+   977→      return null;
+   978→    }
+   979→    case "remove_node": {
+   980→      const id = store.resolveNodeRef(args.id as string, createdIds);
+   981→      if (id) store.removeNode(id);
+   982→      return null;
+   983→    }
+   984→    case "remove_nodes": {
+   985→      const ids = args.ids as string[] | undefined;
+   986→      const kind = args.kind as NodeKind | undefined;
+   987→      if (ids) ids.forEach((id) => store.removeNode(id));
+   988→      else if (kind) {
+   989→        get()
+   990→          .nodes.filter((n) => n.kind === kind)
+   991→          .forEach((n) => store.removeNode(n.id));
+   992→      }
+   993→      return null;
+   994→    }
+   995→    case "send_to_node": {
+   996→      const id = store.resolveNodeRef(args.id as string, createdIds);
+   997→      const text = args.text as string;
+   998→      if (id) {
+   999→        store.appendAgentMessage(id, { role: "user", text, authorName: "Commander" });
+  1000→        store.setAgentStatus(id, "waiting", "Task received — queued.");
+  1001→      }
+  1002→      return null;
+  1003→    }
+  1004→    case "focus_node": {
+  1005→      const id = store.resolveNodeRef(args.id as string, createdIds);
+  1006→      if (id) store.setSelectedNode(id);
+  1007→      return null;
+  1008→    }
+  1009→    case "add_task": {
+  1010→      const description = (args.description as string) ?? "Untitled task";
+  1011→      const afterIds = (args.after as number[]) ?? [];
+  1012→      store.addTask(description, afterIds);
+  1013→      return null;
+  1014→    }
+  1015→    case "set_chat_option": {
+  1016→      const id = store.resolveNodeRef(args.id as string, createdIds);
+  1017→      if (id) {
+  1018→        const patch: Record<string, unknown> = {};
+  1019→        if (args.model) patch.model = args.model;
+  1020→        if (args.effort) patch.effort = args.effort;
+  1021→        if (args.permission) patch.permission = args.permission;
+  1022→        if (args.harness) {
+  1023→          patch.harness = args.harness;
+  1024→          // update model default when harness changes
+  1025→          patch.model = defaultModelFor(args.harness as import("./types").AgentHarness);
+  1026→        }
+  1027→        store.updateNodeData(id, patch);
+  1028→      }
+  1029→      return null;
+  1030→    }
+  1031→    case "arrange_nodes":
+  1032→    case "reload_screen":
+  1033→    case "cancel_node":
+  1034→    case "start_dev_server":
+  1035→    case "stop_dev_server":
+  1036→    case "go_home":
+  1037→    case "open_settings":
+  1038→    case "show_canvas":
+  1039→    case "open_finder":
+  1040→    case "find_files":
+  1041→    case "import_sessions":
+  1042→    case "expand_chat":
+  1043→    case "set_auto_comm":
+  1044→    case "set_chat_option":
+  1045→    case "generate_variants":
+  1046→      // UI-level actions, handled by components.
+  1047→      return null;
+  1048→    default:
+  1049→      return null;
+  1050→  }
+  1051→}
+  1052→

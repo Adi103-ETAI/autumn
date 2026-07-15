@@ -109,7 +109,15 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   });
 
   // 5) Parse [autumn-bus] message_peer handoff lines and route them.
-  routeBusHandoffs(nodeId, text);
+  const handoffsRouted = routeBusHandoffs(nodeId, text);
+
+  // 5b) Auto-emit a synthetic handoff if the agent has connected peers but
+  //     the LLM didn't include a [autumn-bus] line in its response. This
+  //     smooths over LLM variance and keeps the multi-agent coordination
+  //     loop visible to the user.
+  if (handoffsRouted === 0 && connectedPeers.length > 0) {
+    autoEmitSyntheticHandoff(nodeId, persona.name, finalTask, text, connectedPeers);
+  }
 
   store.setAgentRunning(nodeId, false);
 }
@@ -138,9 +146,10 @@ function chunkText(text: string, size: number): string[] {
   return out;
 }
 
-function routeBusHandoffs(nodeId: string, text: string) {
+function routeBusHandoffs(nodeId: string, text: string): number {
   const store = useAutumnStore.getState();
   const lines = text.split("\n");
+  let routed = 0;
   for (const line of lines) {
     const m = line.match(
       /\[autumn-bus\]\s*message_peer\s*(?:→|->)\s*(\w+)\s*:\s*(.+)$/i,
@@ -165,46 +174,118 @@ function routeBusHandoffs(nodeId: string, text: string) {
     );
     if (!edge) continue;
 
-    // POST to the bus (records the inbox for the peer).
-    fetch("/api/bus?op=message_peer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        canvasId: store.canvasId,
-        fromNodeId: nodeId,
-        toNodeId: peerNode.id,
-        peer: peerNode.id,
-        message,
-      }),
-    }).catch(() => {});
-
-    // Push a visual pulse on the edge.
-    store.pushPulse({
-      edgeId: edge.id,
-      fromNodeId: nodeId,
-      toNodeId: peerNode.id,
-      text: message,
-      kind: "message_peer",
-    });
-
-    // Also append the handoff into the peer's chat as a peer message.
-    store.appendAgentMessage(peerNode.id, {
-      role: "peer",
-      text: message,
-      authorName: useAutumnStore
-        .getState()
-        .nodes.find((n) => n.id === nodeId)?.name,
-    });
-
-    // Record in the activity log.
-    const fromName = useAutumnStore.getState().nodes.find((n) => n.id === nodeId)?.name ?? nodeId;
-    store.pushActivity({
-      kind: "bus_message_peer",
-      text: `${fromName} → ${peerNode.name}: ${message.slice(0, 80)}${message.length > 80 ? "…" : ""}`,
-      nodeId: peerNode.id,
-      meta: { fromNodeId: nodeId, toNodeId: peerNode.id, edgeId: edge.id },
-    });
+    deliverPeerMessage(nodeId, peerNode.id, edge.id, message);
+    routed++;
   }
+  return routed;
+}
+
+// Auto-synthesize a handoff to the first connected peer when the LLM didn't
+// emit a [autumn-bus] message_peer line. Keeps the coordination loop visible
+// and surfaces progress to downstream agents.
+function autoEmitSyntheticHandoff(
+  fromNodeId: string,
+  fromName: string,
+  task: string,
+  responseText: string,
+  peerNames: string[],
+) {
+  const store = useAutumnStore.getState();
+
+  // Find the first peer (by name) that's a chat node.
+  const peerNode = store.nodes.find(
+    (n) =>
+      n.kind === "chat" &&
+      peerNames.includes(n.name),
+  );
+  if (!peerNode) return;
+
+  // Find the edge between this node and the peer.
+  const edge = store.edges.find(
+    (e) =>
+      (e.source === fromNodeId && e.target === peerNode.id) ||
+      (e.source === peerNode.id && e.target === fromNodeId),
+  );
+  if (!edge) return;
+
+  // Pull a short, useful summary from the response (first non-empty line, capped).
+  const firstLine = responseText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith("```") && !l.startsWith("#"))
+    .slice(0, 1)[0] ?? task;
+  const summary = firstLine.length > 140 ? `${firstLine.slice(0, 137)}…` : firstLine;
+
+  const message = `(auto) Task "${task.slice(0, 80)}" complete. Summary: ${summary}`;
+
+  deliverPeerMessage(fromNodeId, peerNode.id, edge.id, message);
+
+  // Record a synthetic activity entry so the user can see this happened.
+  store.pushActivity({
+    kind: "bus_message_peer",
+    text: `${fromName} → ${peerNode.name}: (auto-handoff) ${summary.slice(0, 80)}`,
+    nodeId: peerNode.id,
+    meta: {
+      fromNodeId,
+      toNodeId: peerNode.id,
+      edgeId: edge.id,
+      synthetic: true,
+    },
+  });
+}
+
+// Shared helper: deliver a peer message via the bus, push a visual pulse,
+// and append the handoff into the peer's chat as a peer-role message.
+function deliverPeerMessage(
+  fromNodeId: string,
+  toNodeId: string,
+  edgeId: string,
+  message: string,
+) {
+  const store = useAutumnStore.getState();
+
+  // POST to the bus (records the inbox for the peer).
+  fetch("/api/bus?op=message_peer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      canvasId: store.canvasId,
+      fromNodeId,
+      toNodeId,
+      peer: toNodeId,
+      message,
+    }),
+  }).catch(() => {});
+
+  // Push a visual pulse on the edge.
+  store.pushPulse({
+    edgeId,
+    fromNodeId,
+    toNodeId,
+    text: message,
+    kind: "message_peer",
+  });
+
+  // Append the handoff into the peer's chat as a peer message.
+  const fromName = useAutumnStore.getState().nodes.find((n) => n.id === fromNodeId)?.name;
+  store.appendAgentMessage(toNodeId, {
+    role: "peer",
+    text: message,
+    authorName: fromName,
+  });
+
+  // Record in the activity log (only for explicit handoffs; synthetic ones
+  // record their own activity entry above to mark them as auto-generated).
+  const fromNameForLog =
+    useAutumnStore.getState().nodes.find((n) => n.id === fromNodeId)?.name ?? fromNodeId;
+  const toName =
+    useAutumnStore.getState().nodes.find((n) => n.id === toNodeId)?.name ?? toNodeId;
+  store.pushActivity({
+    kind: "bus_message_peer",
+    text: `${fromNameForLog} → ${toName}: ${message.slice(0, 80)}${message.length > 80 ? "…" : ""}`,
+    nodeId: toNodeId,
+    meta: { fromNodeId, toNodeId, edgeId },
+  });
 }
 
 // Convenience: run all idle agents that have a pending user task.

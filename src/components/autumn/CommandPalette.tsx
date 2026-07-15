@@ -41,6 +41,7 @@ import {
   Copy,
   Plus,
   Settings2,
+  Search,
 } from "lucide-react";
 import type { NodeKind } from "@/lib/autumn/types";
 import { toast } from "sonner";
@@ -73,6 +74,8 @@ export function CommandPalette() {
   const setSelectedNode = useAutumnStore((s) => s.setSelectedNode);
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
   const setConnectMode = useAutumnStore((s) => s.setConnectMode);
+  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
+  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
   const exportCanvas = useAutumnStore((s) => s.exportCanvas);
 
   // Local seed for example commands (re-randomized each open)
@@ -160,6 +163,16 @@ export function CommandPalette() {
         // Dispatch a custom event the CanvasView can listen to.
         window.dispatchEvent(new CustomEvent("autumn:fit-view"));
       },
+    });
+    list.push({
+      id: "search",
+      label: "Search canvas nodes",
+      hint: "⌘F",
+      icon: Search,
+      color: "text-emerald-400",
+      group: "Canvas",
+      keywords: "find filter locate node agent",
+      run: () => setShowNodeSearch(true),
     });
     list.push({
       id: "reset",
@@ -251,6 +264,21 @@ export function CommandPalette() {
           },
         });
         list.push({
+          id: "duplicate-agent",
+          label: `Duplicate ${n.name}`,
+          hint: "Shift+D",
+          icon: Copy,
+          color: "text-amber-300",
+          group: "Selected agent",
+          run: () => {
+            const newId = duplicateNode(n.id);
+            if (newId) {
+              setSelectedNode(newId);
+              toast.success(`Duplicated "${n.name}"`);
+            }
+          },
+        });
+        list.push({
           id: "settings-agent",
           label: `Edit ${n.name} settings`,
           icon: Settings2,
@@ -315,6 +343,8 @@ export function CommandPalette() {
     setSelectedNode,
     setSettingsNode,
     setConnectMode,
+    duplicateNode,
+    setShowNodeSearch,
     exportCanvas,
     seed,
   ]);
@@ -380,7 +410,11 @@ export function CommandPalette() {
             </div>
             <div className="flex items-center gap-1.5">
               <Copy className="size-3 text-violet-400" />
-              <span>Press ⌘S to save, ⌘1/2/3 to switch panels.</span>
+              <span>Press Shift+D to duplicate a selected node. ⌘F opens node search.</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Search className="size-3 text-sky-400" />
+              <span>Shift+click nodes to multi-select, then use bulk actions in the toolbar.</span>
             </div>
           </div>
         </CommandGroup>

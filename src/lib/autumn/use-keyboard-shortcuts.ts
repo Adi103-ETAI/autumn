@@ -3,8 +3,11 @@
 //   ⌘K / Ctrl+K     → open command palette
 //   ⌘S / Ctrl+S     → save canvas
 //   ⌘/ / Ctrl+/     → toggle help
+//   ⌘F / Ctrl+F     → open node search overlay
 //   Delete / Backspace → remove selected node (if not editing text)
-//   Escape          → deselect / close dialogs / cancel connect mode
+//                      → if multi-select active, removes all selected
+//   Shift+D         → duplicate selected node
+//   Escape          → deselect / close dialogs / cancel connect mode / close search
 //   ⌘1 / ⌘2 / ⌘3    → switch right panel tab (commander / tasks / bus)
 //   C               → enter connect mode (when a chat node is selected)
 //   R               → run selected agent
@@ -58,6 +61,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // ⌘F — Open node search overlay
+      if (mod && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        s.setShowNodeSearch(true);
+        return;
+      }
+
       // ⌘1 / ⌘2 / ⌘3 — panel tabs
       if (mod && (e.key === "1" || e.key === "2" || e.key === "3")) {
         e.preventDefault();
@@ -66,8 +76,12 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Escape — layered: close palette / dialog / connect mode / deselect
+      // Escape — layered: search → palette → dialog → connect mode → deselect
       if (e.key === "Escape") {
+        if (s.showNodeSearch) {
+          s.setShowNodeSearch(false);
+          return;
+        }
         if (s.showCommandPalette) {
           s.setShowCommandPalette(false);
           return;
@@ -93,6 +107,10 @@ export function useKeyboardShortcuts() {
           toast.info("Connect mode cancelled");
           return;
         }
+        if (s.selectedNodeIds.length > 0) {
+          s.clearSelection();
+          return;
+        }
         if (s.selectedNodeId) {
           s.setSelectedNode(null);
           return;
@@ -103,8 +121,16 @@ export function useKeyboardShortcuts() {
       // After this point, ignore keys typed into inputs/textareas.
       if (isEditableTarget(e.target)) return;
 
-      // Delete / Backspace — remove selected node
+      // Delete / Backspace — remove selected node(s)
       if (e.key === "Delete" || e.key === "Backspace") {
+        // Multi-select takes priority if active.
+        if (s.selectedNodeIds.length > 0) {
+          e.preventDefault();
+          const count = s.selectedNodeIds.length;
+          s.removeNodes(s.selectedNodeIds);
+          toast.info(`Removed ${count} node${count === 1 ? "" : "s"}`);
+          return;
+        }
         if (s.selectedNodeId) {
           e.preventDefault();
           const n = s.nodes.find((x) => x.id === s.selectedNodeId);
@@ -114,8 +140,19 @@ export function useKeyboardShortcuts() {
         }
       }
 
+      // Shift+D — Duplicate selected node
+      if (e.shiftKey && e.key.toLowerCase() === "d") {
+        if (s.selectedNodeId) {
+          e.preventDefault();
+          const n = s.nodes.find((x) => x.id === s.selectedNodeId);
+          const newId = s.duplicateNode(s.selectedNodeId);
+          if (newId && n) toast.success(`Duplicated "${n.name}"`);
+          return;
+        }
+      }
+
       // C — connect mode
-      if (e.key.toLowerCase() === "c" && !mod) {
+      if (e.key.toLowerCase() === "c" && !mod && !e.shiftKey) {
         if (s.selectedNodeId) {
           const n = s.nodes.find((x) => x.id === s.selectedNodeId);
           if (n && n.kind === "chat") {
@@ -127,7 +164,7 @@ export function useKeyboardShortcuts() {
       }
 
       // R — run selected agent
-      if (e.key.toLowerCase() === "r" && !mod) {
+      if (e.key.toLowerCase() === "r" && !mod && !e.shiftKey) {
         if (s.selectedNodeId) {
           const n = s.nodes.find((x) => x.id === s.selectedNodeId);
           if (n && n.kind === "chat") {
@@ -138,7 +175,7 @@ export function useKeyboardShortcuts() {
       }
 
       // A — arrange nodes
-      if (e.key.toLowerCase() === "a" && !mod) {
+      if (e.key.toLowerCase() === "a" && !mod && !e.shiftKey) {
         s.arrangeNodes();
         toast.info("Nodes arranged");
         return;

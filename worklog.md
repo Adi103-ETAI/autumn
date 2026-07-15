@@ -288,3 +288,108 @@ Priority recommendations for next round:
 - Add a "recently used personas" sort in the persona roster.
 - Add a voice fallback for non-Chrome browsers (whisper.cpp via WebAudio).
 - Add a "share canvas" feature that exports to a URL-encoded string.
+
+---
+Task ID: 4-qa-and-features
+Agent: main (cron-webDevReview round 4)
+Task: QA test via agent-browser, fix bugs, add new features (activity log persistence, auto-emit synthetic message_peer handoff, multi-select with bulk ops, duplicate node, node search overlay, canvas zoom indicator, styling polish), and continue advancing the project.
+
+Work Log:
+- **QA testing (agent-browser, 1440x900)**: Opened the app, entered the workshop, verified all 3 right-panel tabs (Commander/Tasks/Bus), tested chat node dropdown, ran the full E2E Commander flow ("spawn Juno on Gemini and connect her to Orion then have Juno write the README"). Console was clean throughout, all API routes returned 200, dev server compiled cleanly.
+- **E2E verified**: Commander LLM produced correct DO_ACTIONS plan (add_chat + connect_nodes + send_to_node), Juno was spawned on Gemini (gemini-2.5-pro), connected to Orion via bus edge, ran to completion, sent a `message_peer → Orion` handoff. Orion's chat preview updated with the handoff message.
+- **Prisma schema updated**: Added `text String @default("")` field to the `AgentLog` model + a new index `@@index([canvasId, createdAt])` for efficient time-ordered queries. Ran `bun run db:push` to apply.
+- **db.ts cache-busting**: The `globalForPrisma` pattern was caching the old PrismaClient across HMR, so schema changes weren't picked up. Added a `SCHEMA_VERSION` constant + version check that disconnects and discards the cached client when the version changes. This means schema changes only require bumping the version string + `bun run db:push`.
+- **Bug fix: SQLite compatibility**: Removed `skipDuplicates: true` from `db.agentLog.createMany()` since SQLite doesn't support that option.
+- **Bug fix: canvas FK constraint**: The `/api/logs` POST handler now `db.canvas.upsert()`s a stub canvas row before inserting logs, so logs can be persisted even before the user explicitly saves the canvas.
+- **New feature: Activity log persistence (Prisma AgentLog)**:
+  - Created `src/app/api/logs/route.ts` with GET (list by canvas, optional node filter, configurable limit), POST (batch insert with kind validation), and DELETE (clear by canvas).
+  - Modified `store.ts` `pushActivity` to fire-and-forget persist each entry via a debounced batch POST (`scheduleLogPersist` — batches every 1.5s to avoid one HTTP request per event).
+  - Modified `clearActivity` to also DELETE persisted logs for the current canvas.
+  - Added `loadActivity(canvasId)` action that GETs persisted entries and merges them with the in-memory log (dedup by id).
+  - Modified `loadCanvas` to also call `loadActivity` after loading a saved canvas.
+  - Modified `page.tsx` to call `loadActivity(canvasId)` on mount so the timeline is populated from the DB on page refresh.
+  - Added `duplicate_node` and `search` to the `ActivityEntry.kind` union + the ActivityTimeline's `KIND_META` map (with Copy + Search icons).
+  - The ActivityTimeline "Clear timeline" button now also clears the persisted log (with an updated tooltip explaining the behavior).
+- **Bug fix: auto-emit synthetic message_peer handoff**:
+  - Refactored `agent-runner.ts` to extract a shared `deliverPeerMessage(fromNodeId, toNodeId, edgeId, message)` helper that handles bus POST + pulse push + peer chat append + activity log entry.
+  - `routeBusHandoffs` now returns a count of routed handoffs.
+  - Added `autoEmitSyntheticHandoff` — when an agent finishes a task, has connected peers, but the LLM didn't emit a `[autumn-bus] message_peer → peer:` line, this function auto-synthesizes a handoff to the first connected peer. The message includes the task summary + the first non-empty response line (capped at 140 chars). The activity log entry is prefixed with "(auto-handoff)" so users can distinguish synthetic from explicit handoffs.
+- **New feature: Multi-select with bulk operations (Shift+click)**:
+  - Added `selectedNodeIds: string[]`, `addToSelection`, `toggleSelection`, `clearSelection`, `removeNodes(ids)` actions to the store.
+  - Added a global Shift-key tracker in `CanvasView` (window keydown/keyup listeners) since react-flow's `NodeChange` doesn't expose modifier state.
+  - Modified `onNodesChange` to: when Shift is held during a select change, preserve the previous primary by adding it to `selectedNodeIds` first, then add the new one, then set the new one as primary. When Shift is NOT held, clear selection and set primary (default react-flow behavior).
+  - Added `multiSelectionKeyCode={["Shift"]}` + `selectNodesOnDrag={false}` to the ReactFlow component.
+  - Added a multi-select bulk action bar to `CanvasToolbar` that appears when `selectedNodeIds.length > 0`: shows a "N selected" badge + Duplicate-all / Remove-all / Clear-selection buttons (all with tooltips).
+  - Added a multi-select halo ring (sky-400) on chat nodes that are in `selectedNodeIds` but not the primary `selectedNodeId`.
+  - Updated `use-keyboard-shortcuts.ts` so Delete/Backspace removes all selected nodes when multi-select is active, and Escape clears multi-select before deselecting the primary.
+  - Added a "N selected" indicator to the StatusBar (sky-300 dot + count).
+- **New feature: Duplicate node (Shift+D)**:
+  - Added `duplicateNode(id)` action to the store: deep-clones the node data, creates a new id, offsets position by (+40, +40), and for chat nodes resets status to "idle", doing to "Standing by (duplicate).", and replaces the messages array with a fresh system message. Pushes a `duplicate_node` activity entry.
+  - Added `Shift+D` keyboard shortcut.
+  - Added a "Duplicate" item to the chat node dropdown menu.
+  - Added a "Duplicate {name}" entry to the Command Palette (in the "Selected agent" group, with Shift+D hint).
+- **New feature: Node search overlay (⌘F)**:
+  - Added `searchQuery`, `showNodeSearch`, `searchMatchIds` state + `setSearchQuery` (which runs the filter), `setShowNodeSearch` actions to the store. The filter searches across node name, kind, and (for chat) harness/model/status/doing, and (for sticky) text.
+  - Created `NodeSearchOverlay.tsx` — a floating panel at top-center of the canvas with: search input (auto-focused on open), live match count badge, scrollable result list with persona glyph / kind icon + name + meta + peer count, keyboard navigation (↑/↓ to move, Enter to jump, Esc to close), and a footer hint bar.
+  - Clicking a result selects the node, switches to the commander tab if it's a chat node, dispatches an `autumn:center-node` custom event (which CanvasView listens to and calls `setCenter` to center the viewport on the node), and closes the overlay.
+  - CanvasView injects a `__searchMatch` flag into each node's data; ChatNode renders an emerald pulsing ring + a Search icon next to the name when this flag is set.
+  - Added `⌘F` keyboard shortcut + an Escape layer to close the search overlay first.
+  - Added a Search button to the CanvasToolbar + the StatusBar (next to ⌘K) + the Command Palette.
+- **New feature: Canvas zoom level indicator**:
+  - CanvasToolbar now subscribes to react-flow's viewport via `getZoom()` (polled every 300ms) and displays the current zoom percentage in the stats section (e.g. "110%") with a ZoomIn icon.
+- **Styling polish (globals.css)**:
+  - Added `search-match-pulse` keyframe animation — emerald ring that breathes on matched nodes.
+  - Added `persona-glyph-active` animation — subtle scale pulse on the persona glyph when the agent is running.
+  - Added `gradient-text-animated` — animated gradient text for headings (shifts hue over 4s).
+  - Added `.glass-chip` helper — glassmorphism chip for status bar / toolbars.
+  - Added `.activity-date-sep` — gradient line for date separators in the timeline.
+  - Added `.empty-cta` — subtle dotted radial-gradient pattern for empty-state CTAs.
+  - Refined chat node footer button hover (translateY -1px).
+  - Refined sticky note hover (z-index 10 + rotation reset).
+  - Added multi-select halo (`.selected-multi` class — sky drop-shadow).
+  - Added connector handle glow when source is in connect mode.
+  - Added refined sheet/dialog overlay (subtle amber tint).
+  - Added subtle top sheen on chat node cards.
+  - Added refined scrollbar for sheet content.
+  - Added inner ring on canvas toolbar.
+  - Added hover lift for non-chat node shells (translateY -2px).
+  - Added bus edge label glow when pulsing.
+  - Added `.timestamp-mono` for tabular-nums activity timestamps.
+  - Added drag cursor refinement + touch-device focus outline suppression.
+- **CommandPalette enhancements**: Added "Search canvas nodes" command (⌘F hint), "Duplicate {name}" command (Shift+D hint), and two new tips in the footer (Shift+D duplicate, ⌘F search, Shift+click multi-select).
+- **ChatNode enhancements**: Added "Duplicate" dropdown menu item (with Copy icon), reads `__searchMatch` flag and renders emerald ring + Search icon next to name, persona glyph gets `persona-glyph-active` class when running (subtle scale pulse + ring), shows sky-400 ring when in multi-select but not primary.
+
+Stage Summary:
+- **All QA passes.** Console is clean (only HMR logs, no errors/warnings), lint passes, all API routes return 200, dev server compiles cleanly, Prisma SQL queries now include the new `text` column.
+- **1 reliability fix**: Auto-emit synthetic message_peer handoff when an agent finishes if it has connected peers but the LLM didn't include one in its response. Smooths over LLM variance and keeps the multi-agent coordination loop visible.
+- **5 new features added**:
+  1. Activity log persistence to Prisma `AgentLog` table — debounced batch POST + load on canvas load + load on page mount + clear-with-persistence. Timeline now survives page refreshes.
+  2. Multi-select (Shift+click) with bulk actions — duplicate-all, remove-all, clear-selection in a contextual toolbar section. Sky-400 halo on multi-selected chat nodes.
+  3. Duplicate node action (Shift+D) — deep-clones any node with new id + offset position + fresh state for chat nodes. Available via keyboard shortcut, chat node dropdown, and command palette.
+  4. Node search overlay (⌘F) — fuzzy search across name/kind/harness/model/status/doing/note-text. Live match list with keyboard nav + click-to-jump-and-center. Emerald pulse ring on matched nodes.
+  5. Canvas zoom level indicator in the toolbar — live percentage with ZoomIn icon.
+- **Styling polish**: 15+ new CSS rules (search-match pulse, persona glyph active, gradient text animated, glass chip, activity date sep, empty CTA pattern, multi-select halo, connector handle glow, refined sheet overlay, top sheen, hover lifts, bus edge label glow, drag cursor, touch-device focus suppression, tabular-nums timestamps).
+- **E2E verified twice**: (a) "spawn Juno on Gemini and connect her to Atlas then have her document the API" → Juno spawned on Gemini, connected to Atlas, ran, sent `message_peer → Atlas` handoff ("I have documented the API endpoints using JSDoc"). Atlas's chat preview updated. (b) "spawn Vega on Cursor and connect her to Apollo then have her write the landing page copy" → Vega spawned on Cursor (cursor-fast), connected to Apollo, ran, sent `message_peer → Apollo` handoff ("Landing page copy drafted with compelling headline and CTAs"). Apollo's chat preview updated.
+- **Persistence verified**: After page refresh, the activity timeline showed all events from both sessions: Vega → Apollo peer msg, Vega response, Vega agent start, edge added, node added, Juno → Atlas peer msg (from 6 minutes prior), workshop seeded.
+- **Multi-select verified**: Shift+click on Atlas + Orion → "2 selected" badge appeared in toolbar, 10 toolbar buttons visible (3 quick-add + 3 canvas + 3 bulk + 1 danger), sky-400 halos on selected nodes.
+- **Search verified**: ⌘F opened overlay, typed "atlas" → 1 match (Atlas chat node) + sticky note mentioning Atlas. Clicking the match jumped to Atlas, opened chat panel, centered viewport.
+- **Duplicate verified**: Selected Orion, pressed Shift+D → "Orion (copy)" node appeared with "Standing by (duplicate)." status, auto-selected, activity log entry "DUPLICATE Duplicated 'Orion' → 'Orion (copy)'" recorded.
+- **Tech stack unchanged**: Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + @xyflow/react + Zustand + z-ai-web-dev-sdk + Prisma/SQLite + cmdk + react-markdown + Web Speech API + sonner.
+
+Unresolved issues / risks:
+- The bus state (`/api/bus`) is still in-memory per process — a server restart clears inboxes. For production, persist bus state to DB or use Yjs.
+- Voice input (Web Speech API) only works in Chrome/Edge; other browsers show an alert. Could add a fallback.
+- The auto-emit synthetic handoff only fires when NO `[autumn-bus] message_peer` line was emitted. If the LLM emits one for the wrong peer (e.g. a typo), the synthetic fallback won't fire. Could add a "did the LLM mention each connected peer?" check.
+- The activity log is capped at 200 entries in-memory. The DB stores all entries (up to the GET limit of 500), so older entries are visible only via direct API query, not in the UI. Could add pagination to the timeline.
+- Multi-select via Shift+click works for chat nodes but not yet for non-chat nodes (terminal, screen, sticky, etc.) — the bulk-action toolbar appears but the visual halo class is only applied to ChatNode. Could add the halo to OtherNodes' NodeShell.
+- The node search overlay filters client-side; for very large canvases (1000+ nodes) this could become slow. Could add debouncing or server-side search.
+
+Priority recommendations for next round:
+- Add multi-select halo + duplicate support to non-chat nodes (terminal, screen, sticky, analytics, browser, remotion).
+- Add pagination / "load more" to the Activity Timeline for canvases with >200 persisted events.
+- Add a "did the LLM mention each connected peer?" check to the auto-handoff logic — if the LLM emits a handoff for peer A but the agent is also connected to peer B, auto-emit a second handoff to B.
+- Add a "duplicate canvas" entry to the Command Palette (currently only in the CanvasSwitcher).
+- Add a voice fallback for non-Chrome browsers (whisper.cpp via WebAudio).
+- Add a "share canvas" feature that exports to a URL-encoded string for sharing via link.
+- Add Yjs-based real-time collaboration for the bus state (would require a websocket mini-service).
+- Add a per-agent "execution history" panel showing all past runs (start time, end time, duration, task summary, response length) — could reuse the AgentLog table with kind=session_start|stop.

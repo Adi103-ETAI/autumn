@@ -42,7 +42,9 @@ export interface ActivityEntry {
     | "edge_removed"
     | "canvas_saved"
     | "canvas_loaded"
-    | "canvas_cleared";
+    | "canvas_cleared"
+    | "duplicate_node"
+    | "search";
   text: string;
   nodeId?: string;
   meta?: Record<string, unknown>;
@@ -92,6 +94,12 @@ export interface AutumnStore {
   connectMode: { from: string | null } | null; // when active, next clicked chat node becomes the target
   activityLog: ActivityEntry[]; // global append-only activity timeline
 
+  // multi-select + search (Round 4 additions)
+  selectedNodeIds: string[]; // for bulk operations (Shift+click)
+  searchQuery: string; // active node search query
+  showNodeSearch: boolean; // node search overlay open?
+  searchMatchIds: string[]; // ids that match the current query
+
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -107,6 +115,7 @@ export interface AutumnStore {
   setConnectMode: (m: { from: string | null } | null) => void;
   pushActivity: (e: Omit<ActivityEntry, "id" | "ts">) => void;
   clearActivity: () => void;
+  loadActivity: (canvasId: string) => Promise<void>;
   pushCommandHistory: (cmd: string) => void;
   arrangeNodes: () => void;
   clearCanvas: () => void;
@@ -115,6 +124,15 @@ export interface AutumnStore {
   duplicateCanvas: (id: string) => Promise<void>;
   exportCanvas: () => string; // returns JSON string
   importCanvas: (json: string) => boolean; // returns success
+
+  // multi-select + search actions
+  addToSelection: (id: string) => void;
+  toggleSelection: (id: string) => void;
+  clearSelection: () => void;
+  setSearchQuery: (q: string) => void;
+  setShowNodeSearch: (v: boolean) => void;
+  duplicateNode: (id: string) => string | null;
+  removeNodes: (ids: string[]) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -195,6 +213,12 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     },
   ],
 
+  // multi-select + search (Round 4)
+  selectedNodeIds: [],
+  searchQuery: "",
+  showNodeSearch: false,
+  searchMatchIds: [],
+
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
   setRightPanelTab: (t) => set({ rightPanelTab: t }),
@@ -208,14 +232,176 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   setPendingCommand: (cmd) => set({ pendingCommand: cmd }),
   setConnectMode: (m) => set({ connectMode: m }),
 
-  pushActivity: (e) =>
+  pushActivity: (e) => {
+    const entry: ActivityEntry = {
+      ...e,
+      id: `act-${nanoid(8)}`,
+      ts: Date.now(),
+    };
     set((s) => ({
-      activityLog: [
-        ...s.activityLog,
-        { ...e, id: `act-${nanoid(8)}`, ts: Date.now() },
-      ].slice(-200),
+      activityLog: [...s.activityLog, entry].slice(-200),
+    }));
+    // Fire-and-forget persist to DB (debounced batch).
+    scheduleLogPersist(get().canvasId, entry);
+  },
+  clearActivity: () => {
+    set({ activityLog: [] });
+    // Also clear the persisted logs for the current canvas.
+    const cid = get().canvasId;
+    fetch(`/api/logs?canvas=${encodeURIComponent(cid)}`, { method: "DELETE" }).catch(
+      () => {},
+    );
+  },
+  loadActivity: async (canvasId) => {
+    try {
+      const r = await fetch(
+        `/api/logs?canvas=${encodeURIComponent(canvasId)}&limit=200`,
+        { method: "GET" },
+      );
+      if (!r.ok) return;
+      const j = await r.json();
+      const entries: ActivityEntry[] = (j.entries ?? []).map(
+        (e: {
+          id: string;
+          ts: number;
+          kind: ActivityEntry["kind"];
+          text: string;
+          nodeId?: string;
+          meta?: Record<string, unknown>;
+        }) => ({
+          id: e.id,
+          ts: e.ts,
+          kind: e.kind,
+          text: e.text,
+          nodeId: e.nodeId,
+          meta: e.meta,
+        }),
+      );
+      // Merge persisted entries with the in-memory seed (dedup by id).
+      set((s) => {
+        const existingIds = new Set(s.activityLog.map((x) => x.id));
+        const merged = [...s.activityLog, ...entries.filter((e) => !existingIds.has(e.id))];
+        return { activityLog: merged.slice(-200) };
+      });
+    } catch {
+      /* ignore — best-effort */
+    }
+  },
+
+  // multi-select + search actions
+  addToSelection: (id) =>
+    set((s) => ({
+      selectedNodeIds: s.selectedNodeIds.includes(id)
+        ? s.selectedNodeIds
+        : [...s.selectedNodeIds, id],
     })),
-  clearActivity: () => set({ activityLog: [] }),
+  toggleSelection: (id) =>
+    set((s) => ({
+      selectedNodeIds: s.selectedNodeIds.includes(id)
+        ? s.selectedNodeIds.filter((x) => x !== id)
+        : [...s.selectedNodeIds, id],
+    })),
+  clearSelection: () => set({ selectedNodeIds: [] }),
+  setSearchQuery: (q) => {
+    const query = q.trim().toLowerCase();
+    set((s) => {
+      if (!query) return { searchQuery: q, searchMatchIds: [] };
+      const matches = s.nodes
+        .filter((n) => {
+          const haystack = `${n.name} ${n.kind}`.toLowerCase();
+          if (n.kind === "chat") {
+            const d = n.data as {
+              harness?: string;
+              personaId?: string;
+              model?: string;
+              doing?: string;
+              status?: string;
+            };
+            return (
+              haystack.includes(query) ||
+              (d.harness ?? "").toLowerCase().includes(query) ||
+              (d.model ?? "").toLowerCase().includes(query) ||
+              (d.doing ?? "").toLowerCase().includes(query) ||
+              (d.status ?? "").toLowerCase().includes(query)
+            );
+          }
+          if (n.kind === "sticky") {
+            return (n.data as { text?: string }).text?.toLowerCase().includes(query);
+          }
+          return haystack.includes(query);
+        })
+        .map((n) => n.id);
+      return { searchQuery: q, searchMatchIds: matches };
+    });
+  },
+  setShowNodeSearch: (v) =>
+    set((s) => ({
+      showNodeSearch: v,
+      // Clear matches when closing the overlay.
+      searchMatchIds: v ? s.searchMatchIds : [],
+      searchQuery: v ? s.searchQuery : "",
+    })),
+  duplicateNode: (id) => {
+    const node = get().nodes.find((n) => n.id === id);
+    if (!node) return null;
+    const newId = `node-${nanoid(8)}`;
+    // Deep clone data (so messages don't get shared by reference).
+    const clonedData = JSON.parse(JSON.stringify(node.data)) as typeof node.data;
+    // For chat nodes, append a "(copy)" marker to the system message so it's clear.
+    if (node.kind === "chat") {
+      const d = clonedData as {
+        messages: { id: string; role: string; text: string; ts: number }[];
+        status: string;
+        doing?: string;
+      };
+      d.status = "idle";
+      d.doing = "Standing by (duplicate).";
+      d.messages = [
+        {
+          id: `m-${nanoid(6)}`,
+          role: "system",
+          text: `${node.name} (duplicate) online · ready for tasks.`,
+          ts: Date.now(),
+        },
+      ];
+    }
+    const newNode: AutumnNode = {
+      ...node,
+      id: newId,
+      name: `${node.name} (copy)`,
+      position: {
+        x: node.position.x + 40,
+        y: node.position.y + 40,
+      },
+      data: clonedData,
+      createdAt: Date.now(),
+    };
+    set((s) => ({ nodes: [...s.nodes, newNode] }));
+    get().pushActivity({
+      kind: "duplicate_node",
+      text: `Duplicated "${node.name}" → "${newNode.name}".`,
+      nodeId: newId,
+      meta: { sourceId: id },
+    });
+    return newId;
+  },
+  removeNodes: (ids) => {
+    const idSet = new Set(ids);
+    const removed = get().nodes.filter((n) => idSet.has(n.id));
+    set((s) => ({
+      nodes: s.nodes.filter((n) => !idSet.has(n.id)),
+      edges: s.edges.filter((e) => !idSet.has(e.source) && !idSet.has(e.target)),
+      selectedNodeId: idSet.has(s.selectedNodeId ?? "") ? null : s.selectedNodeId,
+      selectedNodeIds: s.selectedNodeIds.filter((x) => !idSet.has(x)),
+    }));
+    for (const n of removed) {
+      get().pushActivity({
+        kind: "node_removed",
+        text: `Removed ${n.kind} node "${n.name}".`,
+        nodeId: n.id,
+      });
+    }
+  },
 
   pushCommandHistory: (cmd) =>
     set((s) => ({
@@ -394,6 +580,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         kind: "canvas_loaded",
         text: `Loaded "${j.name ?? "Untitled Canvas"}" from the database.`,
       });
+      // Also load persisted activity log entries for this canvas.
+      void get().loadActivity(j.id ?? id);
     } catch (err) {
       set({
         isSaving: false,
@@ -1048,4 +1236,39 @@ function executeStep(
     default:
       return null;
   }
+}
+
+// ---- activity log persistence (debounced batch POST) ----
+// Maintains a pending buffer of entries and flushes to /api/logs every ~1.5s
+// to avoid one HTTP request per activity event.
+let pendingLogs: ActivityEntry[] = [];
+let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleLogPersist(canvasId: string, entry: ActivityEntry) {
+  pendingLogs.push(entry);
+  if (logFlushTimer) clearTimeout(logFlushTimer);
+  logFlushTimer = setTimeout(async () => {
+    const batch = pendingLogs.slice();
+    pendingLogs = [];
+    logFlushTimer = null;
+    if (batch.length === 0) return;
+    try {
+      await fetch("/api/logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          canvasId,
+          entries: batch.map((e) => ({
+            kind: e.kind,
+            text: e.text,
+            nodeId: e.nodeId ?? "commander",
+            meta: e.meta,
+            ts: e.ts,
+          })),
+        }),
+      });
+    } catch {
+      /* ignore — best-effort persistence */
+    }
+  }, 1500);
 }

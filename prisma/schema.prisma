@@ -87,10 +87,12 @@ model AgentLog {
   id        String   @id @default(cuid())
   canvasId  String
   canvas    Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
-  nodeId    String
-  kind      String   // session_start | stop | notify | pre_prompt | message_peer | task_claim | task_complete
+  nodeId    String   // destination node id, or "commander" for global events
+  kind      String   // commander_plan | agent_status | agent_message | bus_message_peer | task_claim | task_complete | task_add | node_added | node_removed | edge_added | edge_removed | canvas_saved | canvas_loaded | canvas_cleared | duplicate_node
+  text      String   @default("") // human-readable summary
   payload   String   @default("{}") // JSON
   createdAt DateTime @default(now())
 
   @@index([canvasId, nodeId])
+  @@index([canvasId, createdAt])
 }
