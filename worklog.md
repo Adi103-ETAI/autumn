@@ -192,3 +192,38 @@ Stage Summary:
 Unresolved issues / risks:
 - The real `/etc/.z-ai-config` contains a live JWT `token` and `chatId` tied to this session — NOT pushed (only redacted example), but user should be aware it exists on this machine.
 - The earlier-exposed GitHub PAT (`ghp_…`) still needs revocation (carried over from Task 9).
+
+---
+
+Task ID: 11-maple-leaf-logo
+Agent: main
+Task: Use the user-uploaded maple-leaf.png as the Autumn logo icon across the app.
+
+Work Log:
+- **Analyzed uploaded image** (`upload/maple-leaf.png`): 512×512 RGBA PNG. VLM initially reported a gray background, but pixel analysis confirmed **54% transparent / 43% opaque / 1% anti-aliased edges** — the background IS transparent. Leaf colors: warm orange/amber (e.g. `(216,98,18)`, `(255,153,80)`, `(255,135,49)`).
+- **Created `AutumnLogo` component** (`src/components/autumn/AutumnLogo.tsx`): reusable, uses `next/image`, accepts `size` (px), `glow` (amber drop-shadow for hero), `priority` (above-the-fold). No gradient box — the leaf itself carries the brand colour.
+- **Replaced logo in 5 components**:
+  - `TopBar.tsx`: 28px logo with `priority`, removed `Leaf` import
+  - `HelpDialog.tsx`: 28px logo (kept `Leaf` for "Enter the workshop" button accent)
+  - `CommanderPanel.tsx`: 22px logo, removed `Leaf` import
+  - `CanvasView.tsx`: 56px logo with `glow` (empty state), removed `Leaf` import
+  - `WelcomeSplash.tsx`: 72px logo with `glow` + `priority` (hero), kept `Leaf` for "Get Started" button
+- **Updated favicon** (`layout.tsx`): `/logo.svg` → `/maple-leaf.png` (512×512 PNG, also set as apple-touch icon)
+- **Copied asset**: `upload/maple-leaf.png` → `public/maple-leaf.png`
+- **Lint**: clean (no errors)
+- **Agent-browser visual verification** (3 screenshots, VLM-confirmed):
+  - TopBar (28px): ✅ orange maple leaf, transparent background, no artifacts
+  - Welcome splash (72px): ✅ large orange maple leaf, clean transparent, no box
+  - Commander panel (22px): ✅ small maple leaf visible, clean
+  - Console: clean (only pre-existing React Flow nodeTypes warnings, no image 404s)
+- **Pushed to GitHub**: committed on main (`7849604`), cherry-picked to `autumn-o1` (`7f17fde`), pushed. Remote verified at SHA `7f17fde` with `maple-leaf.png` + `AutumnLogo.tsx` confirmed via API (HTTP 200).
+
+Stage Summary:
+- Maple leaf is now the Autumn brand logo everywhere: TopBar, Commander header, Help dialog, empty-canvas state, Welcome splash, and browser favicon.
+- New reusable `AutumnLogo` component with size/glow/priority props.
+- 3 commits on `autumn-o1` branch: initial app + env examples + maple leaf logo.
+- All changes verified live via agent-browser + VLM.
+
+Unresolved issues / risks:
+- The old `public/logo.svg` is still in the repo (unused now) — could be removed in a future cleanup, but harmless.
+- The `topbar-logo-shimmer gradient-hue-rotate` CSS classes on the old TopBar logo div are now unused — could be cleaned up from globals.css.
