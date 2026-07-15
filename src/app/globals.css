@@ -1,0 +1,1754 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.75rem;
+  /* Autumn light (rarely used; we default to dark) */
+  --background: oklch(0.99 0.005 60);
+  --foreground: oklch(0.18 0.01 60);
+  --card: oklch(1 0.005 60);
+  --card-foreground: oklch(0.18 0.01 60);
+  --popover: oklch(1 0.005 60);
+  --popover-foreground: oklch(0.18 0.01 60);
+  --primary: oklch(0.72 0.19 50);
+  --primary-foreground: oklch(0.99 0.005 60);
+  --secondary: oklch(0.96 0.01 60);
+  --secondary-foreground: oklch(0.2 0.01 60);
+  --muted: oklch(0.96 0.01 60);
+  --muted-foreground: oklch(0.5 0.01 60);
+  --accent: oklch(0.95 0.02 50);
+  --accent-foreground: oklch(0.22 0.02 50);
+  --destructive: oklch(0.62 0.24 27);
+  --border: oklch(0.9 0.01 60);
+  --input: oklch(0.9 0.01 60);
+  --ring: oklch(0.72 0.19 50);
+  --chart-1: oklch(0.65 0.22 41);
+  --chart-2: oklch(0.6 0.18 185);
+  --chart-3: oklch(0.55 0.2 280);
+  --chart-4: oklch(0.75 0.19 84);
+  --chart-5: oklch(0.7 0.2 16);
+  --sidebar: oklch(0.97 0.005 60);
+  --sidebar-foreground: oklch(0.18 0.01 60);
+  --sidebar-primary: oklch(0.72 0.19 50);
+  --sidebar-primary-foreground: oklch(0.99 0.005 60);
+  --sidebar-accent: oklch(0.95 0.02 50);
+  --sidebar-accent-foreground: oklch(0.22 0.02 50);
+  --sidebar-border: oklch(0.9 0.01 60);
+  --sidebar-ring: oklch(0.72 0.19 50);
+}
+
+.dark {
+  /* Autumn workshop — warm charcoal with amber accents */
+  --background: oklch(0.135 0.006 55);
+  --foreground: oklch(0.96 0.008 60);
+  --card: oklch(0.175 0.008 55);
+  --card-foreground: oklch(0.96 0.008 60);
+  --popover: oklch(0.2 0.009 55);
+  --popover-foreground: oklch(0.96 0.008 60);
+  --primary: oklch(0.78 0.18 55);            /* amber */
+  --primary-foreground: oklch(0.16 0.02 55);
+  --secondary: oklch(0.23 0.01 55);
+  --secondary-foreground: oklch(0.96 0.008 60);
+  --muted: oklch(0.21 0.008 55);
+  --muted-foreground: oklch(0.68 0.012 60);
+  --accent: oklch(0.28 0.04 45);             /* warm orange accent */
+  --accent-foreground: oklch(0.97 0.01 55);
+  --destructive: oklch(0.68 0.22 22);
+  --border: oklch(0.28 0.012 55 / 45%);
+  --input: oklch(0.24 0.012 55 / 70%);
+  --ring: oklch(0.78 0.18 55 / 60%);
+  --chart-1: oklch(0.7 0.2 41);
+  --chart-2: oklch(0.68 0.17 185);
+  --chart-3: oklch(0.62 0.22 280);
+  --chart-4: oklch(0.78 0.19 84);
+  --chart-5: oklch(0.72 0.22 16);
+  --sidebar: oklch(0.155 0.007 55);
+  --sidebar-foreground: oklch(0.96 0.008 60);
+  --sidebar-primary: oklch(0.78 0.18 55);
+  --sidebar-primary-foreground: oklch(0.16 0.02 55);
+  --sidebar-accent: oklch(0.23 0.01 55);
+  --sidebar-accent-foreground: oklch(0.96 0.008 60);
+  --sidebar-border: oklch(0.28 0.012 55 / 45%);
+  --sidebar-ring: oklch(0.78 0.18 55 / 60%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body {
+    @apply bg-background text-foreground;
+    height: 100%;
+  }
+  body {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(at 12% 8%, oklch(0.78 0.18 55 / 0.06) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, oklch(0.62 0.22 16 / 0.05) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, oklch(0.55 0.2 280 / 0.03) 0px, transparent 60%);
+    background-attachment: fixed;
+  }
+}
+
+/* Autumn canvas + react-flow theme overrides */
+.autumn-canvas {
+  --xy-background-color: transparent;
+  --xy-edge-stroke-default: oklch(0.5 0.06 55 / 0.5);
+  --xy-edge-stroke-selected-default: oklch(0.78 0.18 55);
+  --xy-edge-stroke-width-default: 1.5;
+  --xy-controls-button-background-color: oklch(0.2 0.01 55 / 80%);
+  --xy-controls-button-background-color-hover: oklch(0.28 0.04 45);
+  --xy-controls-button-color: oklch(0.96 0.008 60);
+  --xy-controls-button-border-color: oklch(0.28 0.012 55 / 45%);
+  --xy-attribution-background: transparent;
+  --xy-attribution-color: oklch(0.5 0.01 60);
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__node {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: oklch(0.78 0.18 55);
+  border: 2px solid oklch(0.16 0.02 55);
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+/* Custom scrollbar */
+.autumn-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.autumn-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.autumn-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.32 0.012 55 / 60%);
+  border-radius: 4px;
+}
+.autumn-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.42 0.04 50 / 80%);
+}
+
+/* Bus edge animated pulse */
+@keyframes bus-pulse {
+  0% { stroke-dashoffset: 24; opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.2; }
+}
+.bus-edge-flow {
+  stroke-dasharray: 6 6;
+  animation: bus-pulse 1.2s linear infinite;
+}
+
+/* Glow pulse for active agents */
+@keyframes agent-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0); }
+  50% { box-shadow: 0 0 20px 2px oklch(0.78 0.18 55 / 0.35); }
+}
+.agent-active {
+  animation: agent-glow 2.4s ease-in-out infinite;
+}
+
+/* Typing dots */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Voice waveform */
+@keyframes wave-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.wave-bar {
+  animation: wave-bar 0.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Node hover lift */
+.react-flow__node:not(.react-flow__node-selected):hover {
+  transition: transform 0.15s ease-out;
+}
+
+/* Glassmorphism panel helper */
+.glass-panel {
+  background: oklch(0.175 0.008 55 / 70%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.32 0.012 55 / 40%);
+}
+
+/* Subtle shimmer for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0.01 55 / 30%) 0%,
+    oklch(0.3 0.02 55 / 50%) 50%,
+    oklch(0.22 0.01 55 / 30%) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Fade-in animation for new nodes/messages */
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fade-in-up 0.25s ease-out;
+}
+
+/* Slide-in from right for panels */
+@keyframes slide-in-right {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+/* Pulse ring for bus live indicator */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 oklch(0.65 0.2 150 / 0.5); }
+  70% { box-shadow: 0 0 0 6px oklch(0.65 0.2 150 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.65 0.2 150 / 0); }
+}
+.pulse-ring {
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Gradient text helper */
+.gradient-text-amber {
+  background: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Refined react-flow controls */
+.react-flow__controls-button {
+  border-bottom: 1px solid oklch(0.28 0.012 55 / 45%) !important;
+}
+.react-flow__controls-button svg {
+  fill: oklch(0.96 0.008 60);
+}
+
+/* MiniMap refinement */
+.react-flow__minimap {
+  border-radius: 0.5rem !important;
+  overflow: hidden;
+}
+
+/* Selected node glow */
+.react-flow__node.selected {
+  filter: drop-shadow(0 0 12px oklch(0.78 0.18 55 / 0.4));
+}
+
+/* Node drag cursor */
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+}
+
+/* Handle hover state */
+.react-flow__handle:hover {
+  transform: scale(1.4);
+  transition: transform 0.15s ease-out;
+}
+.react-flow__handle {
+  transition: transform 0.15s ease-out;
+}
+
+/* Edge label hover */
+.react-flow__edge:hover .react-flow__edge-text {
+  fill: oklch(0.78 0.18 55);
+}
+
+/* Connection line styling */
+.react-flow__connectionline .react-flow__edge-path {
+  stroke: oklch(0.78 0.18 55);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+/* Subtle ambient glow at canvas corners */
+.autumn-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(at 0% 0%, oklch(0.78 0.18 55 / 0.04) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, oklch(0.62 0.22 16 / 0.04) 0px, transparent 40%);
+  z-index: 0;
+}
+
+/* Custom focus ring */
+*:focus-visible {
+  outline: 2px solid oklch(0.78 0.18 55 / 0.6);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Compact kbd styling */
+kbd {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7em;
+}
+
+/* Sonner toast theme override */
+[data-sonner-toast] {
+  background: oklch(0.2 0.009 55) !important;
+  border: 1px solid oklch(0.32 0.012 55 / 60%) !important;
+  color: oklch(0.96 0.008 60) !important;
+}
+[data-sonner-toast][data-type="success"] {
+  border-color: oklch(0.65 0.2 150 / 50%) !important;
+}
+[data-sonner-toast][data-type="error"] {
+  border-color: oklch(0.68 0.22 22 / 50%) !important;
+}
+
+/* Scrollbar for command palette */
+[cmdk-list]::-webkit-scrollbar {
+  width: 6px;
+}
+[cmdk-list]::-webkit-scrollbar-track {
+  background: transparent;
+}
+[cmdk-list]::-webkit-scrollbar-thumb {
+  background: oklch(0.32 0.012 55 / 50%);
+  border-radius: 3px;
+}
+
+/* Connect-mode cursor */
+.react-flow.connecting .react-flow__node {
+  cursor: crosshair !important;
+}
+
+/* Node entrance animation */
+@keyframes node-enter {
+  0% { opacity: 0; transform: scale(0.85) translateY(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.react-flow__node {
+  animation: node-enter 0.25s ease-out;
+}
+
+/* Toolbar button hover lift */
+.autumn-toolbar-btn {
+  transition: transform 0.15s ease-out, background-color 0.15s ease-out;
+}
+.autumn-toolbar-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Disable text selection on canvas controls */
+.react-flow__controls,
+.react-flow__minimap,
+.react-flow__panel {
+  user-select: none;
+}
+
+/* Tab indicator dot */
+@keyframes tab-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+.tab-indicator-dot {
+  animation: tab-pulse 1.6s ease-in-out infinite;
+}
+
+/* ---- Round 4 styling polish ---- */
+
+/* Search match pulse — emerald ring that breathes on matched nodes */
+@keyframes search-match-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.2 150 / 0.5), 0 8px 24px -8px oklch(0.7 0.2 150 / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px oklch(0.7 0.2 150 / 0), 0 8px 24px -8px oklch(0.7 0.2 150 / 0.5);
+  }
+}
+.search-match-pulse {
+  animation: search-match-pulse 1.6s ease-out infinite;
+}
+
+/* Persona glyph active state — subtle ring rotation when agent is running */
+@keyframes persona-glyph-active {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+.persona-glyph-active {
+  animation: persona-glyph-active 1.4s ease-in-out infinite;
+}
+
+/* Activity timeline — date separator gradient line */
+.activity-date-sep {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.32 0.012 55 / 60%) 20%,
+    oklch(0.32 0.012 55 / 60%) 80%,
+    transparent 100%
+  );
+}
+
+/* Glassy chip used in status bar + toolbars */
+.glass-chip {
+  background: oklch(0.21 0.012 55 / 65%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid oklch(0.32 0.012 55 / 40%);
+}
+
+/* Refined hover state for chat node footer buttons */
+.react-flow__node-chat button:hover {
+  transform: translateY(-1px);
+  transition: transform 0.12s ease-out;
+}
+
+/* Sticky note rotation hover lift */
+.react-flow__node-sticky:hover {
+  z-index: 10 !important;
+}
+
+/* Multi-select halo for chat nodes */
+.react-flow__node.selected-multi {
+  filter: drop-shadow(0 0 10px oklch(0.7 0.18 240 / 0.45));
+}
+
+/* Connector handle glow when source is in connect mode */
+.react-flow__node.connect-source .react-flow__handle-source {
+  box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3);
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+/* Subtle dotted border on empty-state CTA */
+.empty-cta {
+  background-image: radial-gradient(
+    oklch(0.78 0.18 55 / 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 10px 10px;
+}
+
+/* Refined sheet/dialog overlay (subtle amber tint) */
+[data-state="open"].fixed[data-state="open"]::before {
+  background-color: oklch(0.13 0.005 55 / 0.7) !important;
+}
+
+/* Animated gradient text for headings */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-text-animated {
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55),
+    oklch(0.7 0.22 16),
+    oklch(0.78 0.18 55)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 4s ease-in-out infinite;
+}
+
+/* Node card subtle top sheen */
+.react-flow__node-chat > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    oklch(1 0 0 / 0.04) 0%,
+    transparent 30%
+  );
+  border-radius: inherit;
+}
+
+/* Refined scrollbar for sheet content */
+[data-state="open"] .autumn-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+[data-state="open"] .autumn-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.32 0.012 55 / 40%);
+  border-radius: 3px;
+}
+
+/* Subtle inner ring on canvas toolbar */
+.autumn-canvas-toolbar-inner {
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.05),
+    0 8px 24px -8px oklch(0 0 0 / 0.5);
+}
+
+/* Hover lift for non-chat node shells */
+.react-flow__node:not(.react-flow__node-chat):hover {
+  transform: translateY(-2px);
+  transition: transform 0.15s ease-out;
+}
+
+/* Bus edge label glow when pulsing */
+.react-flow__edge.animated .react-flow__edge-text {
+  filter: drop-shadow(0 0 4px oklch(0.78 0.18 55 / 0.5));
+}
+
+/* Active drag cursor refinement */
+.react-flow__pane.dragging {
+  cursor: grabbing !important;
+}
+
+/* Soft glow under selected chat node footer */
+.react-flow__node-chat.selected > div:last-child {
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.3);
+}
+
+/* Sticky note paper texture (subtle) */
+.react-flow__node-sticky > div {
+  background-image:
+    linear-gradient(
+      180deg,
+      oklch(1 0 0 / 0.08) 0%,
+      transparent 8%
+    );
+}
+
+/* Hide ugly outline on touch devices */
+@media (pointer: coarse) {
+  *:focus-visible {
+    outline: none;
+  }
+}
+
+/* Print-style monospace for activity log timestamps */
+.timestamp-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum";
+}
+
+/* ---- Round 5 styling polish ---- */
+
+/* Thinking dots — smaller, amber-only, for the ChatNode "working" indicator */
+@keyframes thinking-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.thinking-dot {
+  animation: thinking-bounce 1.2s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Shimmer slide for the working progress bar */
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.shimmer-slide {
+  animation: shimmer-slide 1.6s ease-in-out infinite;
+}
+
+/* Sticky note markdown text */
+.sticky-markdown {
+  color: oklch(0.18 0.04 60 / 0.95);
+}
+.sticky-markdown :where(p, h1, h2, h3, h4, ul, ol, blockquote) {
+  margin: 0;
+}
+.sticky-markdown :where(strong, b) {
+  font-weight: 700;
+}
+.sticky-markdown :where(a) {
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}
+
+/* Context menu fade-in */
+@keyframes ctx-menu-in {
+  0% { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Bus edge label button hover ring */
+.react-flow__edge:hover button {
+  filter: drop-shadow(0 0 4px oklch(0.78 0.18 55 / 0.4));
+}
+
+/* Inspector dialog fade-in */
+@keyframes dialog-content-in {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Stat chip subtle gradient background */
+.stat-chip {
+  background: linear-gradient(
+    135deg,
+    oklch(0.21 0.012 55 / 60%) 0%,
+    oklch(0.19 0.012 55 / 40%) 100%
+  );
+}
+
+/* Quick template chip hover glow */
+.quick-chip {
+  transition: all 0.15s ease-out;
+}
+.quick-chip:hover {
+  box-shadow: 0 0 0 1px oklch(0.78 0.18 55 / 0.3), 0 4px 12px -4px oklch(0.78 0.18 55 / 0.2);
+}
+
+/* Refined kbd element styling */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: oklch(0.21 0.012 55 / 80%);
+  border: 1px solid oklch(0.32 0.012 55 / 60%);
+  box-shadow:
+    inset 0 -1px 0 oklch(0 0 0 / 0.25),
+    0 1px 0 oklch(0 0 0 / 0.1);
+  color: oklch(0.88 0.01 60);
+  line-height: 1;
+  font-weight: 500;
+}
+
+/* Subtle dotted texture for context menu separators */
+.ctx-separator {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.32 0.012 55 / 40%) 20%,
+    oklch(0.32 0.012 55 / 40%) 80%,
+    transparent 100%
+  );
+  height: 1px;
+}
+
+/* Floating pulse under active bus edges */
+@keyframes bus-edge-pulse-soft {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.9; }
+}
+
+/* Bus traffic card hover (subtle scale + glow) */
+.bus-traffic-card {
+  transition: all 0.15s ease-out;
+}
+.bus-traffic-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.25);
+}
+
+/* Persona glyph ring for running agents — refined */
+@keyframes persona-ring-running {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  50% { box-shadow: 0 0 0 3px transparent; opacity: 0.85; }
+}
+
+/* Slide-in panel for the new context menu */
+.context-menu-enter {
+  animation: ctx-menu-in 0.12s ease-out;
+}
+
+/* Better focus ring for chat input textarea */
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* Bus edge label — clickable affordance */
+.react-flow__edge button {
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: 0.04em;
+}
+
+/* Empty state — larger dotted pattern variant */
+.empty-cta-lg {
+  background-image: radial-gradient(
+    oklch(0.78 0.18 55 / 0.15) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 14px 14px;
+}
+
+/* Subtle background gradient on the top bar */
+.autumn-topbar-gradient {
+  background: linear-gradient(
+    180deg,
+    oklch(0.175 0.008 55 / 95%) 0%,
+    oklch(0.155 0.007 55 / 85%) 100%
+  );
+}
+
+/* Right panel divider */
+.autumn-right-panel {
+  background: linear-gradient(
+    180deg,
+    oklch(0.165 0.008 55 / 80%) 0%,
+    oklch(0.155 0.007 55 / 70%) 100%
+  );
+}
+
+/* ---- Round 6 styling polish (Zoom indicator + Dock + TopBar micro-animations) ---- */
+
+/* 1. node-spawn-in — entrance animation for freshly added nodes.
+   opacity 0→1, translateY 8px→0, scale 0.96→1 over 250ms ease-out.
+   Applied once on mount by ChatNode / OtherNodes when they first appear. */
+@keyframes node-spawn-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.node-spawn-in {
+  animation: node-spawn-in 250ms ease-out;
+}
+
+/* 2. edge-connect-pulse — one-shot stroke-opacity pulse for newly connected bus edges. */
+@keyframes edge-connect-pulse {
+  0% { stroke-opacity: 0.3; }
+  50% { stroke-opacity: 1; }
+  100% { stroke-opacity: 0.3; }
+}
+.edge-connect-pulse {
+  animation: edge-connect-pulse 800ms ease-in-out;
+}
+
+/* 3. topbar-logo-shimmer — slow diagonal highlight sweeping across the logo every 4s. */
+@keyframes topbar-logo-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.topbar-logo-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.topbar-logo-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    oklch(1 0 0 / 0.22) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: topbar-logo-shimmer 4s ease-in-out infinite;
+}
+
+/* 4. dock-btn-lift — bare hover-lift for dock buttons (translateY -2px). */
+.dock-btn-lift {
+  transition:
+    transform 0.15s ease-out,
+    background-color 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+.dock-btn-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* autumn-dock-btn — comprehensive dock button styling: hover lift + warm gradient
+   + amber active/pressed ring + scale-down. Used by the Dock.tsx buttons. */
+.autumn-dock-btn {
+  transition:
+    transform 0.15s ease-out,
+    background-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    background-image 0.15s ease-out;
+  background-image: linear-gradient(180deg, transparent 0%, transparent 100%);
+}
+.autumn-dock-btn:hover {
+  transform: translateY(-2px);
+  background-image: linear-gradient(
+    180deg,
+    oklch(0.78 0.18 55 / 0.14) 0%,
+    oklch(0.7 0.22 16 / 0.06) 100%
+  );
+  box-shadow: 0 4px 10px -4px oklch(0.78 0.18 55 / 0.28);
+}
+.autumn-dock-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* 5. chip-zoom-reset — border + box-shadow transition for the zoom chip on hover. */
+.chip-zoom-reset {
+  transition:
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    color 0.15s ease-out,
+    background-color 0.15s ease-out;
+}
+.chip-zoom-reset:hover {
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
+        TaskBoard progress, ChatNode idle glow) ---- */
+
+/* 6. commander-skeleton — shimmer skeleton lines for the "planning…" state.
+   Each line is a subtle amber-tinted bar with a moving highlight. */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.commander-skeleton-line {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55 / 0.08) 0%,
+    oklch(0.78 0.18 55 / 0.22) 50%,
+    oklch(0.78 0.18 55 / 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+/* 7. bus-card-enter — entrance animation for newly arrived bus traffic cards.
+   Slide in from the right + fade in, 280ms ease-out. */
+@keyframes bus-card-enter {
+  0% { opacity: 0; transform: translateX(12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.bus-card-enter {
+  animation: bus-card-enter 280ms ease-out;
+}
+
+/* 8. task-progress-fill — animated width transition for the TaskBoard progress bar fill. */
+.task-progress-fill {
+  transition: width 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 9. chat-node-idle-glow — subtle persona-colored glow ring on idle chat nodes
+   that intensifies on hover. The CSS var --persona-color is set inline. */
+.chat-node-idle-glow {
+  transition: box-shadow 0.25s ease-out;
+}
+.chat-node-idle-glow:hover {
+  box-shadow:
+    0 8px 28px -8px var(--persona-color, oklch(0.78 0.18 55)),
+    0 0 0 1px var(--persona-color, oklch(0.78 0.18 55)),
+    0 0 24px -4px var(--persona-color, oklch(0.78 0.18 55 / 0.45));
+}
+
+/* 10. status-dot-glow — small pulsing aura behind the status dot in ChatNode. */
+@keyframes status-dot-glow {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  50% { box-shadow: 0 0 0 3px transparent; opacity: 0.6; }
+}
+.status-dot-glow {
+  animation: status-dot-glow 1.6s ease-in-out infinite;
+}
+
+/* 11. persona-arrow-flow — animated dash offset for the persona→persona arrow
+   in bus traffic cards, suggesting message flow direction. */
+@keyframes persona-arrow-flow {
+  0% { transform: translateX(-2px); opacity: 0.5; }
+  50% { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(-2px); opacity: 0.5; }
+}
+.persona-arrow-flow {
+  animation: persona-arrow-flow 1.4s ease-in-out infinite;
+}
+
+/* 12. task-card-accent — left-edge accent bar that inherits the status color. */
+.task-card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.task-card-accent::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--task-accent, oklch(0.7 0.02 55));
+  transition: background 0.2s ease-out;
+}
+
+/* ---- Round 7 styling polish (Task 4-b: Handle pulse, gradient border, thinking ring, tool badges, dock count) ---- */
+
+/* 1. handle-pulse — subtle scale/opacity pulse for connect handles on idle nodes.
+   Suggests to the user that the handle is draggable to create a connection. */
+@keyframes handle-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.35); opacity: 1; }
+}
+.handle-pulse {
+  animation: handle-pulse 2.4s ease-in-out infinite;
+}
+
+/* Handle glow when in connect mode — source glows amber */
+@keyframes handle-glow-source {
+  0%, 100% { box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.3), 0 0 8px oklch(0.78 0.18 55 / 0.4); }
+  50% { box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.15), 0 0 14px oklch(0.78 0.18 55 / 0.6); }
+}
+.handle-glow-source {
+  animation: handle-glow-source 1.4s ease-in-out infinite;
+}
+
+/* Handle glow when in connect mode — target glows emerald */
+@keyframes handle-glow-target {
+  0%, 100% { box-shadow: 0 0 0 2px oklch(0.7 0.2 150 / 0.3), 0 0 8px oklch(0.7 0.2 150 / 0.4); }
+  50% { box-shadow: 0 0 0 4px oklch(0.7 0.2 150 / 0.15), 0 0 14px oklch(0.7 0.2 150 / 0.6); }
+}
+.handle-glow-target {
+  animation: handle-glow-target 1.4s ease-in-out infinite;
+}
+
+/* 2. gradient-border-rotate — rotating conic gradient border for dock button hover.
+   Uses a pseudo-element trick with a conic-gradient that rotates. */
+@keyframes gradient-border-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.dock-btn-gradient-border {
+  position: relative;
+  z-index: 0;
+}
+.dock-btn-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    oklch(0.78 0.18 55 / 0.6),
+    oklch(0.7 0.22 16 / 0.4),
+    oklch(0.62 0.2 280 / 0.3),
+    oklch(0.78 0.18 55 / 0.6)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: gradient-border-rotate 2s linear infinite;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  z-index: -1;
+}
+.dock-btn-gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* 3. commander-thinking-ring — a pulsing amber ring around the thinking indicator
+   in CommanderPanel. */
+@keyframes commander-thinking-ring {
+  0%, 100% {
+    box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px oklch(0.78 0.18 55 / 0);
+  }
+}
+.commander-thinking-ring {
+  animation: commander-thinking-ring 1.6s ease-out infinite;
+  border-radius: 50%;
+}
+
+/* 4. tool-badge-enter — pop-in animation for tool use badges. */
+@keyframes tool-badge-enter {
+  0% { opacity: 0; transform: scale(0.5) translateY(4px); }
+  70% { transform: scale(1.1) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.tool-badge-enter {
+  animation: tool-badge-enter 0.3s ease-out;
+}
+
+/* 5. dock-count-badge — styling for the count badge on dock buttons. */
+.dock-count-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 8px;
+  line-height: 14px;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 999px;
+  background: oklch(0.78 0.18 55);
+  color: oklch(0.16 0.02 55);
+  box-shadow: 0 0 0 1.5px oklch(0.16 0.02 55);
+  pointer-events: none;
+}
+
+/* 6. dock-btn-active — brief highlight when a node of that kind was just added. */
+@keyframes dock-btn-flash {
+  0% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.6); }
+  50% { box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3); }
+  100% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0); }
+}
+.dock-btn-active {
+  animation: dock-btn-flash 0.6s ease-out;
+}
+
+/* 7. Commander input gradient border on focus. */
+@keyframes input-gradient-rotate {
+  0% { --input-gradient-angle: 0deg; }
+  100% { --input-gradient-angle: 360deg; }
+}
+@property --input-gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.commander-input-focus-ring {
+  position: relative;
+}
+.commander-input-focus-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius) + 1px);
+  padding: 1px;
+  background: conic-gradient(
+    from var(--input-gradient-angle),
+    oklch(0.78 0.18 55 / 0.5),
+    oklch(0.7 0.22 16 / 0.3),
+    oklch(0.62 0.2 280 / 0.2),
+    oklch(0.78 0.18 55 / 0.5)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: input-gradient-rotate 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+}
+.commander-input-focus-ring:focus-within::after {
+  opacity: 1;
+}
+
+/* 8. Status bar online pulse — subtle green pulse on the version button. */
+@keyframes status-online-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-online-pulse {
+  animation: status-online-pulse 2s ease-in-out infinite;
+}
+
+/* 9. Status bar thinking spinner. */
+@keyframes status-thinking-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.status-thinking-spinner {
+  animation: status-thinking-spin 1s linear infinite;
+}
+
+/* Enhanced handle styles — larger, with ring, persona-colored */
+.react-flow__handle-chat-target,
+.react-flow__handle-chat-source {
+  width: 10px;
+  height: 10px;
+  border: 2px solid oklch(0.16 0.02 55);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.react-flow__handle-chat-target:hover,
+.react-flow__handle-chat-source:hover {
+  transform: scale(1.4);
+}
+
+/* Clear chat button hover */
+.clear-chat-btn:hover {
+  color: oklch(0.68 0.22 22);
+}
+
+/* ---- Task 4-c styling (Edge direction arrows, QuickSpawn, enhanced toolbar/context menu) ---- */
+
+/* Edge direction arrow flow animation — subtle horizontal oscillation for bus edges */
+@keyframes edge-arrow-flow {
+  0%, 100% { transform: translateX(0); opacity: 0.7; }
+  50% { transform: translateX(2px); opacity: 1; }
+}
+.edge-arrow-flow {
+  animation: edge-arrow-flow 1.4s ease-in-out infinite;
+}
+
+/* ---- Round 7 additional styling polish ---- */
+
+/* Stats dashboard — card hover lift */
+.stats-card-hover {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.stats-card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.2);
+}
+
+/* Heatmap cell hover glow */
+.heatmap-cell {
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+.heatmap-cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 8px oklch(0.78 0.18 55 / 0.4);
+  z-index: 1;
+}
+
+/* Quick spawn menu — entrance animation */
+@keyframes spawn-menu-enter {
+  0% { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.spawn-menu-enter {
+  animation: spawn-menu-enter 0.15s ease-out;
+}
+
+/* Quick spawn preset — hover slide-right */
+.spawn-preset-item {
+  transition: transform 0.12s ease-out, background-color 0.12s ease-out, padding-left 0.12s ease-out;
+}
+.spawn-preset-item:hover {
+  transform: translateX(2px);
+  padding-left: 12px;
+}
+
+/* Canvas context menu — entrance animation */
+@keyframes ctx-menu-enter {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.ctx-menu-enter {
+  animation: ctx-menu-enter 0.12s ease-out;
+}
+
+/* Agent performance table row hover — subtle accent bar */
+.perf-row-hover {
+  transition: background-color 0.12s ease-out, padding-left 0.12s ease-out;
+}
+.perf-row-hover:hover {
+  padding-left: 4px;
+}
+
+/* Overview card value — subtle counter animation */
+@keyframes count-up {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.stats-value-enter {
+  animation: count-up 0.3s ease-out;
+}
+
+/* Ambient canvas vignette — darker corners for depth */
+.autumn-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    oklch(0.13 0.005 55 / 0.3) 100%
+  );
+  z-index: 0;
+}
+
+/* Refined activity feed entry — left accent bar on hover */
+.activity-entry-hover {
+  transition: background-color 0.12s ease-out, padding-left 0.12s ease-out;
+  border-left: 2px solid transparent;
+}
+.activity-entry-hover:hover {
+  border-left-color: oklch(0.78 0.18 55 / 0.5);
+  padding-left: 12px;
+}
+
+/* Right panel tab — subtle gradient underline on selected */
+.right-panel-tab-selected {
+  position: relative;
+}
+.right-panel-tab-selected::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, oklch(0.78 0.18 55 / 0.6), transparent);
+  border-radius: 1px;
+}
+
+/* Toast notification entrance — slide up from bottom */
+@keyframes toast-slide-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Canvas node subtle inner shadow for depth */
+.react-flow__node-chat > div:first-child {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.06);
+}
+
+/* Dock separator — subtle amber gradient */
+.dock-separator {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    oklch(0.78 0.18 55 / 0.2) 50%,
+    transparent 100%
+  );
+}
+
+/* Quick template chip — subtle glow on hover */
+.quick-template-chip {
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background-color 0.12s ease-out;
+}
+.quick-template-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px -2px oklch(0.78 0.18 55 / 0.3);
+}
+
+/* Right panel — subtle inner top border glow */
+.right-panel-inner {
+  box-shadow: inset 0 1px 0 oklch(0.78 0.18 55 / 0.08);
+}
+
+/* ---- Task 5-a styling enhancements ---- */
+
+/* Breathing border — slow opacity pulse for idle chat node borders */
+@keyframes breathing-border {
+  0%, 100% { border-color: oklch(0.78 0.18 55 / 0.15); }
+  50% { border-color: oklch(0.78 0.18 55 / 0.4); }
+}
+.breathing-border {
+  animation: breathing-border 4s ease-in-out infinite;
+}
+
+/* Avatar ring spin — slow rotation for running agent avatar rings */
+@keyframes avatar-ring-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.avatar-ring-spin {
+  animation: avatar-ring-spin 3s linear infinite;
+}
+
+/* Gradient hue rotate — slow hue shift for the logo icon */
+@keyframes gradient-hue-rotate {
+  0% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(30deg); }
+  100% { filter: hue-rotate(0deg); }
+}
+.gradient-hue-rotate {
+  animation: gradient-hue-rotate 8s ease-in-out infinite;
+}
+
+/* Message timestamp styling — small, muted, right-aligned */
+.message-timestamp {
+  font-size: 9px;
+  color: oklch(0.55 0.01 60);
+  text-align: right;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  margin-top: 2px;
+}
+
+/* Commander header gradient — amber gradient background */
+.commander-header-gradient {
+  background: linear-gradient(
+    135deg,
+    oklch(0.78 0.18 55 / 0.12) 0%,
+    oklch(0.7 0.22 16 / 0.08) 50%,
+    oklch(0.78 0.18 55 / 0.04) 100%
+  );
+}
+
+/* Notification bell pulse — amber pulse for unread notifications */
+@keyframes notification-bell-pulse {
+  0%, 100% { color: oklch(0.78 0.18 55); }
+  50% { color: oklch(0.7 0.22 16); transform: scale(1.1); }
+}
+.notification-bell-pulse {
+  animation: notification-bell-pulse 2s ease-in-out infinite;
+}
+
+/* Connection quality — small bar indicator styling */
+.connection-quality {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 10px;
+}
+.connection-quality-bar {
+  width: 2px;
+  border-radius: 1px;
+  background: oklch(0.65 0.2 150);
+}
+
+/* Shimmer progress bar — animated progress bar with shimmer for commander thinking */
+@keyframes shimmer-progress {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-progress-bar {
+  height: 3px;
+  border-radius: 1.5px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55 / 0.3) 0%,
+    oklch(0.78 0.18 55 / 0.8) 25%,
+    oklch(0.78 0.18 55 / 0.3) 50%,
+    oklch(0.78 0.18 55 / 0.8) 75%,
+    oklch(0.78 0.18 55 / 0.3) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-progress 1.8s ease-in-out infinite;
+}
+
+/* Dock running indicator — amber pulse dot at dock bottom */
+@keyframes dock-running-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.dock-running-indicator {
+  animation: dock-running-pulse 2s ease-in-out infinite;
+  background: oklch(0.78 0.18 55);
+  border-radius: 50%;
+}
+
+/* Dock gradient glow separator */
+.dock-glow-separator {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    oklch(0.78 0.18 55 / 0.35) 30%,
+    oklch(0.7 0.22 16 / 0.35) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 6px oklch(0.78 0.18 55 / 0.15);
+}
+
+/* Dock button scale-up on hover */
+.dock-btn-scale {
+  transition: transform 0.15s ease-out, background-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.dock-btn-scale:hover {
+  transform: scale(1.1);
+}
+
+/* Status bar gradient top border */
+.status-bar-gradient-border {
+  border-top: 1px solid transparent;
+  background-image: linear-gradient(var(--sidebar), var(--sidebar)),
+    linear-gradient(90deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* TopBar badge gradient backgrounds */
+.badge-gradient-amber {
+  background: linear-gradient(135deg, oklch(0.78 0.18 55 / 0.15), oklch(0.7 0.22 16 / 0.08));
+  border-color: oklch(0.78 0.18 55 / 0.25);
+}
+.badge-gradient-outline {
+  background: linear-gradient(135deg, oklch(0.21 0.012 55 / 0.5), oklch(0.19 0.012 55 / 0.3));
+  border-color: oklch(0.32 0.012 55 / 0.5);
+}
+
+/* Agent chat panel — typing indicator animation */
+@keyframes typing-indicator-wave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.typing-indicator-dot {
+  animation: typing-indicator-wave 1.4s ease-in-out infinite;
+}
+.typing-indicator-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Agent chat panel — gradient top strip */
+.agent-chat-gradient-strip {
+  height: 3px;
+  border-radius: 0 0 1.5px 1.5px;
+}
+
+/* Copy button fade-in on message hover */
+.copy-message-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.message-bubble-hover:hover .copy-message-btn {
+  opacity: 1;
+}
+
+/* Checkmark overlay for done agent avatars */
+@keyframes checkmark-pop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.checkmark-overlay {
+  animation: checkmark-pop 0.3s ease-out;
+}
+
+/* ===================================================================== */
+/* ROUND 9 — New styling enhancements & canvas themes                   */
+/* ===================================================================== */
+
+/* ---- Canvas theme palettes ---- */
+/* Each theme overrides --background, --card, --sidebar, --border, --primary
+   on the .canvas-theme-* wrapper so the entire app can switch vibes. */
+.canvas-theme-autumn {
+  /* (default) — already applied via .dark on html. This class is a no-op
+     marker so theme switching logic has a stable target. */
+}
+
+.canvas-theme-midnight {
+  --background: oklch(0.115 0.025 265);
+  --foreground: oklch(0.96 0.01 250);
+  --card: oklch(0.155 0.03 265);
+  --card-foreground: oklch(0.96 0.01 250);
+  --popover: oklch(0.18 0.03 265);
+  --popover-foreground: oklch(0.96 0.01 250);
+  --primary: oklch(0.7 0.19 250);
+  --primary-foreground: oklch(0.14 0.03 265);
+  --secondary: oklch(0.22 0.025 265);
+  --secondary-foreground: oklch(0.96 0.01 250);
+  --muted: oklch(0.2 0.025 265);
+  --muted-foreground: oklch(0.7 0.018 250);
+  --accent: oklch(0.3 0.06 250);
+  --accent-foreground: oklch(0.97 0.01 250);
+  --border: oklch(0.28 0.03 265 / 50%);
+  --input: oklch(0.24 0.025 265 / 70%);
+  --ring: oklch(0.7 0.19 250 / 60%);
+  --sidebar: oklch(0.135 0.025 265);
+  --sidebar-foreground: oklch(0.96 0.01 250);
+  --sidebar-primary: oklch(0.7 0.19 250);
+  --sidebar-border: oklch(0.28 0.03 265 / 50%);
+  --sidebar-ring: oklch(0.7 0.19 250 / 60%);
+}
+
+.canvas-theme-forest {
+  --background: oklch(0.135 0.022 155);
+  --foreground: oklch(0.96 0.012 140);
+  --card: oklch(0.175 0.025 155);
+  --card-foreground: oklch(0.96 0.012 140);
+  --popover: oklch(0.2 0.025 155);
+  --popover-foreground: oklch(0.96 0.012 140);
+  --primary: oklch(0.75 0.18 145);
+  --primary-foreground: oklch(0.14 0.025 155);
+  --secondary: oklch(0.23 0.022 155);
+  --secondary-foreground: oklch(0.96 0.012 140);
+  --muted: oklch(0.21 0.022 155);
+  --muted-foreground: oklch(0.7 0.018 140);
+  --accent: oklch(0.3 0.06 145);
+  --accent-foreground: oklch(0.97 0.012 140);
+  --border: oklch(0.28 0.025 155 / 50%);
+  --input: oklch(0.24 0.022 155 / 70%);
+  --ring: oklch(0.75 0.18 145 / 60%);
+  --sidebar: oklch(0.155 0.022 155);
+  --sidebar-foreground: oklch(0.96 0.012 140);
+  --sidebar-primary: oklch(0.75 0.18 145);
+  --sidebar-border: oklch(0.28 0.025 155 / 50%);
+  --sidebar-ring: oklch(0.75 0.18 145 / 60%);
+}
+
+.canvas-theme-neon {
+  --background: oklch(0.1 0.03 320);
+  --foreground: oklch(0.96 0.02 320);
+  --card: oklch(0.14 0.035 320);
+  --card-foreground: oklch(0.96 0.02 320);
+  --popover: oklch(0.17 0.04 320);
+  --popover-foreground: oklch(0.96 0.02 320);
+  --primary: oklch(0.72 0.28 320);
+  --primary-foreground: oklch(0.14 0.04 320);
+  --secondary: oklch(0.21 0.035 320);
+  --secondary-foreground: oklch(0.96 0.02 320);
+  --muted: oklch(0.19 0.03 320);
+  --muted-foreground: oklch(0.72 0.022 320);
+  --accent: oklch(0.3 0.08 320);
+  --accent-foreground: oklch(0.97 0.02 320);
+  --border: oklch(0.3 0.045 320 / 55%);
+  --input: oklch(0.22 0.035 320 / 70%);
+  --ring: oklch(0.72 0.28 320 / 60%);
+  --sidebar: oklch(0.13 0.032 320);
+  --sidebar-foreground: oklch(0.96 0.02 320);
+  --sidebar-primary: oklch(0.72 0.28 320);
+  --sidebar-border: oklch(0.3 0.045 320 / 55%);
+  --sidebar-ring: oklch(0.72 0.28 320 / 60%);
+}
+
+/* ---- Animated canvas background — radial glow + dot grid ---- */
+.canvas-theme-glow {
+  position: relative;
+}
+.canvas-theme-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--primary) 8%, transparent) 0%, transparent 35%),
+    radial-gradient(circle at 80% 80%, color-mix(in oklch, var(--primary) 5%, transparent) 0%, transparent 40%);
+  z-index: 0;
+  animation: canvas-glow-drift 18s ease-in-out infinite alternate;
+}
+@keyframes canvas-glow-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2%, -1%) scale(1.05); }
+  100% { transform: translate(-1%, 2%) scale(1); }
+}
+
+/* ---- Subtle noise texture overlay (added to body) ---- */
+.noise-overlay::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* ---- Glass-morphism panel utility ---- */
+.glass-panel {
+  background: color-mix(in oklch, var(--card) 65%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  box-shadow:
+    0 4px 24px -8px oklch(0 0 0 / 0.4),
+    inset 0 1px 0 oklch(1 0 0 / 0.04);
+}
+.glass-panel-strong {
+  background: color-mix(in oklch, var(--card) 80%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* ---- Persona glow halo on running agent cards ---- */
+@keyframes persona-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--persona-color, transparent), 0 0 12px -2px var(--persona-color, transparent); opacity: 0.6; }
+  50% { box-shadow: 0 0 0 1px var(--persona-color, transparent), 0 0 24px 0px var(--persona-color, transparent); opacity: 1; }
+}
+.persona-running-glow {
+  animation: persona-glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* ---- Animated edge flow (SVG dasharray animation) ---- */
+@keyframes edge-dash-flow {
+  to { stroke-dashoffset: -16; }
+}
+.bus-edge-flow-animated {
+  stroke-dasharray: 6 6;
+  animation: edge-dash-flow 0.8s linear infinite;
+}
+
+/* ---- Page entrance animation (fade + slight upward motion) ---- */
+@keyframes page-entrance {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-entrance {
+  animation: page-entrance 0.4s ease-out;
+}
+
+/* ---- Staggered fade-in for cards ---- */
+@keyframes stagger-fade-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stagger-fade-in {
+  opacity: 0;
+  animation: stagger-fade-in 0.35s ease-out forwards;
+}
+
+/* ---- Hover lift utility (for cards/buttons) ---- */
+.hover-lift {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -6px oklch(0 0 0 / 0.4);
+}
+
+/* ---- Press-down feedback ---- */
+.press-down {
+  transition: transform 0.08s ease-out;
+}
+.press-down:active {
+  transform: scale(0.96);
+}
+
+/* ---- Custom scrollbar (global polish) ---- */
+.autumn-scroll, .autumn_scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--primary) 35%, transparent) transparent;
+}
+.autumn-scroll::-webkit-scrollbar, .autumn_scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.autumn-scroll::-webkit-scrollbar-track, .autumn_scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.autumn-scroll::-webkit-scrollbar-thumb, .autumn_scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--primary) 30%, transparent);
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+.autumn-scroll::-webkit-scrollbar-thumb:hover, .autumn_scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--primary) 50%, transparent);
+  background-clip: content-box;
+}
+
+/* ---- Theme switcher swatch ---- */
+.theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow: 0 1px 4px oklch(0 0 0 / 0.3), inset 0 1px 0 oklch(1 0 0 / 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.theme-swatch-autumn {
+  background: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
+}
+.theme-swatch-midnight {
+  background: linear-gradient(135deg, oklch(0.7 0.19 250), oklch(0.4 0.1 265));
+}
+.theme-swatch-forest {
+  background: linear-gradient(135deg, oklch(0.75 0.18 145), oklch(0.45 0.12 155));
+}
+.theme-swatch-neon {
+  background: linear-gradient(135deg, oklch(0.72 0.28 320), oklch(0.5 0.25 200));
+}
+
+/* ---- Bus message detail dialog styles ---- */
+.bus-detail-section {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+}
+
+/* ---- Run All button pulse animation ---- */
+@keyframes run-all-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 50%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 0%, transparent); }
+}
+.run-all-pulse {
+  animation: run-all-pulse 2s ease-out infinite;
+}
+
+/* ---- Subtle gradient text for emphasis ---- */
+.gradient-text-primary {
+  background: linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 60%, oklch(0.9 0.1 60)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Slide-in panel transition (for right panel content swaps) ---- */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.slide-in-right {
+  animation: slide-in-right 0.25s ease-out;
+}
+
+/* ---- Focus ring polish ---- */
+:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--ring) 80%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- Reduce motion preference ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

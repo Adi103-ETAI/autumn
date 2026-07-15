@@ -1,0 +1,98 @@
+// Autumn — Prisma schema (SQLite)
+// Mirrors October's data model: desktop_canvases, bus_state, desktop_code_sync.
+// We add: Node, Edge, Task, Message, AgentLog for richer querying.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Canvas {
+  id        String   @id @default(cuid())
+  name      String   @default("Untitled Canvas")
+  state     String   // JSON: { nodes, connections, navLinks, meta }
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nodes     Node[]
+  edges     Edge[]
+  tasks     Task[]
+  messages  Message[]
+  agentLogs AgentLog[]
+}
+
+model Node {
+  id        String   @id @default(cuid())
+  canvasId  String
+  canvas    Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  kind      String   // chat | terminal | screen | sticky | analytics | youtube | remotion
+  name      String
+  data      String   // JSON: per-kind fields (harness, status, doing, text, url, ...)
+  x         Float    @default(0)
+  y         Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([canvasId])
+}
+
+model Edge {
+  id        String   @id @default(cuid())
+  canvasId  String
+  canvas    Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  kind      String   @default("bus") // bus | navigation
+  sourceId  String
+  targetId  String
+  data      String   @default("{}") // JSON: traffic pulses, label, etc.
+  createdAt DateTime @default(now())
+
+  @@index([canvasId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  canvasId    String
+  canvas      Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  seq         Int      // t1, t2, ...
+  description String
+  status      String   @default("open") // open | blocked | in_progress | done
+  assigneeId  String?  // node id that claimed it
+  afterIds    String   @default("[]") // JSON array of task seq numbers
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([canvasId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  canvasId   String
+  canvas     Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  nodeId     String   // destination node (chat node) or "commander"
+  role       String   // user | assistant | system | peer | commander
+  text       String
+  authorId   String?  // node id of the sender (for peer messages)
+  createdAt  DateTime @default(now())
+
+  @@index([canvasId, nodeId])
+}
+
+model AgentLog {
+  id        String   @id @default(cuid())
+  canvasId  String
+  canvas    Canvas   @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  nodeId    String   // destination node id, or "commander" for global events
+  kind      String   // commander_plan | agent_status | agent_message | bus_message_peer | task_claim | task_complete | task_add | node_added | node_removed | edge_added | edge_removed | canvas_saved | canvas_loaded | canvas_cleared | duplicate_node
+  text      String   @default("") // human-readable summary
+  payload   String   @default("{}") // JSON
+  createdAt DateTime @default(now())
+
+  @@index([canvasId, nodeId])
+  @@index([canvasId, createdAt])
+}
