@@ -26,6 +26,7 @@ import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
 import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
 import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
 import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
+import { WelcomeSplash } from "@/components/autumn/WelcomeSplash";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -44,11 +45,15 @@ export default function Home() {
   const showActivityLog = useAutumnStore((s) => s.showActivityLog);
   const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
 
-  // Open help on first visit.
+  // Show help only if user has seen the welcome splash but not the help dialog.
+  // The WelcomeSplash handles the true first-visit experience.
   useEffect(() => {
     const seen =
       typeof window !== "undefined" && localStorage.getItem("autumn-seen");
-    if (!seen) {
+    const welcomeSeen =
+      typeof window !== "undefined" && localStorage.getItem("autumn-welcome-seen");
+    // Only show help dialog if user has seen the welcome splash but not the help dialog
+    if (welcomeSeen && !seen) {
       setShowHelp(true);
       localStorage.setItem("autumn-seen", "1");
     }
@@ -125,6 +130,7 @@ export default function Home() {
       <NodeSearchOverlay />
       <ShortcutHelpOverlay />
       <AgentHistoryPanel />
+      <WelcomeSplash />
     </div>
   );
 }

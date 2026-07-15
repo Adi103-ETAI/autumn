@@ -1,0 +1,1799 @@
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 280ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 283ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 200ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 292ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 194ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 211ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 215ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 271ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 199ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 212ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 282ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 198ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 144ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 273ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 184ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 293ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 2078ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 351ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 325ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 278ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 301ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 197ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 212ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 293ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 303ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 197ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 244ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 215ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 211ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 225ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 207ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 230ms
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/TopBar.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/TopBar.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/TopBar.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/TopBar.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/TopBar.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/TopBar.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/TopBar.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/TopBar.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/components/autumn/CommandPalette.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/components/autumn/CommandPalette.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-client] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[error] ./src/lib/autumn/share-canvas.ts:8:1
+Export default doesn't exist in target module
+   6 | "use client";
+   7 |
+>  8 | import pako from "pako";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^
+   9 | import { toast } from "sonner";
+  10 | import type { AutumnEdge, AutumnNode, AutumnTask } from "./types";
+  11 | import { useAutumnStore } from "./store";
+
+The export default was not found in module [project]/node_modules/pako/dist/pako.mjs [app-ssr] (ecmascript).
+Did you mean to import deflate?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./src/lib/autumn/share-canvas.ts [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/lib/autumn/share-canvas.ts [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1102ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 497ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 246ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 289ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 473ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 264ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 290ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 218ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 206ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 188ms
+[log] [Fast Refresh] rebuilding
+[warning] [Fast Refresh] performing full reload because your application had an unrecoverable error
+[log] [Fast Refresh] done in 396ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 105ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 312ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 352ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 260ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 201ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 356ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 263ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 318ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 250ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 255ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 232ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 379ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 305ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 291ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 275ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 351ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 232ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 238ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 247ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 270ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 118ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 116ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 173ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 252ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 188ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 197ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 233ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 228ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 211ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 230ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 214ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 198ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 333ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 266ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 188ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 220ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 302ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 270ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 171ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 445ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 287ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 193ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 199ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 210ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 435ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 158ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 572ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 273ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 292ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 183ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 176ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 940ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 981ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 261ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 329ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 228ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 449ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 422ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 130ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 254ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 448ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 384ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 309ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 261ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 246ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 340ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 200ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 274ms
+[log] [Fast Refresh] rebuilding
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[warning] [React Flow]: It looks like you've created a new nodeTypes or edgeTypes object. If this wasn't on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them. Help: https://reactflow.dev/error#002
+[log] [Fast Refresh] done in 23ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 462ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 351ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 755ms
+[log] [Fast Refresh] rebuilding
+[warning] [Fast Refresh] performing full reload because your application had an unrecoverable error
+[log] [Fast Refresh] done in 261ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[warning] [Fast Refresh] performing full reload because your application had an unrecoverable error
+[log] [Fast Refresh] done in 473ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[warning] [Fast Refresh] performing full reload because your application had an unrecoverable error
+[log] [Fast Refresh] done in 295ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[warning] [Fast Refresh] performing full reload because your application had an unrecoverable error
+[log] [Fast Refresh] done in 285ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 139ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 1036ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 395ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 440ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 154ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 599ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 24ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 246ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 287ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 257ms
+[log] [Fast Refresh] rebuilding
+[error] ./src/components/autumn/CanvasToolbar.tsx:72:10
+Ecmascript file had an error
+  70 | }
+  71 |
+> 72 | function cn(...inputs: (string | undefined | false)[]) {
+     |          ^^
+  73 |   return inputs.filter(Boolean).join(" ");
+  74 | }
+  75 |
+
+the name `cn` is defined multiple times
+
+Import traces:
+  Client Component Browser:
+    ./src/components/autumn/CanvasToolbar.tsx [Client Component Browser]
+    ./src/components/autumn/CanvasView.tsx [Client Component Browser]
+    ./src/app/page.tsx [Client Component Browser]
+    ./src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/autumn/CanvasToolbar.tsx [Client Component SSR]
+    ./src/components/autumn/CanvasView.tsx [Client Component SSR]
+    ./src/app/page.tsx [Client Component SSR]
+    ./src/app/page.tsx [Server Component]
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 416ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 259ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 247ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 131ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 232ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 268ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 247ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 211ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 109ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 214ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 800ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 355ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 241ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 310ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 217ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 174ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 227ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 239ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 203ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 408ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 191ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 324ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 127ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 208ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 248ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 106ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 271ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 237ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 265ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 272ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 235ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 259ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 226ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 362ms
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 631ms
+[info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[log] [HMR] connected
+[log] [Fast Refresh] rebuilding
+[log] [Fast Refresh] done in 223ms

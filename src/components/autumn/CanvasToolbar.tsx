@@ -44,11 +44,11 @@ const KIND_META: Record<string, { label: string; color: string; icon: React.Comp
 
 function GroupIndicator() {
   const nodes = useAutumnStore((s) => s.nodes);
-  const counts = new Map<string, number>();
+  const counts: Record<string, number> = {};
   for (const n of nodes) {
-    counts.set(n.kind, (counts.get(n.kind) ?? 0) + 1);
+    counts[n.kind] = (counts[n.kind] ?? 0) + 1;
   }
-  const kinds = Array.from(counts.entries()).filter(([kind]) => KIND_META[kind]);
+  const kinds = Object.entries(counts).filter(([kind]) => KIND_META[kind]);
 
   if (kinds.length === 0) return null;
 

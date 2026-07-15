@@ -25,6 +25,8 @@ import {
   Zap,
   Trash2,
   Hash,
+  Copy,
+  Leaf,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -247,6 +249,28 @@ export function CommanderPanel() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Gradient header with Autumn logo and title */}
+      <div className="commander-header-gradient border-b border-border/40 px-3 py-2 flex items-center gap-2">
+        <div className="size-6 rounded-md bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow">
+          <Leaf className="size-3 text-white" />
+        </div>
+        <div className="flex-1">
+          <div className="text-xs font-semibold">Commander</div>
+          <div className="text-[9px] text-muted-foreground/60">orchestrate your agents</div>
+        </div>
+        {isThinking && (
+          <span className="text-[9px] text-amber-400/80 uppercase tracking-wider flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+            planning
+          </span>
+        )}
+      </div>
+
+      {/* Shimmer progress bar when thinking */}
+      {isThinking && (
+        <div className="shimmer-progress-bar" />
+      )}
+
       {/* Messages */}
       <div className="relative flex-1 overflow-y-auto autumn-scroll p-3 space-y-3">
         {/* Clear chat button — top-right, only when there are messages */}
@@ -283,7 +307,7 @@ export function CommanderPanel() {
             </div>
             <div
               className={cn(
-                "rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed",
+                "rounded-xl px-3 py-2 max-w-[80%] text-sm leading-relaxed relative message-bubble-hover",
                 m.role === "user"
                   ? "bg-zinc-700/60 text-zinc-100 border border-zinc-600/40"
                   : "bg-muted/40 border border-border/40",
@@ -299,6 +323,8 @@ export function CommanderPanel() {
                     </span>
                     <span>planning</span>
                   </div>
+                  {/* Animated shimmer progress bar */}
+                  <div className="shimmer-progress-bar" />
                   <div className="space-y-1.5">
                     <div className="commander-skeleton-line w-[85%]" />
                     <div className="commander-skeleton-line w-[65%]" />
@@ -312,6 +338,8 @@ export function CommanderPanel() {
               ) : (
                 <>
                   <div className="whitespace-pre-wrap">{m.text}</div>
+                  {/* Relative timestamp on each message */}
+                  <div className="message-timestamp">{relTimeAgo(m.ts)}</div>
                   {m.plan && m.plan.kind === "steps" && (
                     <div className="mt-2 space-y-1">
                       {m.plan.steps.map((s, i) => (
@@ -342,6 +370,16 @@ export function CommanderPanel() {
                         </Button>
                       ))}
                     </div>
+                  )}
+                  {/* Copy response button on commander messages */}
+                  {m.role === "commander" && m.text && (
+                    <button
+                      className="copy-message-btn absolute top-1.5 right-1.5 size-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-muted/60 transition-colors"
+                      onClick={() => void navigator.clipboard.writeText(m.text)}
+                      title="Copy response"
+                    >
+                      <Copy className="size-2.5" />
+                    </button>
                   )}
                 </>
               )}
@@ -484,4 +522,14 @@ function summarizeArgs(args: Record<string, unknown>): string {
     parts.push(`${k}=${s}`);
   }
   return parts.slice(0, 3).join(" ");
+}
+
+/** Relative time helper for CommanderPanel message timestamps */
+function relTimeAgo(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }

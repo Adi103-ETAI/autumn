@@ -6,6 +6,12 @@
 import { useAutumnStore } from "@/lib/autumn/store";
 import { PERSONAS, PERSONA_BY_ID } from "@/lib/autumn/personas";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   GitBranch,
   Cpu,
   Zap,
@@ -17,6 +23,7 @@ import {
   Keyboard,
   Radio,
   Loader2,
+  Signal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +68,7 @@ export function StatusBar() {
     }));
 
   return (
-    <footer className="h-7 shrink-0 border-t border-border/50 bg-sidebar/60 backdrop-blur-md flex items-center px-3 gap-2.5 text-[10px] text-muted-foreground mt-auto overflow-hidden">
+    <footer className="status-bar-gradient-border h-7 shrink-0 bg-sidebar/60 backdrop-blur-md flex items-center px-3 gap-2.5 text-[10px] text-muted-foreground mt-auto overflow-hidden">
       <button
         className="flex items-center gap-1.5 hover:text-foreground transition-colors"
         onClick={() => setShowActivityLog(true)}
@@ -176,54 +183,59 @@ export function StatusBar() {
 
       <div className="flex-1" />
 
-      {/* Persona roster */}
-      <div className="hidden md:flex items-center gap-0.5">
-        {PERSONAS.slice(0, 7).map((p) => {
-          const online = nodes.some(
-            (n) =>
-              n.kind === "chat" &&
-              (n.data as { personaId?: string }).personaId === p.id,
-          );
-          const isRunning = nodes.some(
-            (n) =>
-              n.kind === "chat" &&
-              (n.data as { personaId?: string }).personaId === p.id &&
-              running[n.id],
-          );
-          return (
-            <div
-              key={p.id}
-              className={cn(
-                "flex items-center gap-0.5 px-1 py-0.5 rounded-md transition-all",
-                online ? "opacity-100" : "opacity-30",
-              )}
-              style={{
-                background: online ? `${p.color}15` : "transparent",
-              }}
-              title={
-                online
-                  ? isRunning
-                    ? `${p.name} running`
-                    : `${p.name} online`
-                  : `${p.name} (offline)`
-              }
-            >
-              <div
-                className={cn(
-                  "size-3 rounded-sm flex items-center justify-center text-[8px] font-bold text-white",
-                  isRunning && "animate-pulse",
-                )}
-                style={{
-                  background: p.color,
-                  boxShadow: isRunning ? `0 0 6px ${p.color}` : undefined,
-                }}
-              >
-                {p.glyph}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* Persona roster with tooltips */}
+      <TooltipProvider delayDuration={150}>
+        <div className="hidden md:flex items-center gap-0.5">
+          {PERSONAS.slice(0, 7).map((p) => {
+            const online = nodes.some(
+              (n) =>
+                n.kind === "chat" &&
+                (n.data as { personaId?: string }).personaId === p.id,
+            );
+            const isRunning = nodes.some(
+              (n) =>
+                n.kind === "chat" &&
+                (n.data as { personaId?: string }).personaId === p.id &&
+                running[n.id],
+            );
+            return (
+              <Tooltip key={p.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      "flex items-center gap-0.5 px-1 py-0.5 rounded-md transition-all cursor-default",
+                      online ? "opacity-100" : "opacity-30",
+                    )}
+                    style={{
+                      background: online ? `${p.color}15` : "transparent",
+                    }}
+                  >
+                    <div
+                      className={cn(
+                        "size-3 rounded-sm flex items-center justify-center text-[8px] font-bold text-white",
+                        isRunning && "animate-pulse",
+                      )}
+                      style={{
+                        background: p.color,
+                        boxShadow: isRunning ? `0 0 6px ${p.color}` : undefined,
+                      }}
+                    >
+                      {p.glyph}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-[10px]">
+                  {online
+                    ? isRunning
+                      ? `${p.name} · running`
+                      : `${p.name} · online`
+                    : `${p.name} · offline`}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
 
       {/* Command palette hint */}
       <button
@@ -250,6 +262,18 @@ export function StatusBar() {
         <Keyboard className="size-2.5" />
         <kbd className="font-mono">?</kbd>
       </button>
+
+      {/* Connection quality indicator (simulated: always excellent) */}
+      <div className="hidden lg:flex items-center gap-1 text-[9px] text-muted-foreground/60">
+        <Signal className="size-2.5 text-emerald-400" />
+        <div className="connection-quality">
+          <div className="connection-quality-bar" style={{ height: "3px" }} />
+          <div className="connection-quality-bar" style={{ height: "5px" }} />
+          <div className="connection-quality-bar" style={{ height: "7px" }} />
+          <div className="connection-quality-bar" style={{ height: "10px" }} />
+        </div>
+        <span>excellent</span>
+      </div>
 
       {lastAction && (
         <>

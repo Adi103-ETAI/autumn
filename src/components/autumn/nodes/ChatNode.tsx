@@ -37,6 +37,7 @@ import {
   Terminal,
   Hash,
   Wrench,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -119,6 +120,12 @@ export function ChatNode({ id, data, selected }: NodeProps) {
     connectMode?.from !== null && connectMode?.from !== undefined && connectMode?.from !== id;
   const isInMultiSelect = useAutumnStore((s) => s.selectedNodeIds.includes(id));
 
+  // Compute "last active" relative timestamp from messages
+  const lastActiveTs = d.messages.length > 0
+    ? (d.messages[d.messages.length - 1] as { ts?: number }).ts
+    : undefined;
+  const lastActiveRel = lastActiveTs ? relTimeAgo(lastActiveTs) : undefined;
+
   const status = STATUS_STYLES[d.status] ?? STATUS_STYLES.idle;
   const lastMsg = d.messages[d.messages.length - 1];
   const lastText =
@@ -177,6 +184,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
           selected
             ? "border-amber-500/70 ring-2 ring-amber-500/30"
             : "border-border/60 hover:border-border",
+          d.status === "idle" && !selected && "breathing-border",
           d.status === "working" && "agent-active",
           isConnectSource && "ring-2 ring-amber-400/80 animate-pulse",
           isConnectTargetCandidate &&
@@ -270,23 +278,32 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             background: `linear-gradient(135deg, ${persona?.color}18, transparent)`,
           }}
         >
-          <div
-            className={cn(
-              "size-7 rounded-md flex items-center justify-center text-white text-xs font-bold shadow relative",
-              isRunning && "persona-glyph-active",
-            )}
-            style={{ background: persona?.color }}
-          >
-            {persona?.glyph ?? <Bot className="size-4" />}
+          <div className="relative">
+            {/* Avatar ring that rotates slowly when running */}
             {isRunning && (
               <span
-                className="absolute -inset-0.5 rounded-md ring-2 ring-offset-0"
-                style={{
-                  borderColor: persona?.color,
-                  boxShadow: `0 0 0 2px ${persona?.color}40`,
-                }}
+                className="avatar-ring-spin absolute -inset-1 rounded-lg border-2 border-dashed"
+                style={{ borderColor: persona?.color ? `${persona.color}60` : "oklch(0.78 0.18 55 / 0.4)" }}
               />
             )}
+            <div
+              className={cn(
+                "size-7 rounded-md flex items-center justify-center text-white text-xs font-bold shadow relative",
+                isRunning && "persona-glyph-active",
+              )}
+              style={{ background: persona?.color }}
+            >
+              {persona?.glyph ?? <Bot className="size-4" />}
+              {/* Checkmark overlay when status is done */}
+              {d.status === "done" && (
+                <span
+                  className="checkmark-overlay absolute -bottom-1 -right-1 size-3.5 rounded-full bg-emerald-500 flex items-center justify-center"
+                  style={{ boxShadow: "0 0 0 1.5px oklch(0.16 0.02 55)" }}
+                >
+                  <Check className="size-2 text-white" strokeWidth={3} />
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold leading-tight truncate flex items-center gap-1.5">
@@ -347,8 +364,15 @@ export function ChatNode({ id, data, selected }: NodeProps) {
           </DropdownMenu>
         </div>
 
-        {/* Body */}
-        <div className="px-3 py-2.5 space-y-2">
+        {/* Body — subtle gradient background using persona color */}
+        <div
+          className="px-3 py-2.5 space-y-2"
+          style={{
+            background: persona
+              ? `linear-gradient(135deg, ${persona.color}08, transparent 60%)`
+              : undefined,
+          }}
+        >
           <div className="flex items-center gap-2">
             <span
               className={cn(
@@ -360,6 +384,9 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
               {status.label}
             </span>
+            {lastActiveRel && (
+              <span className="text-[9px] text-muted-foreground/50 font-mono">{lastActiveRel}</span>
+            )}
             <div className="flex-1" />
             {peerCount > 0 && (
               <span
@@ -473,4 +500,14 @@ export function ChatNode({ id, data, selected }: NodeProps) {
       </div>
     </TooltipProvider>
   );
+}
+
+/** Relative time helper for ChatNode "last active" timestamp */
+function relTimeAgo(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }

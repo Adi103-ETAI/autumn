@@ -7,8 +7,10 @@
 
 import { create } from "zustand";
 import { nanoid } from "nanoid";
+import { toast } from "sonner";
 import type {
   AgentMessage,
+  AgentRunDuration,
   AutumnEdge,
   AutumnNode,
   AutumnTask,
@@ -108,6 +110,9 @@ export interface AutumnStore {
   agentHistoryOpen: boolean;
   agentHistoryFor: string | null; // nodeId currently being viewed in the history panel
 
+  // agent run duration tracking
+  agentRunDurations: Record<string, AgentRunDuration[]>; // nodeId → array of {start, end?}
+
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
 
@@ -154,6 +159,15 @@ export interface AutumnStore {
   // per-agent execution history panel (Task 2-a)
   setAgentHistoryOpen: (v: boolean) => void;
   setAgentHistoryFor: (id: string | null) => void;
+
+  // agent run duration tracking
+  recordRunStart: (nodeId: string) => void;
+  recordRunEnd: (nodeId: string) => void;
+  getAgentRunDurations: (nodeId: string) => AgentRunDuration[];
+  getAvgRunDuration: (nodeId: string) => number | null; // avg ms, null if no completed runs
+
+  // canvas presets
+  createCanvasFromPreset: (presetName: string) => void;
 
   // minimap + edge labels (Task 4-c)
   setShowMinimap: (v: boolean) => void;
@@ -253,6 +267,9 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   // per-agent execution history panel (Task 2-a)
   agentHistoryOpen: false,
   agentHistoryFor: null,
+
+  // agent run duration tracking
+  agentRunDurations: {},
 
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
@@ -382,6 +399,85 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     })),
   setAgentHistoryOpen: (v) => set({ agentHistoryOpen: v }),
   setAgentHistoryFor: (id) => set({ agentHistoryFor: id }),
+
+  // Agent run duration tracking
+  recordRunStart: (nodeId) =>
+    set((s) => ({
+      agentRunDurations: {
+        ...s.agentRunDurations,
+        [nodeId]: [...(s.agentRunDurations[nodeId] ?? []), { start: Date.now() }],
+      },
+    })),
+  recordRunEnd: (nodeId) =>
+    set((s) => {
+      const runs = s.agentRunDurations[nodeId] ?? [];
+      const lastRun = runs[runs.length - 1];
+      if (!lastRun || lastRun.end) return s;
+      return {
+        agentRunDurations: {
+          ...s.agentRunDurations,
+          [nodeId]: [...runs.slice(0, -1), { ...lastRun, end: Date.now() }],
+        },
+      };
+    }),
+  getAgentRunDurations: (nodeId) => get().agentRunDurations[nodeId] ?? [],
+  getAvgRunDuration: (nodeId) => {
+    const runs = get().agentRunDurations[nodeId] ?? [];
+    const completed = runs.filter((r) => r.end !== undefined);
+    if (completed.length === 0) return null;
+    const total = completed.reduce((sum, r) => sum + (r.end! - r.start), 0);
+    return Math.round(total / completed.length);
+  },
+
+  // Canvas presets
+  createCanvasFromPreset: (presetName) => {
+    const now = Date.now();
+    // First clear the canvas
+    set({ nodes: [], edges: [], tasks: [], taskSeq: 0, pulses: [], busHistory: [], selectedNodeId: null });
+
+    const canvasId = `canvas-${Date.now()}`;
+    set({ canvasId, canvasName: presetName });
+
+    if (presetName === "Empty Canvas") {
+      // Nothing to add
+      get().pushActivity({
+        kind: "canvas_cleared",
+        text: "Created an empty canvas.",
+      });
+      return;
+    }
+
+    if (presetName === "Pair Programming") {
+      const id1 = get().addNode({ kind: "chat", name: "Atlas" });
+      const id2 = get().addNode({ kind: "chat", name: "Orion" });
+      get().connectNodes(id1, id2, "bus");
+      get().pushActivity({
+        kind: "commander_plan",
+        text: "Created Pair Programming preset: 2 connected agents.",
+      });
+      return;
+    }
+
+    if (presetName === "Full Team") {
+      const id1 = get().addNode({ kind: "chat", name: "Atlas" });
+      const id2 = get().addNode({ kind: "chat", name: "Apollo" });
+      const id3 = get().addNode({ kind: "chat", name: "Orion" });
+      const id4 = get().addNode({ kind: "chat", name: "Juno" });
+      const screenId = get().addNode({ kind: "screen", name: "Preview" });
+      const stickyId = get().addNode({ kind: "sticky", name: "Sprint Notes", data: { text: "Full team sprint: architecture + UI + backend + tests", color: "amber" } });
+      get().connectNodes(id1, id2, "bus");
+      get().connectNodes(id1, id3, "bus");
+      get().connectNodes(id3, id4, "bus");
+      get().connectNodes(id2, screenId, "navigation");
+      get().pushActivity({
+        kind: "commander_plan",
+        text: "Created Full Team preset: 4 agents + screen + sticky.",
+      });
+      // Auto-arrange after creating all nodes
+      setTimeout(() => get().arrangeNodes(), 100);
+      return;
+    }
+  },
 
   setShowMinimap: (v) => set({ showMinimap: v }),
   updateEdgeLabel: (edgeId, label) =>
@@ -601,6 +697,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         kind: "canvas_saved",
         text: `Saved "${s.canvasName}" to the local database.`,
       });
+      // Subtle auto-save toast
+      toast("Canvas auto-saved", { duration: 2000 });
     } catch (err) {
       set({
         isSaving: false,
@@ -752,6 +850,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       text: `Added ${node.kind} node "${node.name}".`,
       nodeId: id,
     });
+    // Toast: new agent spawned
+    if (node.kind === "chat") {
+      toast.success(`Agent ${node.name} deployed to the canvas`, { duration: 3000 });
+    }
     return id;
   },
 
@@ -822,6 +924,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       kind: "edge_added",
       text: `Connected ${fromName} → ${toName} (${kind}).`,
     });
+    // Toast: agents connected
+    if (kind === "bus") {
+      toast(`Bus edge: ${fromName} → ${toName}`, { duration: 2500 });
+    }
   },
 
   disconnectNodes: (from, to) =>

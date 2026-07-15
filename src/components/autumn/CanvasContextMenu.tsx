@@ -29,7 +29,7 @@ import {
   Search,
   CheckSquare,
   Maximize2,
-  Map as MapIcon,
+  MapPin,
   Focus,
   Clipboard,
 } from "lucide-react";
@@ -232,7 +232,7 @@ export function CanvasContextMenu({
             onClick={handleZoomToFit}
           />
           <MenuItem
-            icon={MapIcon}
+            icon={MapPin}
             label={showMinimap ? "Hide minimap" : "Show minimap"}
             shortcut="⌘M"
             onClick={() => {

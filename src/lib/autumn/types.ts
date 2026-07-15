@@ -189,3 +189,18 @@ export interface CanvasSnapshot {
   nodes: CanvasSnapshotNode[];
   connections: { from: string; to: string }[];
 }
+
+// Canvas workspace presets (template canvases for quick-start)
+export interface CanvasPreset {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // Lucide icon name
+  nodeCount: number;
+}
+
+// Agent run duration tracking
+export interface AgentRunDuration {
+  start: number;
+  end?: number;
+}

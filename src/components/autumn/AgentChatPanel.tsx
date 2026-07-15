@@ -22,6 +22,8 @@ import {
   ArrowDownLeft,
   Clock,
   History,
+  Timer,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -35,6 +37,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
   const setAgentHistoryFor = useAutumnStore((s) => s.setAgentHistoryFor);
   const setAgentHistoryOpen = useAutumnStore((s) => s.setAgentHistoryOpen);
   const busHistory = useAutumnStore((s) => s.busHistory);
+  const agentRunDurations = useAutumnStore((s) => s.agentRunDurations);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
 
@@ -82,6 +85,13 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
     ? data.messages[data.messages.length - 1].ts
     : null;
 
+  // Compute avg run duration from in-memory tracking
+  const runDurations = agentRunDurations[nodeId] ?? [];
+  const completedDurations = runDurations.filter((d) => d.end !== undefined);
+  const avgRunMs = completedDurations.length > 0
+    ? Math.round(completedDurations.reduce((sum, d) => sum + (d.end! - d.start), 0) / completedDurations.length)
+    : null;
+
   const send = async () => {
     const text = input.trim();
     if (!text || isRunning) return;
@@ -100,6 +110,16 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Gradient background strip using persona color */}
+      <div
+        className="agent-chat-gradient-strip"
+        style={{
+          background: persona
+            ? `linear-gradient(90deg, ${persona.color}, ${persona.color}60, ${persona.color}20)`
+            : "linear-gradient(90deg, oklch(0.78 0.18 55), oklch(0.78 0.18 55 / 0.4), transparent)",
+        }}
+      />
+
       {/* Header */}
       <div className="border-b border-border/50 px-3 py-2 flex items-center gap-2">
         <Button
@@ -182,7 +202,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
           )}
         </div>
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           <StatChip
             icon={MessageSquare}
             label="msgs"
@@ -202,6 +222,13 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
             color="text-sky-300"
           />
           <StatChip
+            icon={Timer}
+            label="avg run"
+            value={avgRunMs !== null ? formatAvgDuration(avgRunMs) : "—"}
+            color="text-amber-300"
+            mono
+          />
+          <StatChip
             icon={Clock}
             label="last"
             value={lastActivity ? relTime(lastActivity) : "—"}
@@ -217,8 +244,24 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
         className="flex-1 overflow-y-auto autumn-scroll p-3 space-y-3"
       >
         {data.messages.map((m) => (
-          <MessageBubble key={m.id} message={m} personaColor={persona?.color} />
+          <MessageBubble key={m.id} message={m} personaColor={persona?.color} isAgentRunning={isRunning} />
         ))}
+        {/* Typing indicator when agent is working */}
+        {isRunning && data.messages.length > 0 && !data.messages[data.messages.length - 1]?.streaming && (
+          <div className="flex items-center gap-2 pl-1">
+            <div
+              className="size-6 shrink-0 rounded-md flex items-center justify-center text-white text-[10px] font-bold shadow"
+              style={{ background: persona?.color }}
+            >
+              <Sparkles className="size-3" />
+            </div>
+            <div className="flex items-center gap-1 px-3 py-2 rounded-xl bg-muted/40 border border-border/40">
+              <span className="typing-indicator-dot size-1.5 rounded-full bg-amber-400" />
+              <span className="typing-indicator-dot size-1.5 rounded-full bg-amber-400" />
+              <span className="typing-indicator-dot size-1.5 rounded-full bg-amber-400" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input */}
@@ -254,6 +297,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
 function MessageBubble({
   message,
   personaColor,
+  isAgentRunning,
 }: {
   message: {
     id: string;
@@ -264,6 +308,7 @@ function MessageBubble({
     ts: number;
   };
   personaColor?: string;
+  isAgentRunning?: boolean;
 }) {
   const isUser = message.role === "user";
   const isPeer = message.role === "peer";
@@ -283,7 +328,7 @@ function MessageBubble({
   return (
     <div
       className={cn(
-        "flex gap-2.5",
+        "flex gap-2.5 message-bubble-hover",
         isUser ? "flex-row-reverse" : "flex-row",
       )}
     >
@@ -306,7 +351,7 @@ function MessageBubble({
       </div>
       <div
         className={cn(
-          "rounded-xl px-3 py-2 max-w-[85%] text-sm leading-relaxed",
+          "rounded-xl px-3 py-2 max-w-[85%] text-sm leading-relaxed relative",
           isUser
             ? "bg-zinc-700/60 text-zinc-100 border border-zinc-600/40"
             : isPeer
@@ -323,12 +368,24 @@ function MessageBubble({
         <div className="prose prose-sm prose-invert max-w-none [&_code]:text-amber-300 [&_code]:bg-amber-500/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono [&_pre]:bg-muted/40 [&_pre]:border [&_pre]:border-border/40 [&_pre]:rounded-md [&_pre]:p-2 [&_pre]:text-[11px] [&_pre]:overflow-x-auto">
           <ReactMarkdown>{message.text || "…"}</ReactMarkdown>
         </div>
+        {/* Message timestamp */}
+        <div className="message-timestamp">{relTime(message.ts)}</div>
         {message.streaming && (
           <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
             <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
             <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
             <span className="typing-dot size-1.5 rounded-full bg-amber-400" />
           </div>
+        )}
+        {/* Copy message button on assistant messages */}
+        {isAssistant && message.text && !message.streaming && (
+          <button
+            className="copy-message-btn absolute top-1.5 right-1.5 size-5 rounded flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-muted/60 transition-colors"
+            onClick={() => void navigator.clipboard.writeText(message.text)}
+            title="Copy message"
+          >
+            <Copy className="size-2.5" />
+          </button>
         )}
       </div>
     </div>
@@ -367,4 +424,13 @@ function relTime(ts: number): string {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
   return `${Math.floor(diff / 86_400_000)}d`;
+}
+
+function formatAvgDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const totalSec = Math.floor(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const totalMin = Math.floor(totalSec / 60);
+  const remSec = totalSec % 60;
+  return remSec === 0 ? `${totalMin}m` : `${totalMin}m${remSec}s`;
 }

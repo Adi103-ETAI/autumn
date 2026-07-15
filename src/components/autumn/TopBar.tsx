@@ -31,9 +31,11 @@ import {
   Download,
   Clock,
   Command as CommandIcon,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { shareCurrentCanvas } from "@/lib/autumn/share-canvas";
+import { cn } from "@/lib/utils";
 
 export function TopBar() {
   const canvasName = useAutumnStore((s) => s.canvasName);
@@ -54,6 +56,7 @@ export function TopBar() {
     (s) => s.tasks.filter((t) => t.status === "done").length,
   );
   const taskTotal = useAutumnStore((s) => s.tasks.length);
+  const busHistory = useAutumnStore((s) => s.busHistory);
 
   const handleSave = async () => {
     await saveCanvas();
@@ -70,7 +73,7 @@ export function TopBar() {
   return (
     <header className="autumn-topbar-gradient h-14 shrink-0 border-b border-border/50 backdrop-blur-md flex items-center px-3 gap-3">
       <div className="flex items-center gap-2">
-        <div className="topbar-logo-shimmer size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+        <div className="topbar-logo-shimmer gradient-hue-rotate size-8 rounded-lg bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
           <Leaf className="size-4 text-white relative z-10" />
         </div>
         <div className="leading-tight">
@@ -111,17 +114,17 @@ export function TopBar() {
       </Button>
 
       <div className="flex items-center gap-1.5">
-        <Badge variant="secondary" className="gap-1 text-[11px] h-6">
+        <Badge variant="secondary" className="gap-1 text-[11px] h-6 badge-gradient-amber">
           <Wifi className="size-3 text-emerald-400" />
           bus live
         </Badge>
-        <Badge variant="outline" className="text-[11px] h-6">
+        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
           {nodeCount} nodes
         </Badge>
-        <Badge variant="outline" className="text-[11px] h-6">
+        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
           {edgeCount} edges
         </Badge>
-        <Badge variant="outline" className="text-[11px] h-6">
+        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
           {taskDone}/{taskTotal} tasks
         </Badge>
       </div>
@@ -134,6 +137,22 @@ export function TopBar() {
           <Check className="size-3 text-emerald-400" />
           saved
         </span>
+      )}
+
+      {/* Notification bell with unread bus message count */}
+      {busHistory.length > 0 && (
+        <button
+          className="relative flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => useAutumnStore.getState().setShowActivityLog(true)}
+          title={`${busHistory.length} unread bus message${busHistory.length === 1 ? "" : "s"}`}
+        >
+          <Bell className={cn("size-4", busHistory.length > 0 && "notification-bell-pulse")} />
+          {busHistory.length > 0 && (
+            <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-amber-500 text-[7px] font-bold text-white flex items-center justify-center">
+              {busHistory.length > 9 ? "9+" : busHistory.length}
+            </span>
+          )}
+        </button>
       )}
 
       <div className="flex items-center gap-1.5">

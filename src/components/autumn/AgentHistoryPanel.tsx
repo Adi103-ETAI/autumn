@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import type { AgentRunDuration } from "@/lib/autumn/types";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import {
   Clock,
   Bot,
   RefreshCw,
+  Timer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -56,6 +58,7 @@ export function AgentHistoryPanel() {
   const agentHistoryFor = useAutumnStore((s) => s.agentHistoryFor);
   const canvasId = useAutumnStore((s) => s.canvasId);
   const nodes = useAutumnStore((s) => s.nodes);
+  const agentRunDurations = useAutumnStore((s) => s.agentRunDurations);
 
   const [runs, setRuns] = useState<RunEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,6 +73,15 @@ export function AgentHistoryPanel() {
     node?.kind === "chat"
       ? PERSONA_BY_ID[(node.data as { personaId?: string }).personaId ?? ""]
       : undefined;
+
+  // Get in-memory run durations for this agent
+  const liveDurations: AgentRunDuration[] = agentHistoryFor
+    ? (agentRunDurations[agentHistoryFor] ?? [])
+    : [];
+  const completedLiveDurations = liveDurations.filter((d) => d.end !== undefined);
+  const avgLiveMs = completedLiveDurations.length > 0
+    ? Math.round(completedLiveDurations.reduce((sum, d) => sum + (d.end! - d.start), 0) / completedLiveDurations.length)
+    : null;
 
   const fetchRuns = useCallback(async () => {
     if (!agentHistoryFor) {
@@ -139,6 +151,12 @@ export function AgentHistoryPanel() {
           <Badge variant="outline" className="text-[10px] h-5 px-1.5">
             {runs.length} {runs.length === 1 ? "run" : "runs"}
           </Badge>
+          {avgLiveMs !== null && (
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-amber-500/30 text-amber-400">
+              <Timer className="size-2.5 mr-0.5" />
+              Avg {formatDuration(avgLiveMs)}
+            </Badge>
+          )}
           <div className="flex-1" />
           <Button
             size="sm"

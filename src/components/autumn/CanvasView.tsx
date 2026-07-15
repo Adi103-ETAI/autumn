@@ -37,8 +37,9 @@ import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
-import { Cable, Sparkles, Bot } from "lucide-react";
+import { Cable, Sparkles, Bot, Leaf, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 
 const nodeTypes = {
   chat: ChatNode,
@@ -82,6 +83,7 @@ function CanvasInner() {
   const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
+  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
 
   // Context menu state (right-click on pane or node).
   const [ctxMenu, setCtxMenu] = useState<CanvasContextMenuState>(INITIAL_CONTEXT_MENU);
@@ -303,36 +305,52 @@ function CanvasInner() {
   return (
     <div className="absolute inset-0 autumn-canvas">
       {/* Empty state */}
-      {isEmpty && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-          <div className="text-center max-w-md px-6 pointer-events-auto fade-in-up">
-            <div className="size-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/10">
-              <Sparkles className="size-6 text-amber-400" />
+      <AnimatePresence>
+        {isEmpty && (
+          <motion.div
+            className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-center max-w-md px-6 pointer-events-auto">
+              {/* Animated gradient border container */}
+              <div className="relative rounded-2xl p-[2px] breathing-border bg-gradient-to-r from-amber-500/40 via-orange-500/20 to-amber-500/40">
+                <div className="rounded-2xl bg-background/95 backdrop-blur-md px-8 py-10">
+                  {/* Autumn leaf icon */}
+                  <div className="size-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-amber-500/10">
+                    <Leaf className="size-8 text-amber-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Your canvas is empty</h3>
+                  <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                    Start by adding an agent or typing a command to the Commander.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <Button
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => addNode({ kind: "chat" })}
+                    >
+                      <Bot className="size-3.5" />
+                      Add Agent
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() => setRightPanelTab("commander")}
+                    >
+                      <Terminal className="size-3.5" />
+                      Open Commander
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold mb-1.5">An empty workshop</h3>
-            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-              Add a node from the left dock, ask the Commander to spawn one, or reset to the seed canvas to get started.
-            </p>
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                size="sm"
-                className="gap-1.5"
-                onClick={() => addNode({ kind: "chat" })}
-              >
-                <Bot className="size-3.5" />
-                Add an agent
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => resetCanvas()}
-              >
-                Reset to seed
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Connect-mode banner */}
       {connectMode?.from && fromNode && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 fade-in-up">

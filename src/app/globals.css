@@ -1287,3 +1287,180 @@ textarea:focus-visible {
 .right-panel-inner {
   box-shadow: inset 0 1px 0 oklch(0.78 0.18 55 / 0.08);
 }
+
+/* ---- Task 5-a styling enhancements ---- */
+
+/* Breathing border — slow opacity pulse for idle chat node borders */
+@keyframes breathing-border {
+  0%, 100% { border-color: oklch(0.78 0.18 55 / 0.15); }
+  50% { border-color: oklch(0.78 0.18 55 / 0.4); }
+}
+.breathing-border {
+  animation: breathing-border 4s ease-in-out infinite;
+}
+
+/* Avatar ring spin — slow rotation for running agent avatar rings */
+@keyframes avatar-ring-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.avatar-ring-spin {
+  animation: avatar-ring-spin 3s linear infinite;
+}
+
+/* Gradient hue rotate — slow hue shift for the logo icon */
+@keyframes gradient-hue-rotate {
+  0% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(30deg); }
+  100% { filter: hue-rotate(0deg); }
+}
+.gradient-hue-rotate {
+  animation: gradient-hue-rotate 8s ease-in-out infinite;
+}
+
+/* Message timestamp styling — small, muted, right-aligned */
+.message-timestamp {
+  font-size: 9px;
+  color: oklch(0.55 0.01 60);
+  text-align: right;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  margin-top: 2px;
+}
+
+/* Commander header gradient — amber gradient background */
+.commander-header-gradient {
+  background: linear-gradient(
+    135deg,
+    oklch(0.78 0.18 55 / 0.12) 0%,
+    oklch(0.7 0.22 16 / 0.08) 50%,
+    oklch(0.78 0.18 55 / 0.04) 100%
+  );
+}
+
+/* Notification bell pulse — amber pulse for unread notifications */
+@keyframes notification-bell-pulse {
+  0%, 100% { color: oklch(0.78 0.18 55); }
+  50% { color: oklch(0.7 0.22 16); transform: scale(1.1); }
+}
+.notification-bell-pulse {
+  animation: notification-bell-pulse 2s ease-in-out infinite;
+}
+
+/* Connection quality — small bar indicator styling */
+.connection-quality {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 10px;
+}
+.connection-quality-bar {
+  width: 2px;
+  border-radius: 1px;
+  background: oklch(0.65 0.2 150);
+}
+
+/* Shimmer progress bar — animated progress bar with shimmer for commander thinking */
+@keyframes shimmer-progress {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-progress-bar {
+  height: 3px;
+  border-radius: 1.5px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.18 55 / 0.3) 0%,
+    oklch(0.78 0.18 55 / 0.8) 25%,
+    oklch(0.78 0.18 55 / 0.3) 50%,
+    oklch(0.78 0.18 55 / 0.8) 75%,
+    oklch(0.78 0.18 55 / 0.3) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-progress 1.8s ease-in-out infinite;
+}
+
+/* Dock running indicator — amber pulse dot at dock bottom */
+@keyframes dock-running-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.dock-running-indicator {
+  animation: dock-running-pulse 2s ease-in-out infinite;
+  background: oklch(0.78 0.18 55);
+  border-radius: 50%;
+}
+
+/* Dock gradient glow separator */
+.dock-glow-separator {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    oklch(0.78 0.18 55 / 0.35) 30%,
+    oklch(0.7 0.22 16 / 0.35) 70%,
+    transparent 100%
+  );
+  box-shadow: 0 0 6px oklch(0.78 0.18 55 / 0.15);
+}
+
+/* Dock button scale-up on hover */
+.dock-btn-scale {
+  transition: transform 0.15s ease-out, background-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.dock-btn-scale:hover {
+  transform: scale(1.1);
+}
+
+/* Status bar gradient top border */
+.status-bar-gradient-border {
+  border-top: 1px solid transparent;
+  background-image: linear-gradient(var(--sidebar), var(--sidebar)),
+    linear-gradient(90deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+/* TopBar badge gradient backgrounds */
+.badge-gradient-amber {
+  background: linear-gradient(135deg, oklch(0.78 0.18 55 / 0.15), oklch(0.7 0.22 16 / 0.08));
+  border-color: oklch(0.78 0.18 55 / 0.25);
+}
+.badge-gradient-outline {
+  background: linear-gradient(135deg, oklch(0.21 0.012 55 / 0.5), oklch(0.19 0.012 55 / 0.3));
+  border-color: oklch(0.32 0.012 55 / 0.5);
+}
+
+/* Agent chat panel — typing indicator animation */
+@keyframes typing-indicator-wave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.typing-indicator-dot {
+  animation: typing-indicator-wave 1.4s ease-in-out infinite;
+}
+.typing-indicator-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Agent chat panel — gradient top strip */
+.agent-chat-gradient-strip {
+  height: 3px;
+  border-radius: 0 0 1.5px 1.5px;
+}
+
+/* Copy button fade-in on message hover */
+.copy-message-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.message-bubble-hover:hover .copy-message-btn {
+  opacity: 1;
+}
+
+/* Checkmark overlay for done agent avatars */
+@keyframes checkmark-pop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.checkmark-overlay {
+  animation: checkmark-pop 0.3s ease-out;
+}

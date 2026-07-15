@@ -90,7 +90,9 @@ const TOOLS: DockTool[] = [
 export function Dock() {
   const addNode = useAutumnStore((s) => s.addNode);
   const nodes = useAutumnStore((s) => s.nodes);
+  const running = useAutumnStore((s) => s.isAgentRunning);
   const chatCount = nodes.filter((n) => n.kind === "chat").length;
+  const anyRunning = Object.values(running).some(Boolean);
 
   // Track which dock button was just activated (for flash animation)
   const [activeKind, setActiveKind] = useState<NodeKind | null>(null);
@@ -124,7 +126,7 @@ export function Dock() {
             {i === 1 && (
               <div
                 aria-hidden
-                className="w-7 h-px my-0.5 dock-separator"
+                className="w-7 h-px my-0.5 dock-glow-separator"
               />
             )}
             <Tooltip side="right">
@@ -134,7 +136,7 @@ export function Dock() {
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "autumn-dock-btn dock-btn-gradient-border size-9 rounded-lg group relative",
+                      "autumn-dock-btn dock-btn-gradient-border dock-btn-scale size-9 rounded-lg group relative",
                       activeKind === t.kind && "dock-btn-active",
                     )}
                     onClick={() => handleAddNode(t.kind)}
@@ -159,6 +161,15 @@ export function Dock() {
             </Tooltip>
           </Fragment>
         ))}
+        {/* Running agent indicator at dock bottom */}
+        {anyRunning && (
+          <div className="flex justify-center mt-auto pt-1">
+            <span
+              className="dock-running-indicator size-1.5"
+              title="Agent(s) running"
+            />
+          </div>
+        )}
       </nav>
     </TooltipProvider>
   );

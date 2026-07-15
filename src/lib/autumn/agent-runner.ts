@@ -8,6 +8,7 @@
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { AutumnNode, ChatNodeData } from "@/lib/autumn/types";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
+import { toast } from "sonner";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -35,11 +36,18 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     finalTask.length > 60 ? `${finalTask.slice(0, 57)}…` : finalTask;
 
   store.setAgentRunning(nodeId, true);
+  store.recordRunStart(nodeId);
   store.setAgentStatus(nodeId, "thinking", "Reading the task…");
   store.pushActivity({
     kind: "agent_status",
     text: `${persona.name} started thinking about: ${taskSummary}`,
     nodeId,
+  });
+
+  // Toast: agent starts working
+  toast.loading(`${persona.name} is working…`, {
+    id: `agent-run-${nodeId}`,
+    duration: Infinity,
   });
 
   // Log a session-start event so the per-agent execution history panel
@@ -160,6 +168,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   //    can show the run's duration, response length, and final status.
   const endTs = Date.now();
   const durationMs = endTs - startTs;
+  const durationSec = (durationMs / 1000).toFixed(1);
   store.pushActivity({
     kind: "agent_session_stop",
     text: `${persona.name} finished in ${durationMs}ms — ${text.length} chars`,
@@ -172,6 +181,15 @@ export async function runAgentForNode(nodeId: string, task?: string) {
       responseLength: text.length,
       status: errored ? "error" : "done",
     },
+  });
+
+  // Record the end of the run for duration tracking
+  store.recordRunEnd(nodeId);
+
+  // Toast: agent finished
+  toast.success(`${persona.name} finished in ${durationSec}s`, {
+    id: `agent-run-${nodeId}`,
+    duration: 4000,
   });
 
   store.setAgentRunning(nodeId, false);
@@ -291,6 +309,11 @@ function autoEmitSyntheticHandoff(
         synthetic: true,
       },
     });
+
+    // Toast: message_peer received
+    toast.info(`Message from ${fromName} → ${peerNode.name}`, {
+      duration: 3000,
+    });
   }
   return routed;
 }
@@ -346,6 +369,11 @@ function deliverPeerMessage(
     text: `${fromNameForLog} → ${toName}: ${message.slice(0, 80)}${message.length > 80 ? "…" : ""}`,
     nodeId: toNodeId,
     meta: { fromNodeId, toNodeId, edgeId },
+  });
+
+  // Toast: message_peer received
+  toast.info(`Message from ${fromNameForLog} → ${toName}`, {
+    duration: 3000,
   });
 }
 

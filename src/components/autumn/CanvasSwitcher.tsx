@@ -1,11 +1,12 @@
 // Autumn — Canvas Switcher dialog.
 // Lists all saved canvases from the DB, lets the user load or delete them,
-// and shows the current canvas's save status.
+// shows the current canvas's save status, and offers canvas presets.
 
 "use client";
 
 import { useEffect, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import type { CanvasPreset } from "@/lib/autumn/types";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +25,12 @@ import {
   Loader2,
   Plus,
   Copy,
+  Users,
+  UserPlus,
+  LayoutGrid,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface SavedCanvas {
   id: string;
@@ -33,6 +38,30 @@ interface SavedCanvas {
   updatedAt: string;
   createdAt: string;
 }
+
+const CANVAS_PRESETS: (CanvasPreset & { icon: React.ComponentType<{ className?: string }> })[] = [
+  {
+    id: "empty",
+    name: "Empty Canvas",
+    description: "Start fresh with a blank workspace.",
+    icon: LayoutGrid,
+    nodeCount: 0,
+  },
+  {
+    id: "pair",
+    name: "Pair Programming",
+    description: "Two connected agents for collaborative coding.",
+    icon: UserPlus,
+    nodeCount: 2,
+  },
+  {
+    id: "full-team",
+    name: "Full Team",
+    description: "4 agents, screen preview, and a sticky note.",
+    icon: Users,
+    nodeCount: 6,
+  },
+];
 
 export function CanvasSwitcher({
   open,
@@ -45,6 +74,7 @@ export function CanvasSwitcher({
   const resetCanvas = useAutumnStore((s) => s.resetCanvas);
   const duplicateCanvas = useAutumnStore((s) => s.duplicateCanvas);
   const currentId = useAutumnStore((s) => s.canvasId);
+  const createCanvasFromPreset = useAutumnStore((s) => s.createCanvasFromPreset);
 
   const [list, setList] = useState<SavedCanvas[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,7 +115,7 @@ export function CanvasSwitcher({
     }
   };
 
-  const handleDuplicate = async (id: string, name: string) => {
+  const handleDuplicate = async (id: string) => {
     await duplicateCanvas(id);
     void refresh();
   };
@@ -99,6 +129,11 @@ export function CanvasSwitcher({
     onOpenChange(false);
   };
 
+  const handlePreset = (preset: typeof CANVAS_PRESETS[number]) => {
+    createCanvasFromPreset(preset.name);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-card/95 backdrop-blur">
@@ -108,10 +143,38 @@ export function CanvasSwitcher({
             Canvases
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Load a saved canvas, start a new one, or delete old ones. Canvases
+            Load a saved canvas, start from a preset, or delete old ones. Canvases
             are persisted in the local Autumn database.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Preset cards */}
+        <div className="space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+            Quick-start presets
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {CANVAS_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => handlePreset(p)}
+                className={cn(
+                  "group rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-amber-500/30",
+                  "flex flex-col items-center gap-1.5 p-3 transition-all text-center",
+                )}
+              >
+                <div className="size-8 rounded-md bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 flex items-center justify-center group-hover:border-amber-500/40 transition-colors">
+                  <p.icon className="size-4 text-amber-400" />
+                </div>
+                <div className="text-xs font-medium leading-tight">{p.name}</div>
+                <div className="text-[10px] text-muted-foreground/60 leading-tight line-clamp-2">{p.description}</div>
+                <Badge variant="outline" className="text-[9px] h-4 px-1.5 mt-0.5 border-border/40">
+                  {p.nodeCount} {p.nodeCount === 1 ? "node" : "nodes"}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex items-center gap-2 mb-2">
           <Button
@@ -145,7 +208,7 @@ export function CanvasSwitcher({
           </div>
         )}
 
-        <ScrollArea className="h-[320px] rounded-md border border-border/40">
+        <ScrollArea className="h-[280px] rounded-md border border-border/40">
           {list.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <FileBox className="size-8 text-muted-foreground/30 mb-2" />
