@@ -168,3 +168,27 @@ Priority recommendations for next round:
 - Open a PR `autumn-o1 → main` on GitHub to review/diff the app against the docs-only `main`.
 - Add a top-level `README.md` to `autumn-o1` describing setup (`bun install`, `bun run db:push`, `bun run dev`) — currently excluded per "no proactive docs" rule, but worth adding once the user confirms.
 - Continue cron-driven feature/QA rounds (styling detail + more features) on the live app.
+
+---
+
+Task ID: 10-env-example-and-skills-clarification
+Agent: main
+Task: Answer user's two questions — (1) what's in `skills/`, (2) add a `.env.example` file to the pushed branch.
+
+Work Log:
+- **Audited `skills/` directory**: 65 subdirectories, each a Z.ai Code platform skill with a `SKILL.md` + supporting files (scripts, references, assets). Categories: AI/media (LLM, VLM, TTS, ASR, image-generation, image-edit, image-search, video-generation, video-understand), documents (docx, pdf, pptx, xlsx, charts), web (web-search, web-reader, agent-browser), dev (fullstack-dev, coding-agent, skill-creator, version-management), and many domain skills (finance, resume-builder, interview-prep, gaokao-*, dream-interpreter, etc.). These are **platform infrastructure** belonging to the Z.ai Code environment — NOT part of the Autumn app. Correctly gitignored via `/skills/` in `.gitignore`; deliberately excluded from the push.
+- **Audited env/config needs**: scanned all source — only `process.env.NODE_ENV` is referenced directly. Prisma reads `DATABASE_URL` via `env("DATABASE_URL")` in `schema.prisma`. The `z-ai-web-dev-sdk` (v0.0.18) reads credentials from a **`.z-ai-config` JSON file** (searched at `./`, `~/`, `/etc/.z-ai-config`), NOT from env vars. Config keys: `baseUrl`, `apiKey` (required), `chatId`/`token`/`userId` (optional).
+- **Created `.env.example`**: documents `DATABASE_URL` (SQLite path) + `NODE_ENV` note.
+- **Created `.z-ai-config.example`**: documents the ZAI SDK config file with placeholder values (`<YOUR_ZAI_API_KEY>` etc.). Redacted real `token`/`chatId`/`userId` from `/etc/.z-ai-config`.
+- **Updated `.gitignore`**: added `!.env.example` exception so the example is tracked while real `.env` stays ignored. `.z-ai-config.example` is not matched by the `.z-ai-config` rule so no exception needed.
+- **Committed on `autumn-o1`**: `ce4f671 docs: add .env.example and .z-ai-config.example with gitignore exception` (cherry-picked from an inadvertent main commit `ec684cc` caused by a platform auto-save during a bash timeout).
+- **Pushed & verified via GitHub API**: remote `autumn-o1` at `ce4f671`; both `.env.example` (901 bytes) and `.z-ai-config.example` (200 bytes) confirmed present.
+
+Stage Summary:
+- `skills/` = 65 Z.ai platform skills (LLM/VLM/TTS/ASR/image-gen/docx/pdf/etc.) — platform infra, not Autumn app code, correctly excluded from repo.
+- `.env.example` + `.z-ai-config.example` now live on `autumn-o1` at https://github.com/Adi103-ETAI/autumn/tree/autumn-o1
+- Autumn needs exactly 2 config inputs to run: `DATABASE_URL` (env) + `.z-ai-config` (JSON file with ZAI API key).
+
+Unresolved issues / risks:
+- The real `/etc/.z-ai-config` contains a live JWT `token` and `chatId` tied to this session — NOT pushed (only redacted example), but user should be aware it exists on this machine.
+- The earlier-exposed GitHub PAT (`ghp_…`) still needs revocation (carried over from Task 9).
