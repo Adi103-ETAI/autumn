@@ -117,6 +117,10 @@ export function CommanderPanel() {
     });
     setThinking(true);
 
+    // Guard the request with a client-side timeout so the "thinking"
+    // indicator can never spin forever if the backend stalls.
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 30_000);
     try {
       const r = await fetch("/api/commander", {
         method: "POST",
@@ -130,6 +134,7 @@ export function CommanderPanel() {
               : undefined,
           recentActions,
         }),
+        signal: ctrl.signal,
       });
       if (!r.ok) throw new Error(`commander ${r.status}`);
       const plan = (await r.json()) as CommanderResult;
@@ -145,12 +150,16 @@ export function CommanderPanel() {
       }
     } catch (err) {
       console.error(err);
+      const aborted = err instanceof DOMException && err.name === "AbortError";
       updateMessage(pendingId, {
-        text: `⚠️ Couldn't reach the Commander. ${err instanceof Error ? err.message : ""}`,
+        text: aborted
+          ? `⚠️ The Commander took too long to respond. Please try again.`
+          : `⚠️ Couldn't reach the Commander. ${err instanceof Error ? err.message : ""}`,
         pending: false,
         error: String(err),
       });
     } finally {
+      clearTimeout(timeout);
       setThinking(false);
     }
   };
