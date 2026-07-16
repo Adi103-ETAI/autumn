@@ -12,6 +12,26 @@ import { toast } from "sonner";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Hard ceiling on how long a single agent run may block the UI. If the
+// backend (or the LLM proxy behind /api/agent/run) hasn't answered by then,
+// we abort, fall back to a synthesized response, and dismiss the loading
+// toast — so the "X is working…" indicator can never spin forever.
+const RUN_TIMEOUT_MS = 45_000;
+const toastId = (nodeId: string) => `agent-run-${nodeId}`;
+
+/** Abort a fetch after `ms`, rejecting with an AbortError. */
+function fetchWithTimeout(
+  input: string,
+  init: RequestInit = {},
+  ms: number,
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(input, { ...init, signal: ctrl.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+}
+
 export async function runAgentForNode(nodeId: string, task?: string) {
   const store = useAutumnStore.getState();
   const node = store.nodes.find((n) => n.id === nodeId);
@@ -44,10 +64,12 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     nodeId,
   });
 
-  // Toast: agent starts working
+  // Toast: agent starts working. Finite duration acts as a safety net so the
+  // toast can never get orphaned on screen even if the finally below is
+  // somehow bypassed. The success/error toast below replaces it by id.
   toast.loading(`${persona.name} is working…`, {
-    id: `agent-run-${nodeId}`,
-    duration: Infinity,
+    id: toastId(nodeId),
+    duration: RUN_TIMEOUT_MS + 5_000,
   });
 
   // Log a session-start event so the per-agent execution history panel
@@ -59,19 +81,28 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     meta: { startTs, task: finalTask },
   });
 
+  // Everything below is wrapped in try/finally so that — no matter what
+  // throws — the loading toast is dismissed, isAgentRunning is cleared, and
+  // the agent's status is settled. This is the fix for "it shows and goes
+  // forever": a hung backend or an unexpected client-side error can never
+  // orphan the "X is working…" indicator on screen.
+  let settled = false;
+  let msgId: string | undefined;
+  try {
   // 1) Fetch peer context from the bus (drains the inbox).
   let peerContext = "";
   try {
-    const r = await fetch(
+    const r = await fetchWithTimeout(
       `/api/bus?op=pre-prompt&canvas=${encodeURIComponent(store.canvasId)}&node=${encodeURIComponent(nodeId)}`,
       { method: "GET" },
+      8_000,
     );
     if (r.ok) {
       const j = await r.json();
       peerContext = j.injection ?? "";
     }
   } catch {
-    /* ignore */
+    /* ignore — peer context is best-effort */
   }
 
   // 1b) Build the list of connected peers (by name) for the LLM prompt.
@@ -85,7 +116,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     .filter(Boolean) as string[];
 
   // 2) Append a placeholder assistant message we'll stream into.
-  const msgId = store.appendAgentMessage(nodeId, {
+  msgId = store.appendAgentMessage(nodeId, {
     role: "assistant",
     text: "",
     authorName: persona.name,
@@ -94,34 +125,48 @@ export async function runAgentForNode(nodeId: string, task?: string) {
 
   store.setAgentStatus(nodeId, "working", "Working on it…");
 
-  // 3) Call the agent runner.
+  // 3) Call the agent runner. Guarded by an AbortController so a hung
+  //    backend can never leave the "X is working…" toast spinning forever.
   let text = "";
   let errored = false;
   try {
-    const r = await fetch("/api/agent/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        personaId: persona.id,
-        harness: data.harness,
-        task: finalTask,
-        peerContext,
-        connectedPeers,
-        history: data.messages.slice(-6),
-      }),
-    });
+    const r = await fetchWithTimeout(
+      "/api/agent/run",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personaId: persona.id,
+          harness: data.harness,
+          task: finalTask,
+          peerContext,
+          connectedPeers,
+          history: data.messages.slice(-6),
+        }),
+      },
+      RUN_TIMEOUT_MS,
+    );
     if (!r.ok) throw new Error(`agent/run ${r.status}`);
     const j = await r.json();
     text = j.text ?? "";
   } catch (err) {
     console.error("[runAgent]", err);
     errored = true;
-    text =
-      `⚠️ I couldn't reach my reasoning backend.\n\nFalling back: I've acknowledged the task and queued it.\n\n\`queue: ${finalTask.slice(0, 80)}…\``;
+    const aborted =
+      err instanceof DOMException && err.name === "AbortError";
+    text = aborted
+      ? `⚠️ Timed out waiting for the reasoning backend after ${Math.round(
+          RUN_TIMEOUT_MS / 1000,
+        )}s.\n\nI've acknowledged the task and queued it for the next run.\n\n\`queue: ${finalTask.slice(0, 80)}…\``
+      : `⚠️ I couldn't reach my reasoning backend.\n\nFalling back: I've acknowledged the task and queued it.\n\n\`queue: ${finalTask.slice(0, 80)}…\``;
   }
 
   // 4) Stream the text in chunks for UX.
-  await streamText(nodeId, msgId, text);
+  try {
+    await streamText(nodeId, msgId, text);
+  } catch (err) {
+    console.error("[runAgent] streamText failed:", err);
+  }
 
   store.updateAgentMessage(nodeId, msgId, { streaming: false });
   store.setAgentStatus(nodeId, errored ? "error" : "done", errored ? "Backend unreachable — queued." : "Finished — awaiting next task.");
@@ -186,13 +231,44 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   // Record the end of the run for duration tracking
   store.recordRunEnd(nodeId);
 
-  // Toast: agent finished
+  // Toast: agent finished — replaces the loading toast by id.
   toast.success(`${persona.name} finished in ${durationSec}s`, {
-    id: `agent-run-${nodeId}`,
+    id: toastId(nodeId),
     duration: 4000,
   });
+  settled = true;
 
   store.setAgentRunning(nodeId, false);
+  } catch (err) {
+    // Unexpected error — make sure the user sees something useful and the
+    // agent is never left in a perpetual "working" state.
+    console.error("[runAgent] unexpected failure:", err);
+    store.setAgentStatus(
+      nodeId,
+      "error",
+      "Unexpected failure — agent reset.",
+    );
+    if (msgId) {
+      store.updateAgentMessage(nodeId, msgId, { streaming: false });
+    }
+    toast.error(`${persona.name} hit an unexpected error and was reset.`, {
+      id: toastId(nodeId),
+      duration: 5000,
+    });
+    store.setAgentRunning(nodeId, false);
+  } finally {
+    // Safety net: if we exited without showing a final toast (e.g. an early
+    // throw before the success/error path ran), force-dismiss the lingering
+    // loading toast by id. The finite `duration` on toast.loading is a
+    // second backstop.
+    if (!settled) {
+      toast.dismiss(toastId(nodeId));
+    }
+    // Ensure the running flag is always cleared.
+    if (useAutumnStore.getState().isAgentRunning[nodeId]) {
+      useAutumnStore.getState().setAgentRunning(nodeId, false);
+    }
+  }
 }
 
 async function streamText(
