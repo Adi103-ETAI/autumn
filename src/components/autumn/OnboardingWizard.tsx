@@ -160,7 +160,7 @@ function OptionButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40",
         selected
           ? "border-amber-500/60 bg-amber-500/10 text-amber-100"
-          : "border-border/50 bg-card/40 text-foreground/70 hover:border-border hover:bg-accent/40 hover:text-foreground",
+          : "border-white/15 bg-card/40 text-foreground/80 hover:border-white/30 hover:bg-accent/40 hover:text-foreground",
       )}
     >
       {label}
@@ -204,7 +204,6 @@ function AppMockup({ step, data }: { step: number; data: OnboardingData }) {
           <span className="size-2.5 rounded-full bg-emerald-500/70" />
         </div>
         <div className="mx-auto flex items-center gap-2">
-          <span className="size-4 rounded bg-amber-500/80" />
           <span className="text-xs font-medium text-foreground/70">
             Autumn · Your Big Idea
           </span>
