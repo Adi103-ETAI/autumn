@@ -54,3 +54,47 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# ----------------------------------------------------------------
+# Sandbox / local-only artifacts — MUST NOT be committed
+# ----------------------------------------------------------------
+
+# Sandbox build/dev orchestration scripts
+/.zscripts/
+
+# Agent working context (subagent handover notes)
+/agent-ctx/
+
+# Nested research repo (clone of another git repo)
+/autumn-repo/
+
+# Local SQLite database + db runtime files
+/db/
+
+# Downloads (QA screenshots, fetched assets)
+/download/
+
+# Tool output logs (bash/read captures)
+/tool-results/
+
+# User-uploaded files (privacy-sensitive)
+/upload/
+
+# Mini services (sandbox-only sidecar processes)
+/mini-services/
+
+# Sandbox example demos (websocket etc.)
+/examples/
+
+# Internal worklog / handover doc (not for public repo)
+worklog.md
+
+# Sandbox gateway config
+Caddyfile
+
+# z-ai config example (sandbox-specific)
+.z-ai-config.example
+
+# Root-level scratch images (unused by the app)
+/architecture.png
+/sea.png
