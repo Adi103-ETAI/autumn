@@ -84,7 +84,7 @@ export interface Workspace {
 export type AgentConnectionStatus = "not_yet" | "waiting" | "connected";
 
 export interface AgentConnection {
-  id: string; // "claude-code" | "codex" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
+  id: string; // "github-cli" | "claude-code" | "codex" | "copilot" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
   name: string;
   description: string;
   vendor: string;
@@ -92,15 +92,17 @@ export interface AgentConnection {
 }
 
 export const CODING_AGENTS: Omit<AgentConnection, "status">[] = [
+  { id: "github-cli", name: "GitHub CLI", description: "Clone, push, and create PRs.", vendor: "GitHub" },
   { id: "claude-code", name: "Claude Code", description: "Anthropic's terminal coding agent.", vendor: "Anthropic" },
   { id: "codex", name: "Codex", description: "OpenAI's coding agent.", vendor: "OpenAI" },
-  { id: "cursor", name: "Cursor", description: "AI-first code editor with agent mode.", vendor: "Cursor" },
+  { id: "cursor", name: "Cursor", description: "Cursor's CLI coding agent.", vendor: "Cursor" },
   { id: "grok", name: "Grok", description: "xAI's coding agent.", vendor: "xAI" },
+  { id: "copilot", name: "GitHub Copilot", description: "GitHub's AI pair programmer.", vendor: "GitHub" },
   { id: "opencode", name: "opencode", description: "Open-source terminal coding agent — no sign-in needed.", vendor: "Open source" },
-  { id: "hermes", name: "Hermes Agent", description: "Nous Research's coding agent.", vendor: "Nous Research" },
-  { id: "cline", name: "Cline", description: "Open-source coding agent.", vendor: "Open source" },
-  { id: "pi", name: "Pi", description: "Inflection's coding assistant.", vendor: "Inflection" },
+  { id: "cline", name: "Cline", description: "Open-source coding agent for VS Code.", vendor: "Open source" },
   { id: "gemini", name: "Gemini", description: "Google's coding agent.", vendor: "Google" },
+  { id: "hermes", name: "Hermes", description: "Nous Research's coding agent.", vendor: "Nous Research" },
+  { id: "pi", name: "Pi", description: "Inflection's coding assistant.", vendor: "Inflection" },
 ];
 
 // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder types ----
