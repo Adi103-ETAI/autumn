@@ -69,39 +69,151 @@ interface TerminalData {
   port?: number;
   lines: { text: string; kind?: string; ts: number }[];
 }
+
+// Canned responses for the simulated shell. The real terminal (user-machine
+// PTY) is deferred to the final phase — this keeps the node feeling alive.
+function simulateCommand(cmd: string, dir: string): { text: string; kind?: string }[] {
+  const c = cmd.trim().toLowerCase();
+  if (c === "" ) return [];
+  if (c === "clear" || c === "cls") return [{ text: "__clear__", kind: "system" }];
+  if (c === "help") return [
+    { text: "Available commands:", kind: "info" },
+    { text: "  ls         list files", kind: "stdout" },
+    { text: "  pwd        print working directory", kind: "stdout" },
+    { text: "  npm <cmd>  run an npm script", kind: "stdout" },
+    { text: "  git <cmd>  run a git command", kind: "stdout" },
+    { text: "  echo <x>   print text", kind: "stdout" },
+    { text: "  clear      clear the terminal", kind: "stdout" },
+  ];
+  if (c === "ls") return [
+    { text: "README.md  package.json  src/  public/  prisma/  next.config.ts", kind: "stdout" },
+  ];
+  if (c === "pwd") return [{ text: dir || "/home/user/project", kind: "stdout" }];
+  if (c === "npm run dev") return [
+    { text: "> autumn@0.1.0 dev", kind: "info" },
+    { text: "> next dev", kind: "info" },
+    { text: "  ▲ Next.js 16.0.0", kind: "stdout" },
+    { text: "  - Local:   http://localhost:3000", kind: "stdout" },
+    { text: "  ✓ Ready in 1.2s", kind: "stdout" },
+  ];
+  if (c.startsWith("npm install") || c.startsWith("npm i")) return [
+    { text: "added 312 packages in 4s", kind: "stdout" },
+    { text: "✓ done", kind: "stdout" },
+  ];
+  if (c.startsWith("git status")) return [
+    { text: "On branch main", kind: "stdout" },
+    { text: "nothing to commit, working tree clean", kind: "stdout" },
+  ];
+  if (c.startsWith("git ")) return [{ text: "ok", kind: "stdout" }];
+  if (c.startsWith("echo ")) return [{ text: cmd.slice(5), kind: "stdout" }];
+  if (c === "whoami") return [{ text: "autumn-user", kind: "stdout" }];
+  if (c === "date") return [{ text: new Date().toString(), kind: "stdout" }];
+  return [{ text: `command not found: ${cmd.split(" ")[0]}`, kind: "stderr" }];
+}
+
 export function TerminalNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as TerminalData;
+  const updateNodeData = useAutumnStore((s) => s.updateNodeData);
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when lines change.
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [d.lines.length]);
+
+  const dir = d.dir || "~/project";
+  const prompt = `${dir}$`;
+
+  const runCommand = () => {
+    const cmd = input;
+    setInput("");
+    const out = simulateCommand(cmd, dir);
+    const newLines = [...d.lines];
+    // echo the command
+    if (cmd.trim()) {
+      newLines.push({ text: `${prompt} ${cmd}`, kind: "command", ts: Date.now() });
+    }
+    if (out.length && out[0].text === "__clear__") {
+      updateNodeData(id, { lines: [] });
+      return;
+    }
+    for (const line of out) {
+      newLines.push({ text: line.text, kind: line.kind, ts: Date.now() });
+    }
+    updateNodeData(id, { lines: newLines.slice(-50) });
+  };
+
+  const isEmpty = d.lines.length === 0;
+
   return (
-    <NodeShell id={id} selected={selected} color="#22c55e" width="w-[280px]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-emerald-500/5">
-        <TerminalSquare className="size-3.5 text-emerald-400" />
-        <span className="text-xs font-medium">Terminal</span>
+    <NodeShell id={id} selected={selected} color="#22c55e" width="w-[320px]">
+      {/* Terminal title bar — macOS-style traffic lights + title */}
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40 rounded-t-xl bg-zinc-900/80">
+        <div className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-full bg-rose-500/80" />
+          <span className="size-2.5 rounded-full bg-amber-400/80" />
+          <span className="size-2.5 rounded-full bg-emerald-500/80" />
+        </div>
+        <span className="text-[11px] font-medium text-zinc-300 ml-1 truncate">
+          {d.agent ? `${d.agent} — bash` : "bash — plain shell"}
+        </span>
         {d.port && (
-          <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1">
+          <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1 border-emerald-500/40 text-emerald-300">
             :{d.port}
           </Badge>
         )}
       </div>
-      <div className="px-3 py-2 font-mono text-[10px] space-y-0.5 max-h-32 overflow-y-auto autumn-scroll">
-        {d.lines.slice(-8).map((l, i) => (
+      {/* Terminal body — near-black, monospace */}
+      <div
+        ref={scrollRef}
+        className="px-3 py-2 font-mono text-[10.5px] leading-relaxed space-y-0.5 max-h-40 overflow-y-auto autumn-scroll bg-zinc-950/95"
+      >
+        {isEmpty && (
+          <div className="text-zinc-500 italic">
+            <span className="text-emerald-400">~$</span> click for a plain shell
+          </div>
+        )}
+        {d.lines.slice(-20).map((l, i) => (
           <div
             key={i}
             className={cn(
+              "whitespace-pre-wrap break-words",
               l.kind === "stderr" && "text-rose-400",
-              l.kind === "command" && "text-amber-300",
+              l.kind === "command" && "text-amber-200",
               l.kind === "info" && "text-sky-300",
-              (!l.kind || l.kind === "stdout") && "text-emerald-200/80",
+              l.kind === "system" && "text-zinc-500",
+              (!l.kind || l.kind === "stdout") && "text-emerald-200/85",
             )}
           >
             {l.text}
           </div>
         ))}
-        <div className="text-emerald-300/60">
-          <span className="text-amber-300">▌</span>
+        {/* Live prompt + input */}
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <span className="text-emerald-400 shrink-0">{prompt}</span>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                runCommand();
+              }
+            }}
+            spellCheck={false}
+            autoComplete="off"
+            className="flex-1 bg-transparent outline-none border-none text-emerald-100 caret-emerald-400 placeholder:text-zinc-600"
+            placeholder={isEmpty ? "type a command…" : ""}
+            aria-label="Terminal input"
+          />
+          <span className="text-amber-300 animate-pulse">▌</span>
         </div>
       </div>
       {d.dir && (
-        <div className="px-3 py-1.5 border-t border-border/40 text-[9px] text-muted-foreground truncate">
+        <div className="px-3 py-1 border-t border-border/40 text-[9px] text-muted-foreground/70 truncate font-mono">
           {d.dir}
         </div>
       )}

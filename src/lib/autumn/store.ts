@@ -103,6 +103,170 @@ export const CODING_AGENTS: Omit<AgentConnection, "status">[] = [
   { id: "gemini", name: "Gemini", description: "Google's coding agent.", vendor: "Google" },
 ];
 
+// ---- Phase 2: left sidebar / backgrounds / voice / apps / finder types ----
+
+export type ProjectFileCategory = "image" | "video" | "audio" | "font" | "doc" | "other";
+
+export interface ProjectFile {
+  id: string;
+  name: string;
+  category: ProjectFileCategory;
+  size: number; // bytes
+  source: "repo" | "upload" | "cloud" | "paste";
+  addedAt: number;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // emoji or lucide name
+  color: string; // tailwind text color class
+  installed: boolean;
+  installedAt?: number;
+}
+
+export interface Backends {
+  website: string; // e.g. "localhost:3000"
+  data: string[]; // ["Supabase", "Convex"]
+  ai: string[]; // ["Concur"]
+}
+
+export interface AiFinderResult {
+  id: string;
+  path: string;
+  kind: "file" | "node" | "skill" | "task";
+  snippet: string;
+  score: number; // 0..1 relevance
+}
+
+// October-style scenic photographic canvas backgrounds.
+// Each has an id, label, and a CSS background (gradient swatch + optional image url).
+export interface CanvasBackground {
+  id: string;
+  label: string;
+  // Tailwind gradient classes for the swatch + the actual canvas overlay
+  swatch: string;
+  overlay: string; // applied to the canvas background layer
+  imageUrl?: string; // optional photographic wallpaper
+  darken: number; // 0..1 — how much to darken the image for node legibility
+}
+
+export const CANVAS_BACKGROUNDS: CanvasBackground[] = [
+  {
+    id: "autumn-dots",
+    label: "Autumn Dots",
+    swatch: "bg-gradient-to-br from-amber-900/40 to-stone-900",
+    overlay: "",
+    darken: 0,
+  },
+  {
+    id: "midnight-villa",
+    label: "Midnight Villa",
+    swatch: "bg-gradient-to-br from-slate-800 to-indigo-950",
+    overlay: "autumn-bg-villa",
+    imageUrl: "/backgrounds/villa.jpg",
+    darken: 0.55,
+  },
+  {
+    id: "sea-coast",
+    label: "Sea Coast",
+    swatch: "bg-gradient-to-br from-sky-800 to-teal-950",
+    overlay: "autumn-bg-sea",
+    imageUrl: "/backgrounds/sea.jpg",
+    darken: 0.5,
+  },
+  {
+    id: "garden",
+    label: "Garden",
+    swatch: "bg-gradient-to-br from-emerald-800 to-stone-950",
+    overlay: "autumn-bg-garden",
+    imageUrl: "/backgrounds/garden.jpg",
+    darken: 0.55,
+  },
+  {
+    id: "architecture",
+    label: "Architecture",
+    swatch: "bg-gradient-to-br from-stone-700 to-zinc-950",
+    overlay: "autumn-bg-arch",
+    imageUrl: "/backgrounds/architecture.jpg",
+    darken: 0.55,
+  },
+  {
+    id: "dusk",
+    label: "Dusk",
+    swatch: "bg-gradient-to-br from-orange-900 to-purple-950",
+    overlay: "autumn-bg-dusk",
+    imageUrl: "/backgrounds/dusk.jpg",
+    darken: 0.5,
+  },
+];
+
+export const STARTER_SKILLS: Omit<Skill, "id" | "installedAt" | "installed">[] = [
+  {
+    id: "website-cloner",
+    name: "Website Cloner",
+    description: "Pixel-perfect clone of any website into a real Next.js project (the /clone-website skill).",
+    icon: "🌐",
+    color: "text-sky-400",
+  },
+  {
+    id: "gsd",
+    name: "Get Shit Done (GSD)",
+    description: "Set up GSD — a spec-driven workflow that plans a roadmap and ships phase by phase.",
+    icon: "🚀",
+    color: "text-amber-400",
+  },
+  {
+    id: "screenshot-to-code",
+    name: "Screenshot to Code",
+    description: "Turn any screenshot into clean, responsive Tailwind + React components.",
+    icon: "📸",
+    color: "text-fuchsia-400",
+  },
+  {
+    id: "api-designer",
+    name: "API Designer",
+    description: "Design, document, and scaffold REST/GraphQL APIs from a natural-language spec.",
+    icon: "🔌",
+    color: "text-emerald-400",
+  },
+];
+
+export const STARTER_DESIGN_MD = `# Design System
+
+## Brand
+- **Name**: (your project)
+- **Voice**: Confident, warm, human.
+
+## Color
+- **Background**: near-black (\`oklch(0.13 0.005 55)\`)
+- **Foreground**: warm white (\`oklch(0.96 0.01 55)\`)
+- **Primary**: amber (\`oklch(0.78 0.18 55)\`)
+- **Accent**: emerald for success, rose for danger
+
+## Typography
+- **Display**: Inter / system-ui, tight tracking
+- **Mono**: ui-monospace for terminal + code
+
+## Radius
+- Cards: \`0.75rem\`
+- Buttons: \`0.5rem\`
+
+## Notes
+- Every agent on this canvas reads this file before building UI.
+- Edit freely — builds conform to whatever is here.
+`;
+
+export const THIRD_PARTY_APPS: { id: string; name: string; description: string; icon: string; color: string; earlyAccess?: boolean }[] = [
+  { id: "shopify", name: "Shopify", description: "Pull products, orders, and inventory into your canvas.", icon: "🛍️", color: "text-emerald-400" },
+  { id: "lovable", name: "Lovable", description: "Generate full-stack apps from a prompt.", icon: "💖", color: "text-rose-400", earlyAccess: true },
+  { id: "figma", name: "Figma", description: "Sync design files as project context.", icon: "🎨", color: "text-fuchsia-400", earlyAccess: true },
+  { id: "shortcut", name: "Shortcut", description: "Two-way sync of stories, cycles, and tickets.", icon: "❌", color: "text-green-400", earlyAccess: true },
+  { id: "post-bridge", name: "Post Bridge", description: "Schedule and cross-post content.", icon: "⏰", color: "text-amber-400" },
+  { id: "canvas", name: "Canvas", description: "Embed live collaborative canvases.", icon: "🖼️", color: "text-sky-400", earlyAccess: true },
+];
+
 export interface CommanderChatMessage {
   id: string;
   role: "user" | "commander";
@@ -257,6 +421,55 @@ export interface AutumnStore {
   removeWorkspace: (id: string) => void;
   openWorkspace: (id: string) => void; // set as current canvas + stage=workspace
   createBlankWorkspace: (name?: string) => string;
+
+  // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
+  // Left sidebar (4 tabs, mirrors October's Resources/Skills/Backends/Design)
+  leftSidebarOpen: boolean;
+  leftSidebarTab: "resources" | "skills" | "backends" | "design";
+  // Resources — project context files shared with all agents
+  projectFiles: ProjectFile[];
+  // Skills — installable skills (Website Cloner, GSD, ...)
+  skills: Skill[];
+  // Backends — website + data + ai integrations
+  backends: Backends;
+  // design.md — single source of truth for the canvas design system
+  designMd: string;
+  // Canvas scenic photographic backgrounds (October uses Mediterranean villas/sea/gardens)
+  canvasBackgroundId: string;
+  // Voice input (mic → project chat)
+  voiceSetupOpen: boolean;
+  voiceEnabled: boolean;
+  voiceTranscript: string;
+  // Third-party apps integration modal (Shopify/Lovable/Figma/Shortcut/Post Bridge/Canvas)
+  appsModalOpen: boolean;
+  connectedApps: string[];
+  // AI Finder — natural-language file search overlay
+  aiFinderOpen: boolean;
+  aiFinderQuery: string;
+  aiFinderResults: AiFinderResult[];
+
+  setLeftSidebarOpen: (v: boolean) => void;
+  toggleLeftSidebar: () => void;
+  setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design") => void;
+  addProjectFile: (file: Omit<ProjectFile, "id" | "addedAt">) => void;
+  removeProjectFile: (id: string) => void;
+  addSkill: (skill: Omit<Skill, "id" | "installedAt" | "installed">) => void;
+  removeSkill: (id: string) => void;
+  toggleSkillInstall: (id: string) => void;
+  addBackend: (category: "data" | "ai", name: string) => void;
+  removeBackend: (category: "data" | "ai", name: string) => void;
+  setWebsiteBackend: (url: string) => void;
+  setDesignMd: (content: string) => void;
+  createStarterDesignMd: () => void;
+  setCanvasBackgroundId: (id: string) => void;
+  setVoiceSetupOpen: (v: boolean) => void;
+  setVoiceEnabled: (v: boolean) => void;
+  setVoiceTranscript: (t: string) => void;
+  setAppsModalOpen: (v: boolean) => void;
+  toggleApp: (id: string) => void;
+  setAiFinderOpen: (v: boolean) => void;
+  setAiFinderQuery: (q: string) => void;
+  runAiFinder: (q: string) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -511,6 +724,117 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     });
     set({ appStage: "workspace", canvasId: id, canvasName: name || "Untitled workspace" });
     return id;
+  },
+
+  // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
+  leftSidebarOpen: true,
+  leftSidebarTab: "resources",
+  projectFiles: [
+    { id: "pf1", name: "README.md", category: "doc", size: 4200, source: "repo", addedAt: Date.now() - 86400000 },
+    { id: "pf2", name: "brand-logo.png", category: "image", size: 18400, source: "repo", addedAt: Date.now() - 43200000 },
+    { id: "pf3", name: "research-notes.pdf", category: "doc", size: 220000, source: "upload", addedAt: Date.now() - 3600000 },
+  ],
+  skills: STARTER_SKILLS.map((s) => ({ ...s, id: s.id, installed: false })),
+  backends: { website: "localhost:3000", data: [], ai: [] },
+  designMd: "",
+  canvasBackgroundId: "autumn-dots",
+  voiceSetupOpen: false,
+  voiceEnabled: false,
+  voiceTranscript: "",
+  appsModalOpen: false,
+  connectedApps: [],
+  aiFinderOpen: false,
+  aiFinderQuery: "",
+  aiFinderResults: [],
+
+  setLeftSidebarOpen: (v) => set({ leftSidebarOpen: v }),
+  toggleLeftSidebar: () => set((s) => ({ leftSidebarOpen: !s.leftSidebarOpen })),
+  setLeftSidebarTab: (t) => set({ leftSidebarTab: t, leftSidebarOpen: true }),
+  addProjectFile: (file) =>
+    set((s) => ({
+      projectFiles: [
+        { ...file, id: `pf${Date.now()}`, addedAt: Date.now() },
+        ...s.projectFiles,
+      ],
+    })),
+  removeProjectFile: (id) =>
+    set((s) => ({ projectFiles: s.projectFiles.filter((f) => f.id !== id) })),
+  addSkill: (skill) =>
+    set((s) => ({
+      skills: [
+        ...s.skills,
+        { ...skill, id: skill.id || `skill${Date.now()}`, installed: false },
+      ],
+    })),
+  removeSkill: (id) =>
+    set((s) => ({ skills: s.skills.filter((sk) => sk.id !== id) })),
+  toggleSkillInstall: (id) =>
+    set((s) => ({
+      skills: s.skills.map((sk) =>
+        sk.id === id
+          ? { ...sk, installed: !sk.installed, installedAt: !sk.installed ? Date.now() : undefined }
+          : sk,
+      ),
+    })),
+  addBackend: (category, name) =>
+    set((s) => ({
+      backends: {
+        ...s.backends,
+        [category]: s.backends[category].includes(name)
+          ? s.backends[category]
+          : [...s.backends[category], name],
+      },
+    })),
+  removeBackend: (category, name) =>
+    set((s) => ({
+      backends: {
+        ...s.backends,
+        [category]: s.backends[category].filter((b) => b !== name),
+      },
+    })),
+  setWebsiteBackend: (url) => set((s) => ({ backends: { ...s.backends, website: url } })),
+  setDesignMd: (content) => set({ designMd: content }),
+  createStarterDesignMd: () => set({ designMd: STARTER_DESIGN_MD }),
+  setCanvasBackgroundId: (id) => set({ canvasBackgroundId: id }),
+  setVoiceSetupOpen: (v) => set({ voiceSetupOpen: v }),
+  setVoiceEnabled: (v) => set({ voiceEnabled: v }),
+  setVoiceTranscript: (t) => set({ voiceTranscript: t }),
+  setAppsModalOpen: (v) => set({ appsModalOpen: v }),
+  toggleApp: (id) =>
+    set((s) => ({
+      connectedApps: s.connectedApps.includes(id)
+        ? s.connectedApps.filter((a) => a !== id)
+        : [...s.connectedApps, id],
+    })),
+  setAiFinderOpen: (v) => set({ aiFinderOpen: v }),
+  setAiFinderQuery: (q) => set({ aiFinderQuery: q }),
+  runAiFinder: (q) => {
+    // Lightweight client-side semantic-ish search across files, nodes, skills, tasks.
+    const s = get();
+    const query = q.toLowerCase().trim();
+    if (!query) {
+      set({ aiFinderResults: [], aiFinderQuery: q });
+      return;
+    }
+    const results: AiFinderResult[] = [];
+    for (const f of s.projectFiles) {
+      const score = f.name.toLowerCase().includes(query) ? 0.9 : 0;
+      if (score > 0) results.push({ id: f.id, path: `resources/${f.name}`, kind: "file", snippet: `${f.category} · ${f.source}`, score });
+    }
+    for (const n of s.nodes) {
+      const score = n.name.toLowerCase().includes(query) ? 0.85 : 0;
+      if (score > 0) results.push({ id: n.id, path: `canvas/${n.name}`, kind: "node", snippet: n.kind, score });
+    }
+    for (const sk of s.skills) {
+      const score = (sk.name + sk.description).toLowerCase().includes(query) ? 0.8 : 0;
+      if (score > 0) results.push({ id: sk.id, path: `skills/${sk.name}`, kind: "skill", snippet: sk.description.slice(0, 80), score });
+    }
+    for (const t of s.tasks) {
+      const score = t.description.toLowerCase().includes(query) ? 0.75 : 0;
+      if (score > 0) results.push({ id: t.id, path: `tasks/${t.id}`, kind: "task", snippet: t.description.slice(0, 80), score });
+    }
+    results.sort((a, b) => b.score - a.score);
+    set({ aiFinderResults: results.slice(0, 12), aiFinderQuery: q });
   },
 
   setCanvasName: (name) => set({ canvasName: name }),
