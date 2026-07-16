@@ -19,6 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { useAutumnStore, type Workspace, type WorkspaceKind } from "@/lib/autumn/store";
 import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
@@ -33,6 +41,9 @@ import {
   Settings,
   User,
   X,
+  RotateCcw,
+  Trash2,
+  Cpu,
 } from "lucide-react";
 
 // ---------- helpers ----------
@@ -136,6 +147,7 @@ export function HomeScreen() {
   const openWorkspace = useAutumnStore((s) => s.openWorkspace);
   const setShowAgentSetup = useAutumnStore((s) => s.setShowAgentSetup);
   const importCanvasState = useAutumnStore((s) => s.importCanvasState);
+  const resetOnboarding = useAutumnStore((s) => s.resetOnboarding);
 
   // Dialog state — which dialog is open (null when none).
   const [openDialog, setOpenDialog] = useState<null | "folder" | "repo" | "link">(null);
@@ -269,16 +281,73 @@ export function HomeScreen() {
             <User className="size-3.5" />
             <span className="hidden sm:inline">Sign in</span>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent/60"
-            title="Agent setup"
-            aria-label="Agent setup"
-            onClick={() => setShowAgentSetup(true)}
-          >
-            <Settings className="size-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent/60"
+                title="Settings"
+                aria-label="Settings"
+              >
+                <Settings className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+                Settings
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowAgentSetup(true)}
+                className="gap-2 cursor-pointer"
+              >
+                <Cpu className="size-4" />
+                <span>Agent setup</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  resetOnboarding();
+                  toast.success("Replaying onboarding", {
+                    description: "Starting the setup flow from the beginning.",
+                  });
+                }}
+                className="gap-2 cursor-pointer"
+              >
+                <RotateCcw className="size-4" />
+                <span>Replay onboarding</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (
+                    typeof window !== "undefined" &&
+                    window.confirm(
+                      "Clear ALL local data?\n\nThis removes saved onboarding, workspaces, and connected agents, then restarts the app from the very first screen.",
+                    )
+                  ) {
+                    if (typeof window !== "undefined") {
+                      [
+                        "autumn-onboarding-completed",
+                        "autumn-onboarding-data",
+                        "autumn-workspaces",
+                        "autumn-connected-agents",
+                      ].forEach((k) => localStorage.removeItem(k));
+                    }
+                    resetOnboarding();
+                    toast.success("Local data cleared", {
+                      description: "Reloading the app from scratch…",
+                    });
+                    setTimeout(() => window.location.reload(), 600);
+                  }
+                }}
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" />
+                <span>Clear all local data</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
