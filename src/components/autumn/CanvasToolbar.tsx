@@ -40,7 +40,7 @@ const KIND_META: Record<string, { label: string; color: string; icon: React.Comp
   chat: { label: "Agents", color: "bg-fuchsia-400", icon: Bot },
   terminal: { label: "Terminals", color: "bg-emerald-400", icon: Bot },
   screen: { label: "Screens", color: "bg-sky-400", icon: MonitorSmartphone },
-  sticky: { label: "Notes", color: "bg-amber-400", icon: StickyNote },
+  sticky: { label: "Notes", color: "bg-violet-400", icon: StickyNote },
 };
 
 function GroupIndicator() {
@@ -143,7 +143,7 @@ export function CanvasToolbar() {
             label="Add note"
             onClick={() => addNode({ kind: "sticky" })}
             icon={StickyNote}
-            color="text-amber-400"
+            color="text-violet-400"
           />
         </div>
 
@@ -196,7 +196,7 @@ export function CanvasToolbar() {
                 ids.forEach((id) => store.duplicateNode(id));
               }}
               icon={Copy}
-              color="text-amber-300"
+              color="text-violet-300"
             />
             <ToolbarButton
               label="Remove all selected"
@@ -248,7 +248,7 @@ export function CanvasToolbar() {
             {nodeCount}
           </span>
           <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-amber-400" />
+            <span className="size-1.5 rounded-full bg-violet-400" />
             {edgeCount}
           </span>
           <GroupIndicator />
@@ -309,7 +309,7 @@ function ZoomChip() {
         <button
           type="button"
           onClick={() => zoomTo(1, { duration: 300 })}
-          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
+          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-violet-500/50 hover:text-violet-300"
           aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
         >
           <ZoomIn className="size-2.5" />

@@ -91,7 +91,7 @@ export function CommandPalette() {
       { kind: "chat", label: "Add agent", icon: Bot, color: "text-fuchsia-400" },
       { kind: "terminal", label: "Add terminal", icon: TerminalSquare, color: "text-emerald-400" },
       { kind: "screen", label: "Add screen", icon: MonitorSmartphone, color: "text-sky-400" },
-      { kind: "sticky", label: "Add note", icon: StickyNote, color: "text-amber-400" },
+      { kind: "sticky", label: "Add note", icon: StickyNote, color: "text-violet-400" },
       { kind: "analytics", label: "Add analytics", icon: BarChart3, color: "text-orange-400" },
       { kind: "youtube", label: "Add browser", icon: Globe, color: "text-violet-400" },
       { kind: "remotion", label: "Add remotion", icon: Clapperboard, color: "text-blue-400" },
@@ -118,7 +118,7 @@ export function CommandPalette() {
       label: "Save canvas",
       hint: "⌘S",
       icon: Save,
-      color: "text-amber-300",
+      color: "text-violet-300",
       group: "Canvas",
       run: () => {
         void saveCanvas().then(() => {
@@ -146,7 +146,7 @@ export function CommandPalette() {
       id: "share-canvas",
       label: "Share canvas via URL",
       icon: Share2,
-      color: "text-amber-300",
+      color: "text-violet-300",
       group: "Canvas",
       keywords: "share link copy url hash export",
       run: () => {
@@ -220,7 +220,7 @@ export function CommandPalette() {
       label: "Go to Commander panel",
       hint: "⌘1",
       icon: Sparkles,
-      color: "text-amber-300",
+      color: "text-violet-300",
       group: "Navigate",
       run: () => setRightPanelTab("commander"),
     });
@@ -269,7 +269,7 @@ export function CommandPalette() {
           label: `Connect ${n.name} → (pick target)`,
           hint: "C",
           icon: Cable,
-          color: "text-amber-300",
+          color: "text-violet-300",
           group: "Selected agent",
           run: () => {
             setConnectMode({ from: n.id });
@@ -281,7 +281,7 @@ export function CommandPalette() {
           label: `Duplicate ${n.name}`,
           hint: "Shift+D",
           icon: Copy,
-          color: "text-amber-300",
+          color: "text-violet-300",
           group: "Selected agent",
           run: () => {
             const newId = duplicateNode(n.id);
@@ -330,7 +330,7 @@ export function CommandPalette() {
         id: `example-${ex.slice(0, 20)}`,
         label: `Commander: "${ex.slice(0, 60)}${ex.length > 60 ? "…" : ""}"`,
         icon: Sparkles,
-        color: "text-amber-300",
+        color: "text-violet-300",
         group: "Commander examples",
         keywords: `commander example send spawn`,
         run: () => {
@@ -414,7 +414,7 @@ export function CommandPalette() {
         <CommandGroup heading="Tips">
           <div className="px-2 py-1.5 text-[10px] text-muted-foreground space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <Plus className="size-3 text-amber-400" />
+              <Plus className="size-3 text-violet-400" />
               <span>Try saying "spawn Juno and connect her to Atlas, then have her write tests" in the Commander.</span>
             </div>
             <div className="flex items-center gap-1.5">

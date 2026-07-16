@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
-const HANDLE_STYLE = { background: "oklch(0.78 0.18 55)" };
+const HANDLE_STYLE = { background: "oklch(0.6 0.19 285)" };
 
 function NodeShell({
   id,
@@ -43,7 +43,7 @@ function NodeShell({
       className={cn(
         `${width} rounded-xl border bg-card/95 backdrop-blur shadow-lg transition-all`,
         selected
-          ? "border-amber-500/70 ring-2 ring-amber-500/30"
+          ? "border-violet-500/60 ring-2 ring-violet-500/20"
           : "border-border/60 hover:border-border",
       )}
       style={{ boxShadow: `0 6px 16px -8px ${color}40` }}
@@ -154,7 +154,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40 rounded-t-xl bg-zinc-900/80">
         <div className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-rose-500/80" />
-          <span className="size-2.5 rounded-full bg-amber-400/80" />
+          <span className="size-2.5 rounded-full bg-violet-400/80" />
           <span className="size-2.5 rounded-full bg-emerald-500/80" />
         </div>
         <span className="text-[11px] font-medium text-zinc-300 ml-1 truncate">
@@ -182,7 +182,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             className={cn(
               "whitespace-pre-wrap break-words",
               l.kind === "stderr" && "text-rose-400",
-              l.kind === "command" && "text-amber-200",
+              l.kind === "command" && "text-violet-200",
               l.kind === "info" && "text-sky-300",
               l.kind === "system" && "text-zinc-500",
               (!l.kind || l.kind === "stdout") && "text-emerald-200/85",
@@ -209,7 +209,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             placeholder={isEmpty ? "type a command…" : ""}
             aria-label="Terminal input"
           />
-          <span className="text-amber-300 animate-pulse">▌</span>
+          <span className="text-violet-300 animate-pulse">▌</span>
         </div>
       </div>
       {d.dir && (
@@ -272,7 +272,7 @@ interface StickyData {
   color?: string;
 }
 const STICKY_COLORS: Record<string, string> = {
-  amber: "bg-amber-400/90 text-amber-950 border-amber-300",
+  amber: "bg-violet-400/90 text-violet-950 border-violet-300",
   rose: "bg-rose-400/90 text-rose-950 border-rose-300",
   emerald: "bg-emerald-400/90 text-emerald-950 border-emerald-300",
   violet: "bg-violet-400/90 text-violet-950 border-violet-300",
@@ -312,7 +312,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       className={cn(
         "w-[200px] rounded-sm border shadow-md transition-all hover:rotate-0 hover:scale-[1.02]",
         colorClass,
-        selected && "ring-2 ring-amber-500/50",
+        selected && "ring-2 ring-violet-500/40",
       )}
       style={{ transform: `rotate(${rotation})` }}
     >
@@ -442,7 +442,7 @@ export function BrowserNode({ id, data, selected }: NodeProps) {
       </div>
       <div className="px-3 py-2 border-b border-border/40 flex items-center gap-1.5">
         <div className="size-1.5 rounded-full bg-rose-400" />
-        <div className="size-1.5 rounded-full bg-amber-400" />
+        <div className="size-1.5 rounded-full bg-violet-400" />
         <div className="size-1.5 rounded-full bg-emerald-400" />
         <div className="ml-2 flex-1 text-[9px] text-muted-foreground truncate bg-muted/30 rounded px-1.5 py-0.5">
           {d.url}

@@ -139,7 +139,7 @@ export function CanvasSwitcher({
       <DialogContent className="max-w-lg bg-card/95 backdrop-blur">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileBox className="size-4 text-amber-400" />
+            <FileBox className="size-4 text-violet-400" />
             Canvases
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -159,12 +159,12 @@ export function CanvasSwitcher({
                 key={p.id}
                 onClick={() => handlePreset(p)}
                 className={cn(
-                  "group rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-amber-500/30",
+                  "group rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-violet-500/30",
                   "flex flex-col items-center gap-1.5 p-3 transition-all text-center",
                 )}
               >
-                <div className="size-8 rounded-md bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 flex items-center justify-center group-hover:border-amber-500/40 transition-colors">
-                  <p.icon className="size-4 text-amber-400" />
+                <div className="size-8 rounded-md bg-gradient-to-br from-violet-500/15 to-orange-500/10 border border-violet-500/20 flex items-center justify-center group-hover:border-violet-500/40 transition-colors">
+                  <p.icon className="size-4 text-violet-400" />
                 </div>
                 <div className="text-xs font-medium leading-tight">{p.name}</div>
                 <div className="text-[10px] text-muted-foreground/60 leading-tight line-clamp-2">{p.description}</div>
@@ -227,8 +227,8 @@ export function CanvasSwitcher({
                   key={c.id}
                   className="flex items-center gap-2 px-3 py-2.5 hover:bg-accent/30 transition-colors group"
                 >
-                  <div className="size-8 rounded-md bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                    <FileBox className="size-4 text-amber-400" />
+                  <div className="size-8 rounded-md bg-gradient-to-br from-violet-500/20 to-orange-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                    <FileBox className="size-4 text-violet-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{c.name}</div>
@@ -254,7 +254,7 @@ export function CanvasSwitcher({
                     onClick={() => void handleLoad(c.id)}
                     aria-label="Load canvas"
                   >
-                    <FolderOpen className="size-3.5 text-amber-400" />
+                    <FolderOpen className="size-3.5 text-violet-400" />
                   </Button>
                   <Button
                     variant="ghost"

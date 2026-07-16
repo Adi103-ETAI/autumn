@@ -28,7 +28,7 @@ const AGENT_ICON_COLORS: Record<string, string> = {
   codex: "bg-emerald-500/20 text-emerald-300",
   cursor: "bg-violet-500/20 text-violet-300",
   grok: "bg-zinc-500/20 text-zinc-300",
-  opencode: "bg-amber-500/20 text-amber-300",
+  opencode: "bg-violet-500/20 text-violet-300",
   hermes: "bg-rose-500/20 text-rose-300",
   cline: "bg-teal-500/20 text-teal-300",
   pi: "bg-fuchsia-500/20 text-fuchsia-300",
@@ -71,10 +71,8 @@ export function AgentConnectionModal() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Backdrop: dark zinc gradient + blur (pointer-events-none so clicks reach the card) */}
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
-          <div className="absolute inset-0 pointer-events-none bg-black/60 backdrop-blur-xl" />
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.06)_0%,transparent_70%)]" />
+          {/* Backdrop: pure black (pointer-events-none so clicks reach the card) */}
+          <div className="absolute inset-0 pointer-events-none bg-black/80" />
 
           {/* Card */}
           <motion.div
@@ -85,7 +83,7 @@ export function AgentConnectionModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-card/95 border border-border/50 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+            className="relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[#1a202c] border border-white/5 shadow-2xl shadow-black/40 overflow-hidden"
           >
             {/* Header */}
             <header className="flex items-start gap-3 p-6 pb-4 border-b border-border/50">
@@ -189,8 +187,8 @@ export function AgentConnectionModal() {
                 className={cn(
                   "gap-2 px-6 shrink-0",
                   hasConnected
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/20 border-0"
-                    : "bg-zinc-700/60 text-zinc-400 border-0",
+                    ? "bg-violet-600 hover:bg-violet-500 text-white border-0"
+                    : "bg-white/5 text-white/30 border-0",
                 )}
               >
                 <Leaf className="size-4" />
@@ -277,7 +275,7 @@ function StatusButton({
         variant="outline"
         size="sm"
         disabled
-        className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 shrink-0 cursor-wait"
+        className="gap-1.5 border-violet-500/40 text-violet-300 bg-violet-500/10 shrink-0 cursor-wait"
       >
         <Loader2 className="size-3.5 animate-spin" />
         Waiting...
@@ -310,7 +308,7 @@ function StatusButton({
       variant="outline"
       size="sm"
       onClick={onSignIn}
-      className="gap-1.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 shrink-0"
+      className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/15 hover:text-violet-200 shrink-0"
     >
       <LogIn className="size-3.5" />
       Sign in

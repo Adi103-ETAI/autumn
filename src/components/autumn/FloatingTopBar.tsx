@@ -77,7 +77,7 @@ export function FloatingTopBar() {
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 w-[calc(100%-1rem)] max-w-[640px] pointer-events-auto"
     >
-      <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-card/80 backdrop-blur-xl shadow-lg shadow-black/30 pl-1 pr-1 py-1 w-full">
+      <div className="flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-card/80 backdrop-blur-xl shadow-lg shadow-black/30 pl-1 pr-1 py-1 w-full">
         {/* Project chat badge — opens the Commander right panel */}
         <motion.button
           whileHover={{ y: -1 }}
@@ -85,10 +85,10 @@ export function FloatingTopBar() {
           onClick={() => setRightPanelTab("commander")}
           className={cn(
             "group relative flex items-center gap-2 rounded-full px-3 py-1.5 shrink-0",
-            "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500",
-            "text-amber-50 shadow-inner shadow-amber-300/20",
-            "hover:from-amber-400 hover:via-orange-400 hover:to-amber-400 transition-colors",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60",
+            "bg-gradient-to-r from-violet-600 via-violet-500 to-violet-500",
+            "text-violet-50 shadow-inner shadow-violet-300/20",
+            "hover:from-violet-400 hover:via-orange-400 hover:to-violet-400 transition-colors",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60",
           )}
           title="Open project chat (Commander)"
           aria-label={`Open project chat for ${canvasName}`}
@@ -150,9 +150,9 @@ export function FloatingTopBar() {
             onClick={() => setAiFinderOpen(true)}
             className={cn(
               "h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium",
-              "border-amber-500/40 bg-amber-500/5",
-              "text-amber-300 hover:text-amber-200",
-              "hover:bg-amber-500/10 hover:border-amber-500/60",
+              "border-violet-500/40 bg-violet-500/5",
+              "text-violet-300 hover:text-violet-200",
+              "hover:bg-violet-500/10 hover:border-violet-500/60",
             )}
             title="Open AI Finder"
           >

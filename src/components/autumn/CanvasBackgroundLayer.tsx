@@ -53,7 +53,7 @@ export function CanvasBackgroundLayer() {
       {/* Soft gradient vignette — deepens top + bottom edges, adds depth */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
       {/* Subtle warm amber tint to keep the Autumn brand mood on every scene */}
-      <div className="absolute inset-0 bg-amber-950/10 mix-blend-multiply" />
+      <div className="absolute inset-0 bg-violet-950/10 mix-blend-multiply" />
     </div>
   );
 }

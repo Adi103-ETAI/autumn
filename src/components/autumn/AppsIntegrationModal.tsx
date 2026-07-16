@@ -30,7 +30,7 @@ const APP_ICON_TINT: Record<string, string> = {
   lovable: "bg-rose-500/10 text-rose-400",
   figma: "bg-fuchsia-500/10 text-fuchsia-400",
   shortcut: "bg-green-500/10 text-green-400",
-  "post-bridge": "bg-amber-500/10 text-amber-400",
+  "post-bridge": "bg-violet-500/10 text-violet-400",
   canvas: "bg-sky-500/10 text-sky-400",
 };
 
@@ -72,7 +72,7 @@ export function AppsIntegrationModal() {
       >
         {/* Header */}
         <DialogHeader className="flex-row items-start gap-3 p-5 pb-3 border-b border-border/50 text-left sm:flex-row sm:text-left">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
             <LayoutGrid className="size-5" />
           </div>
           <div className="flex-1 min-w-0">
@@ -141,7 +141,7 @@ export function AppsIntegrationModal() {
           </button>
           <Button
             onClick={() => setOpen(false)}
-            className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/20 border-0"
+            className="gap-2 bg-gradient-to-r from-violet-500 to-orange-500 hover:from-violet-600 hover:to-orange-600 text-white shadow-lg shadow-violet-500/20 border-0"
           >
             <Check className="size-4" />
             Done
@@ -214,7 +214,7 @@ function AppCard({
       whileHover={{ y: -2, transition: { duration: 0.15 } }}
       className={cn(
         "flex h-full flex-col gap-3 rounded-xl border bg-muted/20 p-4 transition-colors",
-        "hover:border-amber-500/40 hover:shadow-lg hover:shadow-black/30",
+        "hover:border-violet-500/40 hover:shadow-lg hover:shadow-black/30",
         isConnected
           ? "border-emerald-500/40 ring-1 ring-emerald-500/30"
           : "border-border/50",
@@ -239,7 +239,7 @@ function AppCard({
             {earlyAccess && (
               <Badge
                 variant="outline"
-                className="text-[9px] font-semibold tracking-wide text-amber-400 border-amber-500/40"
+                className="text-[9px] font-semibold tracking-wide text-violet-400 border-violet-500/40"
               >
                 EARLY ACCESS
               </Badge>
@@ -260,7 +260,7 @@ function AppCard({
             variant="outline"
             size="sm"
             disabled
-            className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 cursor-wait"
+            className="gap-1.5 border-violet-500/40 text-violet-300 bg-violet-500/10 cursor-wait"
           >
             <Loader2 className="size-3.5 animate-spin" />
             Connecting...
@@ -280,7 +280,7 @@ function AppCard({
             variant="outline"
             size="sm"
             onClick={handleConnect}
-            className="gap-1.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
+            className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
           >
             <Plug className="size-3.5" />
             Connect

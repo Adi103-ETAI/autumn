@@ -51,11 +51,11 @@ export function EdgeInspector({
       <DialogContent className="max-w-2xl bg-card/95 backdrop-blur-md border-border/60">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Cable className="size-4 text-amber-400" />
+            <Cable className="size-4 text-violet-400" />
             <span>Bus edge inspector</span>
           </DialogTitle>
           <DialogDescription className="text-xs">
-            All <code className="text-amber-300">message_peer</code> packets that have
+            All <code className="text-violet-300">message_peer</code> packets that have
             flowed along this bus edge.
           </DialogDescription>
         </DialogHeader>
@@ -67,7 +67,7 @@ export function EdgeInspector({
         ) : (
           <div className="space-y-4">
             {/* Edge summary card */}
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <div
@@ -81,7 +81,7 @@ export function EdgeInspector({
                     <div className="text-[10px] text-muted-foreground">source</div>
                   </div>
                 </div>
-                <div className="flex flex-col items-center text-amber-400/80">
+                <div className="flex flex-col items-center text-violet-400/80">
                   <ArrowRight className="size-4" />
                   <span className="text-[9px] uppercase tracking-wider mt-0.5">bus</span>
                 </div>
@@ -100,7 +100,7 @@ export function EdgeInspector({
                 <div className="ml-auto flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="text-[10px] h-5 px-1.5 border-amber-500/30 text-amber-300"
+                    className="text-[10px] h-5 px-1.5 border-violet-500/30 text-violet-300"
                   >
                     {messages.length} msg{messages.length === 1 ? "" : "s"}
                   </Badge>
@@ -140,7 +140,7 @@ export function EdgeInspector({
                   <div className="font-medium text-foreground/80 mb-1">No messages yet</div>
                   <div className="text-[10px]">
                     Send a task to {sourceNode?.name ?? "the source"} — when it
-                    finishes, its <code className="text-amber-300">message_peer</code> handoff
+                    finishes, its <code className="text-violet-300">message_peer</code> handoff
                     will appear here.
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export function EdgeInspector({
                           <Trash2 className="size-3" />
                         </button>
                       </div>
-                      <div className="text-xs leading-relaxed whitespace-pre-wrap pl-1 border-l-2 border-amber-500/30">
+                      <div className="text-xs leading-relaxed whitespace-pre-wrap pl-1 border-l-2 border-violet-500/30">
                         {m.text}
                       </div>
                     </div>

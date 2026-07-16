@@ -43,10 +43,10 @@ const KIND_META: Partial<
     { icon: LucideIcon; color: string; label: string }
   >
 > = {
-  commander_plan: { icon: Sparkles, color: "text-amber-400", label: "Plan" },
+  commander_plan: { icon: Sparkles, color: "text-violet-400", label: "Plan" },
   agent_status: { icon: Bot, color: "text-fuchsia-400", label: "Agent" },
   agent_message: { icon: Bot, color: "text-emerald-400", label: "Response" },
-  bus_message_peer: { icon: Cable, color: "text-amber-300", label: "Peer msg" },
+  bus_message_peer: { icon: Cable, color: "text-violet-300", label: "Peer msg" },
   task_claim: { icon: ListChecks, color: "text-sky-400", label: "Task" },
   task_complete: { icon: ListChecks, color: "text-emerald-400", label: "Task" },
   task_add: { icon: Plus, color: "text-orange-400", label: "Task" },
@@ -54,10 +54,10 @@ const KIND_META: Partial<
   node_removed: { icon: Trash2, color: "text-rose-400", label: "Node" },
   edge_added: { icon: Cable, color: "text-emerald-400", label: "Edge" },
   edge_removed: { icon: Trash2, color: "text-rose-400", label: "Edge" },
-  canvas_saved: { icon: Save, color: "text-amber-300", label: "Save" },
+  canvas_saved: { icon: Save, color: "text-violet-300", label: "Save" },
   canvas_loaded: { icon: FolderOpen, color: "text-sky-400", label: "Load" },
   canvas_cleared: { icon: Eraser, color: "text-rose-400", label: "Clear" },
-  duplicate_node: { icon: Copy, color: "text-amber-300", label: "Duplicate" },
+  duplicate_node: { icon: Copy, color: "text-violet-300", label: "Duplicate" },
   search: { icon: Search, color: "text-emerald-400", label: "Search" },
   agent_session_start: { icon: Play, color: "text-emerald-400", label: "Run start" },
   agent_session_stop: { icon: Square, color: "text-violet-400", label: "Run stop" },
@@ -88,7 +88,7 @@ export function ActivityTimeline({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-[440px] sm:w-[480px] bg-card/95 backdrop-blur border-l-amber-500/20 p-0 flex flex-col"
+        className="w-[440px] sm:w-[480px] bg-card/95 backdrop-blur border-l-violet-500/20 p-0 flex flex-col"
       >
         <SheetHeader className="px-4 py-3 border-b border-border/50">
           <SheetTitle className="flex items-center gap-2 text-base">
