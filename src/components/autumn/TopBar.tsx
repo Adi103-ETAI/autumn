@@ -32,6 +32,7 @@ import {
   Clock,
   Command as CommandIcon,
   Bell,
+  Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { shareCurrentCanvas } from "@/lib/autumn/share-canvas";
@@ -109,6 +110,17 @@ export function TopBar() {
       >
         <FolderOpen className="size-3.5" />
         <span className="hidden sm:inline">Canvases</span>
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
+        onClick={() => useAutumnStore.getState().setAppStage("home")}
+        title="Back to home"
+      >
+        <Home className="size-3.5" />
+        <span className="hidden sm:inline">Home</span>
       </Button>
 
       <div className="flex items-center gap-1.5">

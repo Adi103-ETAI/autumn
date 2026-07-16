@@ -1,5 +1,8 @@
 // Autumn — page shell.
-// Single-route app: a spatial canvas workshop with a Commander panel.
+// Single-route app with a 3-stage flow:
+//   onboarding → home (workspace launcher) → workspace (spatial canvas)
+// The stage is driven by the Zustand store (`appStage`) and persisted to
+// localStorage so returning users land on Home instead of re-onboarding.
 
 "use client";
 
@@ -26,11 +29,16 @@ import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
 import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
 import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
 import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
-import { WelcomeSplash } from "@/components/autumn/WelcomeSplash";
+import { OnboardingWizard } from "@/components/autumn/OnboardingWizard";
+import { HomeScreen } from "@/components/autumn/HomeScreen";
+import { AgentConnectionModal } from "@/components/autumn/AgentConnectionModal";
 
 export default function Home() {
   useKeyboardShortcuts();
 
+  const appStage = useAutumnStore((s) => s.appStage);
+  const initAppStage = useAutumnStore((s) => s.initAppStage);
+  const showAgentSetup = useAutumnStore((s) => s.showAgentSetup);
   const tab = useAutumnStore((s) => s.rightPanelTab);
   const showHelp = useAutumnStore((s) => s.showHelp);
   const setShowHelp = useAutumnStore((s) => s.setShowHelp);
@@ -45,26 +53,32 @@ export default function Home() {
   const showActivityLog = useAutumnStore((s) => s.showActivityLog);
   const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
 
-  // Show help only if user has seen the welcome splash but not the help dialog.
-  // The WelcomeSplash handles the true first-visit experience.
+  // Initialize app stage from localStorage on first mount.
+  // This decides whether we land on onboarding (first visit) or home (returning).
   useEffect(() => {
-    const seen =
-      typeof window !== "undefined" && localStorage.getItem("autumn-seen");
-    const welcomeSeen =
-      typeof window !== "undefined" && localStorage.getItem("autumn-welcome-seen");
-    // Only show help dialog if user has seen the welcome splash but not the help dialog
-    if (welcomeSeen && !seen) {
+    initAppStage();
+  }, [initAppStage]);
+
+  // Show help dialog the first time the user enters the workspace stage
+  // (after onboarding is completed). Replaces the old WelcomeSplash-gated logic.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (appStage !== "workspace") return;
+    const onboardingDone = localStorage.getItem("autumn-onboarding-completed");
+    const helpSeen = localStorage.getItem("autumn-seen");
+    if (onboardingDone && !helpSeen) {
       setShowHelp(true);
       localStorage.setItem("autumn-seen", "1");
     }
-  }, [setShowHelp]);
+  }, [setShowHelp, appStage]);
 
-  // Load any persisted activity log entries for the current canvas on mount.
+  // Load persisted activity log entries for the current canvas on mount.
   const loadActivity = useAutumnStore((s) => s.loadActivity);
   const canvasId = useAutumnStore((s) => s.canvasId);
   useEffect(() => {
+    if (appStage !== "workspace") return;
     void loadActivity(canvasId);
-  }, [loadActivity, canvasId]);
+  }, [loadActivity, canvasId, appStage]);
 
   // On mount: if the URL has a `#canvas=...` hash, decode it and import the
   // shared canvas state. This lets users share canvases by pasting a URL.
@@ -76,12 +90,34 @@ export default function Home() {
     const state = decodeCanvasFromHash(hash);
     if (!state) return;
     importCanvasState(state);
-    // Clear the hash so a refresh doesn't re-import (the canvas is now in
-    // memory; if the user wants to save it, they can hit Save).
+    // Clear the hash so a refresh doesn't re-import.
     window.history.replaceState(null, "", window.location.pathname);
   }, [importCanvasState]);
 
-  // Show agent chat panel when a chat node is selected AND we're on the commander tab.
+  // ---- STAGE: onboarding ----
+  // First-time users see the 4-step wizard. Full-screen, no chrome.
+  if (appStage === "onboarding") {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <OnboardingWizard />
+      </div>
+    );
+  }
+
+  // ---- STAGE: home ----
+  // Returning users (or those who just finished onboarding) see the workspace
+  // launcher. The agent-connection modal overlays if open.
+  if (appStage === "home") {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <HomeScreen />
+        {showAgentSetup && <AgentConnectionModal />}
+      </div>
+    );
+  }
+
+  // ---- STAGE: workspace ----
+  // The spatial canvas with dock, right panel, and all the tooling.
   const showAgentChat =
     tab === "commander" && selectedNodeId && selectedNode?.kind === "chat";
 
@@ -130,7 +166,7 @@ export default function Home() {
       <NodeSearchOverlay />
       <ShortcutHelpOverlay />
       <AgentHistoryPanel />
-      <WelcomeSplash />
+      {showAgentSetup && <AgentConnectionModal />}
     </div>
   );
 }
