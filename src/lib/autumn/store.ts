@@ -54,6 +54,55 @@ export interface ActivityEntry {
   meta?: Record<string, unknown>;
 }
 
+// ---- Phase 1: app stage / onboarding / workspaces ----
+export type AppStage = "onboarding" | "home" | "workspace";
+
+export type OnboardingRole = "pm" | "designer" | "developer" | "founder" | "other";
+export type OnboardingProjectType = "mobile" | "website" | "game" | "unsure";
+export type OnboardingStartMode = "blank" | "template" | "folder";
+
+export interface OnboardingData {
+  role?: OnboardingRole;
+  projectType?: OnboardingProjectType;
+  aiTools: string[]; // e.g. ["cursor","copilot","chatgpt","claude","lovable","none"]
+  startMode?: OnboardingStartMode;
+}
+
+export type WorkspaceKind = "blank" | "folder" | "repo" | "link";
+
+export interface Workspace {
+  id: string;
+  name: string;
+  kind: WorkspaceKind;
+  source?: string; // folder path / repo URL / share link
+  framework?: string; // e.g. "Next.js"
+  createdAt: number;
+  lastOpenedAt: number;
+  nodeCount?: number;
+}
+
+export type AgentConnectionStatus = "not_yet" | "waiting" | "connected";
+
+export interface AgentConnection {
+  id: string; // "claude-code" | "codex" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
+  name: string;
+  description: string;
+  vendor: string;
+  status: AgentConnectionStatus;
+}
+
+export const CODING_AGENTS: Omit<AgentConnection, "status">[] = [
+  { id: "claude-code", name: "Claude Code", description: "Anthropic's terminal coding agent.", vendor: "Anthropic" },
+  { id: "codex", name: "Codex", description: "OpenAI's coding agent.", vendor: "OpenAI" },
+  { id: "cursor", name: "Cursor", description: "AI-first code editor with agent mode.", vendor: "Cursor" },
+  { id: "grok", name: "Grok", description: "xAI's coding agent.", vendor: "xAI" },
+  { id: "opencode", name: "opencode", description: "Open-source terminal coding agent — no sign-in needed.", vendor: "Open source" },
+  { id: "hermes", name: "Hermes Agent", description: "Nous Research's coding agent.", vendor: "Nous Research" },
+  { id: "cline", name: "Cline", description: "Open-source coding agent.", vendor: "Open source" },
+  { id: "pi", name: "Pi", description: "Inflection's coding assistant.", vendor: "Inflection" },
+  { id: "gemini", name: "Gemini", description: "Google's coding agent.", vendor: "Google" },
+];
+
 export interface CommanderChatMessage {
   id: string;
   role: "user" | "commander";
@@ -121,6 +170,14 @@ export interface AutumnStore {
   selectedBusMessageId: string | null; // when set, BusMessageDetailDialog shows this entry
   isRunAllInProgress: boolean; // true while "Run All" is dispatching agents sequentially
 
+  // ---- Phase 1: app stage / onboarding / workspaces ----
+  appStage: AppStage;
+  onboardingStep: number; // 0..4 (0 = role, 1 = project type, 2 = ai tools, 3 = start mode)
+  onboardingData: OnboardingData;
+  showAgentSetup: boolean; // agent connection modal open (during onboarding)
+  workspaces: Workspace[];
+  connectedAgents: Record<string, AgentConnectionStatus>; // agentId -> status
+
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
@@ -183,6 +240,23 @@ export interface AutumnStore {
   setCanvasTheme: (theme: "autumn" | "midnight" | "forest" | "neon") => void;
   setSelectedBusMessage: (id: string | null) => void;
   setIsRunAllInProgress: (v: boolean) => void;
+
+  // ---- Phase 1: app stage / onboarding / workspaces ----
+  initAppStage: () => void; // read localStorage and set initial stage
+  setAppStage: (stage: AppStage) => void;
+  setOnboardingStep: (step: number) => void;
+  setOnboardingField: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => void;
+  toggleAiTool: (tool: string) => void;
+  completeOnboarding: () => void; // persist + advance to agent setup
+  skipOnboarding: () => void; // persist + advance to home
+  resetOnboarding: () => void; // clear localStorage + go back to onboarding
+  setShowAgentSetup: (v: boolean) => void;
+  connectAgent: (id: string) => void; // sets to waiting, then connected after delay
+  disconnectAgent: (id: string) => void;
+  addWorkspace: (ws: Omit<Workspace, "id" | "createdAt" | "lastOpenedAt">) => string;
+  removeWorkspace: (id: string) => void;
+  openWorkspace: (id: string) => void; // set as current canvas + stage=workspace
+  createBlankWorkspace: (name?: string) => string;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -288,6 +362,156 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   canvasTheme: "autumn",
   selectedBusMessageId: null,
   isRunAllInProgress: false,
+
+  // ---- Phase 1: app stage / onboarding / workspaces ----
+  appStage: "onboarding", // will be corrected by initAppStage() on mount
+  onboardingStep: 0,
+  onboardingData: { aiTools: [] },
+  showAgentSetup: false,
+  workspaces: [],
+  connectedAgents: {},
+
+  initAppStage: () => {
+    if (typeof window === "undefined") return;
+    const completed = localStorage.getItem("autumn-onboarding-completed");
+    if (completed === "1") {
+      // Load persisted onboarding data + workspaces + agents
+      try {
+        const data = JSON.parse(localStorage.getItem("autumn-onboarding-data") || "{}");
+        const workspaces = JSON.parse(localStorage.getItem("autumn-workspaces") || "[]");
+        const agents = JSON.parse(localStorage.getItem("autumn-connected-agents") || "{}");
+        set({
+          appStage: "home",
+          onboardingData: { aiTools: [], ...data },
+          workspaces,
+          connectedAgents: agents,
+        });
+      } catch {
+        set({ appStage: "home" });
+      }
+    }
+    // else: stays "onboarding"
+  },
+  setAppStage: (stage) => set({ appStage: stage }),
+  setOnboardingStep: (step) => set({ onboardingStep: step }),
+  setOnboardingField: (key, value) =>
+    set((s) => ({ onboardingData: { ...s.onboardingData, [key]: value } })),
+  toggleAiTool: (tool) =>
+    set((s) => {
+      const tools = new Set(s.onboardingData.aiTools);
+      if (tool === "none") {
+        // "None yet" is exclusive
+        return { onboardingData: { ...s.onboardingData, aiTools: tools.has("none") ? [] : ["none"] } };
+      }
+      tools.delete("none");
+      if (tools.has(tool)) tools.delete(tool);
+      else tools.add(tool);
+      return { onboardingData: { ...s.onboardingData, aiTools: Array.from(tools) } };
+    }),
+  completeOnboarding: () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("autumn-onboarding-completed", "1");
+      localStorage.setItem(
+        "autumn-onboarding-data",
+        JSON.stringify(get().onboardingData),
+      );
+    }
+    set({ appStage: "home", showAgentSetup: true });
+  },
+  skipOnboarding: () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("autumn-onboarding-completed", "1");
+      localStorage.setItem(
+        "autumn-onboarding-data",
+        JSON.stringify(get().onboardingData),
+      );
+    }
+    set({ appStage: "home" });
+  },
+  resetOnboarding: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("autumn-onboarding-completed");
+      localStorage.removeItem("autumn-onboarding-data");
+    }
+    set({
+      appStage: "onboarding",
+      onboardingStep: 0,
+      onboardingData: { aiTools: [] },
+      showAgentSetup: false,
+    });
+  },
+  setShowAgentSetup: (v) => set({ showAgentSetup: v }),
+  connectAgent: (id) => {
+    set((s) => ({ connectedAgents: { ...s.connectedAgents, [id]: "waiting" } }));
+    // Simulate OAuth/CLI handshake — flip to connected after ~1.6s
+    setTimeout(() => {
+      set((s) => ({ connectedAgents: { ...s.connectedAgents, [id]: "connected" } }));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "autumn-connected-agents",
+          JSON.stringify(useAutumnStore.getState().connectedAgents),
+        );
+      }
+    }, 1600);
+  },
+  disconnectAgent: (id) =>
+    set((s) => {
+      const next = { ...s.connectedAgents };
+      delete next[id];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("autumn-connected-agents", JSON.stringify(next));
+      }
+      return { connectedAgents: next };
+    }),
+  addWorkspace: (ws) => {
+    const id = `ws-${nanoid(8)}`;
+    const now = Date.now();
+    const workspace: Workspace = { ...ws, id, createdAt: now, lastOpenedAt: now };
+    set((s) => ({ workspaces: [workspace, ...s.workspaces].slice(0, 24) }));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "autumn-workspaces",
+        JSON.stringify(useAutumnStore.getState().workspaces),
+      );
+    }
+    return id;
+  },
+  removeWorkspace: (id) => {
+    set((s) => ({ workspaces: s.workspaces.filter((w) => w.id !== id) }));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "autumn-workspaces",
+        JSON.stringify(useAutumnStore.getState().workspaces),
+      );
+    }
+  },
+  openWorkspace: (id) => {
+    const ws = get().workspaces.find((w) => w.id === id);
+    if (!ws) return;
+    set((s) => ({
+      appStage: "workspace",
+      canvasId: ws.id,
+      canvasName: ws.name,
+      workspaces: s.workspaces.map((w) =>
+        w.id === id ? { ...w, lastOpenedAt: Date.now() } : w,
+      ),
+    }));
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "autumn-workspaces",
+        JSON.stringify(useAutumnStore.getState().workspaces),
+      );
+    }
+  },
+  createBlankWorkspace: (name) => {
+    const id = get().addWorkspace({
+      name: name || "Untitled workspace",
+      kind: "blank",
+      framework: "Next.js",
+    });
+    set({ appStage: "workspace", canvasId: id, canvasName: name || "Untitled workspace" });
+    return id;
+  },
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),

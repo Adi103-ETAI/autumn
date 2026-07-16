@@ -36,6 +36,9 @@ export function useKeyboardShortcuts() {
       const store = useAutumnStore.getState();
       const s = store;
 
+      // Phase 1: shortcuts only active in the workspace stage (not onboarding/home)
+      if (s.appStage !== "workspace") return;
+
       // ⌘K — Command palette
       if (mod && e.key.toLowerCase() === "k") {
         e.preventDefault();
