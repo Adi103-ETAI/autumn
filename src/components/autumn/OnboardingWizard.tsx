@@ -153,10 +153,10 @@ function OptionCard({
       aria-pressed={selected}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40",
         fullWidth && "sm:col-span-2",
         selected
-          ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/40 shadow-[0_0_24px_-8px_rgba(245,158,11,0.5)]"
+          ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/20"
           : "border-border/50 bg-card/40 hover:bg-accent/40 hover:border-border",
       )}
     >
@@ -164,7 +164,7 @@ function OptionCard({
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors",
           selected
-            ? "bg-amber-500/20 text-amber-300"
+            ? "bg-violet-500/15 text-violet-300"
             : "bg-muted/50 text-muted-foreground group-hover:text-foreground",
         )}
       >
@@ -185,7 +185,7 @@ function OptionCard({
           className={cn(
             "flex size-5 shrink-0 items-center justify-center rounded-md border transition-all",
             selected
-              ? "border-amber-500 bg-amber-500 text-white"
+              ? "border-violet-600 bg-violet-600 text-white"
               : "border-border/60 bg-transparent",
           )}
         >
@@ -207,7 +207,7 @@ function OptionCard({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
+              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white"
             >
               <Check className="size-3.5" strokeWidth={3} />
             </motion.span>
@@ -228,7 +228,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
           Your role
         </div>
         {data.role ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-200">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/15 px-3 py-1 text-xs font-medium text-violet-200">
             <Briefcase className="size-3" />
             {ROLE_LABEL[data.role]}
           </span>
@@ -258,7 +258,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
         </div>
         {pt ? (
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
+            <span className="flex size-7 items-center justify-center rounded-md bg-violet-500/15 text-violet-300">
               <Icon className="size-4" />
             </span>
             <span className="text-sm font-medium text-foreground">
@@ -272,7 +272,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
         )}
         {/* faux mockup lines */}
         <div className="mt-3 space-y-1.5">
-          <div className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-amber-500/50 to-transparent" />
+          <div className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-violet-500/40 to-transparent" />
           <div className="h-1.5 w-1/2 rounded-full bg-muted/50" />
           <div className="h-1.5 w-2/3 rounded-full bg-muted/40" />
         </div>
@@ -291,7 +291,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
             {data.aiTools.map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100"
+                className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-100"
               >
                 {AI_TOOL_LABEL[t] ?? t}
               </span>
@@ -331,9 +331,9 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
 
 function PreviewPane({ step, data }: { step: number; data: OnboardingData }) {
   return (
-    <Card className="relative overflow-hidden rounded-2xl border-border/60 bg-zinc-900/60 p-5 shadow-2xl backdrop-blur-xl">
+    <Card className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1a202c] p-5 shadow-lg shadow-black/30">
       {/* gradient top hairline */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-white/5" />
 
       {/* Header: logo + wordmark + tagline */}
       <div className="mb-5 flex items-center gap-3">
@@ -500,16 +500,12 @@ export function OnboardingWizard() {
       role="dialog"
       aria-modal="true"
       aria-label="Autumn onboarding"
-      className="fixed inset-0 z-[200] flex flex-col bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950"
+      className="fixed inset-0 z-[200] flex flex-col bg-black"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Radial amber glow backdrop */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.10)_0%,transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(234,88,12,0.06)_0%,transparent_55%)]" />
-
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 sm:px-10">
         <div className="flex items-center gap-2">
@@ -537,7 +533,7 @@ export function OnboardingWizard() {
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-border/50">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500"
+            className="h-full rounded-full bg-violet-600"
             initial={{ width: 0 }}
             animate={{ width: `${((step + 1) / 4) * 100}%` }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
@@ -578,7 +574,7 @@ export function OnboardingWizard() {
           </div>
 
           {/* Right column: preview pane */}
-          <div className="order-2">
+          <div className="order-2 rounded-2xl bg-gradient-to-br from-[#1a2332] to-[#2d3748] p-6">
             <PreviewPane step={step} data={data} />
           </div>
         </div>
@@ -612,7 +608,7 @@ export function OnboardingWizard() {
             onClick={handleContinue}
             disabled={!stepComplete}
             size="lg"
-            className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 hover:from-amber-600 hover:to-orange-600 disabled:opacity-40 disabled:shadow-none"
+            className="gap-2 bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40"
           >
             {step === 3 ? "Enter Autumn" : "Continue"}
             {step === 3 ? (

@@ -25,9 +25,9 @@ const FEATURES = [
     icon: Terminal,
     title: "AI Commander",
     description: "Speak naturally to the Commander — it spawns, wires, and dispatches agents for you.",
-    color: "text-amber-400",
-    border: "border-amber-500/30",
-    bg: "bg-amber-500/10",
+    color: "text-violet-400",
+    border: "border-violet-500/30",
+    bg: "bg-violet-500/10",
   },
   {
     icon: Cable,
@@ -87,7 +87,7 @@ export function WelcomeSplash() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="text-4xl font-bold mb-2 bg-gradient-to-r from-amber-300 via-orange-300 to-amber-400 bg-clip-text text-transparent"
+              className="text-4xl font-bold mb-2 bg-gradient-to-r from-violet-300 via-orange-300 to-violet-400 bg-clip-text text-transparent"
             >
               Welcome to Autumn
             </motion.h1>
@@ -126,7 +126,7 @@ export function WelcomeSplash() {
             >
               <Button
                 size="lg"
-                className="gap-2 px-8 text-base font-semibold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/20"
+                className="gap-2 px-8 text-base font-semibold bg-gradient-to-r from-violet-500 to-orange-500 hover:from-violet-600 hover:to-orange-600 text-white shadow-lg shadow-violet-500/20"
                 onClick={dismiss}
               >
                 <Leaf className="size-4" />

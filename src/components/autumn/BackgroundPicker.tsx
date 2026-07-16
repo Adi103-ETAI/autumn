@@ -32,8 +32,8 @@ export function BackgroundPicker() {
           className={cn(
             "group inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5",
             "text-xs text-muted-foreground transition-all",
-            "hover:bg-muted/50 hover:border-amber-500/40 hover:text-foreground",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60",
+            "hover:bg-muted/50 hover:border-violet-500/40 hover:text-foreground",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60",
           )}
         >
           {/* Swatch icon — uses the current background's gradient or a fallback */}
@@ -48,7 +48,7 @@ export function BackgroundPicker() {
                 : undefined
             }
           />
-          <Mountain className="size-3.5 text-amber-400 transition-transform group-hover:scale-110" />
+          <Mountain className="size-3.5 text-violet-400 transition-transform group-hover:scale-110" />
           <span className="hidden sm:inline font-medium">{current.label}</span>
         </button>
       </PopoverTrigger>
@@ -62,7 +62,7 @@ export function BackgroundPicker() {
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Canvas background
           </div>
-          <Mountain className="size-3.5 text-amber-400/70" />
+          <Mountain className="size-3.5 text-violet-400/70" />
         </div>
 
         <div className="grid grid-cols-3 gap-2">
@@ -83,7 +83,7 @@ export function BackgroundPicker() {
                 aria-label={`Use ${bg.label} background`}
                 className={cn(
                   "relative flex flex-col gap-1 rounded-lg p-1.5 text-left transition-colors",
-                  "hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60",
+                  "hover:bg-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60",
                   active && "bg-accent/30",
                 )}
               >
@@ -92,7 +92,7 @@ export function BackgroundPicker() {
                   className={cn(
                     "block aspect-[4/3] w-full rounded-md border border-white/10 bg-cover bg-center shadow-sm",
                     bg.swatch,
-                    active && "ring-2 ring-amber-500 ring-offset-1 ring-offset-popover",
+                    active && "ring-2 ring-violet-500 ring-offset-1 ring-offset-popover",
                   )}
                   style={
                     bg.imageUrl
@@ -113,7 +113,7 @@ export function BackgroundPicker() {
 
                 {/* Active checkmark badge */}
                 {active && (
-                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-black shadow">
+                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-violet-600 text-black shadow">
                     <Check className="size-3" strokeWidth={3} />
                   </span>
                 )}
@@ -122,7 +122,7 @@ export function BackgroundPicker() {
                 <span
                   className={cn(
                     "truncate text-[10px] font-medium leading-tight",
-                    active ? "text-amber-400" : "text-muted-foreground",
+                    active ? "text-violet-400" : "text-muted-foreground",
                   )}
                 >
                   {bg.label}

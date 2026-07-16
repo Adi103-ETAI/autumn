@@ -65,7 +65,7 @@ function EdgeLabelEditor({
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => onCommit(value.trim() || initialLabel)}
         onKeyDown={handleKeyDown}
-        className="w-24 rounded-md border border-amber-500/50 bg-card/95 px-2 py-0.5 text-[9px] uppercase tracking-wider text-amber-300 text-center focus:outline-none focus:ring-1 focus:ring-amber-500/70"
+        className="w-24 rounded-md border border-violet-500/50 bg-card/95 px-2 py-0.5 text-[9px] uppercase tracking-wider text-violet-300 text-center focus:outline-none focus:ring-1 focus:ring-violet-500/70"
         onClick={(e) => e.stopPropagation()}
       />
     </div>
@@ -218,7 +218,7 @@ export function BusEdge({
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: "all",
             }}
-            className="rounded-full bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-amber-300/90 nodrag nopan hover:bg-amber-500/30 hover:border-amber-500/50 hover:scale-110 transition-all cursor-pointer"
+            className="rounded-full bg-violet-500/15 border border-violet-500/30 px-1.5 py-0.5 text-[8px] uppercase tracking-wider text-violet-300/90 nodrag nopan hover:bg-violet-500/30 hover:border-violet-500/50 hover:scale-110 transition-all cursor-pointer"
             onDoubleClick={(e) => {
               e.stopPropagation();
               setEditing(true);
@@ -279,9 +279,9 @@ function PulseCircle({
             100% { transform: translate(var(--to-x), var(--to-y)); opacity: 0; }
           }
         `}</style>
-        <div className="flex items-center gap-1 rounded-full bg-amber-500/90 border border-amber-300 px-2 py-0.5 shadow-lg shadow-amber-500/40 -translate-x-1/2 -translate-y-1/2 max-w-[180px]">
+        <div className="flex items-center gap-1 rounded-full bg-violet-500/90 border border-violet-300 px-2 py-0.5 shadow-lg shadow-violet-500/40 -translate-x-1/2 -translate-y-1/2 max-w-[180px]">
           <span className="size-1.5 rounded-full bg-white animate-pulse" />
-          <span className="text-[9px] font-medium text-amber-950 truncate">
+          <span className="text-[9px] font-medium text-violet-950 truncate">
             {text.slice(0, 40)}
           </span>
         </div>

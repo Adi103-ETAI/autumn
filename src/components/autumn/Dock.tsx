@@ -61,7 +61,7 @@ const TOOLS: DockTool[] = [
     kind: "sticky",
     label: "Note",
     icon: StickyNote,
-    color: "text-amber-400",
+    color: "text-violet-400",
     description: "Add a sticky note with markdown support",
   },
   {

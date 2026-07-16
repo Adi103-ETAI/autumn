@@ -152,7 +152,7 @@ export function AgentHistoryPanel() {
             {runs.length} {runs.length === 1 ? "run" : "runs"}
           </Badge>
           {avgLiveMs !== null && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-amber-500/30 text-amber-400">
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-violet-500/30 text-violet-400">
               <Timer className="size-2.5 mr-0.5" />
               Avg {formatDuration(avgLiveMs)}
             </Badge>
@@ -292,7 +292,7 @@ export function AgentHistoryPanel() {
                                 )}
                                 {durationMs !== undefined && (
                                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
-                                    <Clock className="size-3 text-amber-300" />
+                                    <Clock className="size-3 text-violet-300" />
                                     <span className="font-mono">
                                       {durationMs} ms ·{" "}
                                       {formatDuration(durationMs)}

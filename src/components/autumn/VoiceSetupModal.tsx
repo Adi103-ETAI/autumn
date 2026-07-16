@@ -225,14 +225,14 @@ export function VoiceSetupModal() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-md gap-0 overflow-hidden border-amber-500/20 bg-zinc-950/95 p-0 sm:max-w-md"
+        className="max-w-md gap-0 overflow-hidden border-violet-500/20 bg-zinc-950/95 p-0 sm:max-w-md"
         showCloseButton
       >
         {/* Header */}
         <DialogHeader className="space-y-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-full bg-amber-500/15 ring-1 ring-amber-500/30">
-              <Mic className="size-4 text-amber-300" />
+            <div className="flex size-9 items-center justify-center rounded-full bg-violet-500/15 ring-1 ring-violet-500/30">
+              <Mic className="size-4 text-violet-300" />
             </div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">
@@ -256,7 +256,7 @@ export function VoiceSetupModal() {
               key={n}
               className={cn(
                 "h-1 flex-1 rounded-full transition-colors duration-300",
-                step >= n ? "bg-amber-500" : "bg-zinc-700/60",
+                step >= n ? "bg-violet-500" : "bg-zinc-700/60",
               )}
             />
           ))}
@@ -277,7 +277,7 @@ export function VoiceSetupModal() {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-amber-300"
+                    className="border-violet-500/40 bg-violet-500/10 text-violet-300"
                   >
                     Step 1
                   </Badge>
@@ -305,7 +305,7 @@ export function VoiceSetupModal() {
                   onClick={handleRequestMic}
                   disabled={permLoading}
                   className={cn(
-                    "w-full gap-2 border-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600",
+                    "w-full gap-2 border-0 bg-gradient-to-r from-violet-500 to-orange-500 text-white hover:from-violet-600 hover:to-orange-600",
                     permLoading && "opacity-80",
                   )}
                 >
@@ -331,7 +331,7 @@ export function VoiceSetupModal() {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="border-amber-500/40 bg-amber-500/10 text-amber-300"
+                    className="border-violet-500/40 bg-violet-500/10 text-violet-300"
                   >
                     Step 2
                   </Badge>
@@ -344,15 +344,15 @@ export function VoiceSetupModal() {
                   real-time.
                 </p>
 
-                <div className="relative flex min-h-[72px] items-center gap-3 rounded-xl border border-amber-500/20 bg-zinc-900/80 px-4 py-3">
+                <div className="relative flex min-h-[72px] items-center gap-3 rounded-xl border border-violet-500/20 bg-zinc-900/80 px-4 py-3">
                   <span className="relative flex size-2.5 shrink-0">
                     {testActive && (
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/60" />
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400/60" />
                     )}
                     <span
                       className={cn(
                         "relative inline-flex size-2.5 rounded-full",
-                        testActive ? "bg-amber-400" : "bg-zinc-600",
+                        testActive ? "bg-violet-400" : "bg-zinc-600",
                       )}
                     />
                   </span>
@@ -368,7 +368,7 @@ export function VoiceSetupModal() {
                     variant="ghost"
                     size="sm"
                     onClick={startTest}
-                    className="shrink-0 text-xs text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
+                    className="shrink-0 text-xs text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
                   >
                     Retry
                   </Button>
@@ -385,7 +385,7 @@ export function VoiceSetupModal() {
                   <Button
                     type="button"
                     onClick={() => setStep(3)}
-                    className="gap-2 border-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+                    className="gap-2 border-0 bg-gradient-to-r from-violet-500 to-orange-500 text-white hover:from-violet-600 hover:to-orange-600"
                   >
                     <Check className="size-4" />
                     Looks good
@@ -426,7 +426,7 @@ export function VoiceSetupModal() {
                 <Button
                   type="button"
                   onClick={handleDone}
-                  className="w-full gap-2 border-0 bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+                  className="w-full gap-2 border-0 bg-gradient-to-r from-violet-500 to-orange-500 text-white hover:from-violet-600 hover:to-orange-600"
                 >
                   Done
                 </Button>

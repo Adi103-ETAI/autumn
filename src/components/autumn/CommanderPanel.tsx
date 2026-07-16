@@ -31,9 +31,9 @@ import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { cn } from "@/lib/utils";
 
 const QUICK_TEMPLATES: { label: string; cmd: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
-  { label: "Spawn agent", cmd: "Spawn a new agent on Claude Code and have them stand by for tasks.", icon: Bot, color: "text-amber-300" },
+  { label: "Spawn agent", cmd: "Spawn a new agent on Claude Code and have them stand by for tasks.", icon: Bot, color: "text-violet-300" },
   { label: "Connect two", cmd: "Connect Atlas to Apollo with a bus edge so they can coordinate.", icon: Cable, color: "text-sky-300" },
-  { label: "Drop a note", cmd: 'Drop a sticky note saying "remember to ship on Friday".', icon: StickyNote, color: "text-amber-400" },
+  { label: "Drop a note", cmd: 'Drop a sticky note saying "remember to ship on Friday".', icon: StickyNote, color: "text-violet-400" },
   { label: "Auto-arrange", cmd: "Arrange all nodes on the canvas into a clean tiered layout.", icon: Workflow, color: "text-violet-300" },
   { label: "Run all idle", cmd: "Have every idle agent pick up an open task from the board and start work.", icon: Zap, color: "text-emerald-300" },
 ];
@@ -257,8 +257,8 @@ export function CommanderPanel() {
           <div className="text-[9px] text-muted-foreground/60">orchestrate your agents</div>
         </div>
         {isThinking && (
-          <span className="text-[9px] text-amber-400/80 uppercase tracking-wider flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-[9px] text-violet-400/80 uppercase tracking-wider flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-violet-400 animate-pulse" />
             planning
           </span>
         )}
@@ -298,7 +298,7 @@ export function CommanderPanel() {
                 "size-7 shrink-0 rounded-md flex items-center justify-center text-xs font-bold shadow",
                 m.role === "user"
                   ? "bg-zinc-700 text-zinc-100"
-                  : "bg-gradient-to-br from-amber-500 to-orange-500 text-white",
+                  : "bg-gradient-to-br from-violet-600 to-violet-500 text-white",
               )}
             >
               {m.role === "user" ? "You" : <Sparkles className="size-3.5" />}
@@ -314,10 +314,10 @@ export function CommanderPanel() {
             >
               {m.pending ? (
                 <div className="space-y-2 min-w-[220px]">
-                  <div className="flex items-center gap-1.5 text-[10px] text-amber-300/80 uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-[10px] text-violet-300/80 uppercase tracking-wider">
                     {/* Dramatic thinking ring around the sparkle icon */}
-                    <span className="commander-thinking-ring inline-flex items-center justify-center size-5 rounded-full bg-amber-500/20">
-                      <Sparkles className="size-2.5 animate-pulse text-amber-400" />
+                    <span className="commander-thinking-ring inline-flex items-center justify-center size-5 rounded-full bg-violet-500/20">
+                      <Sparkles className="size-2.5 animate-pulse text-violet-400" />
                     </span>
                     <span>planning</span>
                   </div>
@@ -329,7 +329,7 @@ export function CommanderPanel() {
                     <div className="commander-skeleton-line w-[75%]" />
                   </div>
                   <div className="flex items-center gap-1 text-[9px] text-muted-foreground/60 pt-0.5">
-                    <span className="size-1 rounded-full bg-amber-400/70 animate-pulse" />
+                    <span className="size-1 rounded-full bg-violet-400/70 animate-pulse" />
                     <span>routing via autumn-bus…</span>
                   </div>
                 </div>
@@ -345,8 +345,8 @@ export function CommanderPanel() {
                           key={i}
                           className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
                         >
-                          <ChevronRight className="size-3 text-amber-400" />
-                          <code className="text-amber-300/90">{s.action}</code>
+                          <ChevronRight className="size-3 text-violet-400" />
+                          <code className="text-violet-300/90">{s.action}</code>
                           <span className="text-muted-foreground/60">
                             {summarizeArgs(s.args)}
                           </span>
@@ -386,7 +386,7 @@ export function CommanderPanel() {
         ))}
         {isThinking && messages[messages.length - 1]?.pending && (
           <div className="text-[10px] text-muted-foreground/60 text-center flex items-center justify-center gap-1.5">
-            <span className="size-1 rounded-full bg-amber-400/70 animate-pulse" />
+            <span className="size-1 rounded-full bg-violet-400/70 animate-pulse" />
             <span>commander is composing a DO_ACTIONS plan</span>
           </div>
         )}
@@ -423,7 +423,7 @@ export function CommanderPanel() {
               <button
                 key={t.label}
                 onClick={() => void send(t.cmd)}
-                className="flex items-center gap-1 text-[10px] rounded-full bg-muted/30 hover:bg-amber-500/10 border border-border/40 hover:border-amber-500/40 px-2 py-0.5 text-muted-foreground hover:text-amber-200 transition-all disabled:opacity-40 group quick-template-chip"
+                className="flex items-center gap-1 text-[10px] rounded-full bg-muted/30 hover:bg-violet-500/10 border border-border/40 hover:border-violet-500/40 px-2 py-0.5 text-muted-foreground hover:text-violet-200 transition-all disabled:opacity-40 group quick-template-chip"
                 title={t.cmd}
               >
                 <t.icon className={cn("size-2.5", t.color, "group-hover:scale-110 transition-transform")} />

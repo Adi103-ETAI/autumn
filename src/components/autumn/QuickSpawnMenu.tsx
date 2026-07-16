@@ -45,7 +45,7 @@ const PRESETS: AgentPreset[] = [
     harness: "claude-code",
     model: "claude-sonnet-4",
     effort: "high",
-    effortColor: "text-amber-400 border-amber-500/40",
+    effortColor: "text-violet-400 border-violet-500/40",
   },
   {
     id: "reviewer",
@@ -67,7 +67,7 @@ const PRESETS: AgentPreset[] = [
     harness: "codex",
     model: "gpt-5-codex",
     effort: "high",
-    effortColor: "text-amber-400 border-amber-500/40",
+    effortColor: "text-violet-400 border-violet-500/40",
   },
   {
     id: "frontend",

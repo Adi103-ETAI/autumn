@@ -245,15 +245,9 @@ export function HomeScreen() {
   // ---- render ----
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950">
-      {/* Subtle radial amber glow (top-right) */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.08)_0%,transparent_60%)]"
-      />
-
+    <div className="relative min-h-screen flex flex-col bg-black">
       {/* Header bar */}
-      <header className="relative z-10 h-14 shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-border/30 backdrop-blur-sm">
+      <header className="relative z-10 h-14 shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-white/5 bg-black">
         <div className="flex items-center gap-2">
           <AutumnLogo size={28} priority />
           <span className="text-sm font-semibold tracking-tight text-foreground">
@@ -308,10 +302,10 @@ export function HomeScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 + i * 0.08, duration: 0.4, ease: "easeOut" }}
                 onClick={() => handleEntryClick(entry.key)}
-                className="group text-left rounded-xl border border-border/50 bg-card/40 hover:bg-accent/40 hover:border-amber-500/40 p-5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                className="group text-left rounded-xl border border-white/5 bg-[#1a202c] hover:border-violet-500/40 hover:bg-violet-500/5 p-5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
               >
                 <div className="flex items-start gap-4">
-                  <div className="flex items-center justify-center size-10 shrink-0 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 transition-colors group-hover:bg-amber-500/15 group-hover:text-amber-300">
+                  <div className="flex items-center justify-center size-10 shrink-0 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 transition-colors group-hover:bg-violet-500/15 group-hover:text-violet-300">
                     <entry.icon className="size-5" />
                   </div>
                   <div className="min-w-0">
@@ -348,7 +342,7 @@ export function HomeScreen() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.4 }}
-              className="rounded-xl border border-dashed border-border/60 bg-card/30 p-8 sm:p-10 flex flex-col items-center text-center"
+              className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 sm:p-10 flex flex-col items-center text-center"
             >
               <p className="text-sm text-muted-foreground mb-6">
                 Your work will show up here
@@ -356,7 +350,7 @@ export function HomeScreen() {
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <Button
                   size="sm"
-                  className="gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-lg shadow-amber-500/20"
+                  className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
                   onClick={() => createBlankWorkspace()}
                 >
                   <Plus className="size-4" />
@@ -365,7 +359,7 @@ export function HomeScreen() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 border-border/60 bg-zinc-950/40 text-foreground hover:bg-accent/40 hover:text-foreground"
+                  className="gap-1.5 border border-white/10 bg-transparent text-foreground hover:bg-secondary hover:text-foreground"
                   onClick={() => handleEntryClick("folder")}
                 >
                   <FolderOpen className="size-4" />
@@ -390,7 +384,7 @@ export function HomeScreen() {
       </main>
 
       {/* Footer (sticky to bottom) */}
-      <footer className="relative z-10 mt-auto shrink-0 border-t border-border/30 bg-zinc-950/40 backdrop-blur-sm">
+      <footer className="relative z-10 mt-auto shrink-0 border-t border-white/5 bg-black/60">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-9 flex items-center justify-between text-[11px] text-muted-foreground/70">
           <span>Autumn v0.1</span>
           <span className="hidden sm:inline">Built for whoever ships.</span>
@@ -404,7 +398,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FolderOpen className="size-4 text-amber-400" />
+              <FolderOpen className="size-4 text-violet-400" />
               Open folder
             </DialogTitle>
             <DialogDescription>
@@ -426,7 +420,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
               onClick={submitFolder}
             >
               <FolderOpen className="size-4" />
@@ -441,7 +435,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Github className="size-4 text-amber-400" />
+              <Github className="size-4 text-violet-400" />
               Clone repository
             </DialogTitle>
             <DialogDescription>
@@ -462,7 +456,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
               onClick={submitRepo}
             >
               <GitBranch className="size-4" />
@@ -477,7 +471,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LinkIcon className="size-4 text-amber-400" />
+              <LinkIcon className="size-4 text-violet-400" />
               Open from link
             </DialogTitle>
             <DialogDescription>
@@ -502,7 +496,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
               onClick={submitLink}
             >
               <LinkIcon className="size-4" />
@@ -535,7 +529,7 @@ function WorkspaceCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 + index * 0.05, duration: 0.35, ease: "easeOut" }}
       onClick={onOpen}
-      className="group relative rounded-lg border border-border/50 bg-card/40 hover:bg-accent/40 hover:border-amber-500/40 p-4 transition-all cursor-pointer"
+      className="group relative rounded-lg border border-white/5 bg-[#1a202c] hover:border-violet-500/40 hover:bg-violet-500/5 p-4 transition-all cursor-pointer"
     >
       {/* Remove (X) button on hover */}
       <button
@@ -550,7 +544,7 @@ function WorkspaceCard({
 
       {/* Top row: kind icon + name */}
       <div className="flex items-center gap-2.5 pr-6">
-        <div className="flex items-center justify-center size-7 shrink-0 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400">
+        <div className="flex items-center justify-center size-7 shrink-0 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-400">
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 text-sm font-medium text-foreground truncate">

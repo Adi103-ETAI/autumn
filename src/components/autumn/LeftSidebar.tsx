@@ -77,9 +77,9 @@ const TABS: {
     id: "resources",
     label: "Resources",
     icon: FolderOpen,
-    color: "text-amber-400",
-    ring: "ring-amber-500/40",
-    bg: "bg-amber-500/15",
+    color: "text-violet-400",
+    ring: "ring-violet-500/40",
+    bg: "bg-violet-500/15",
     description: "Project context",
   },
   {
@@ -129,7 +129,7 @@ const CATEGORY_COLOR: Record<ProjectFileCategory, string> = {
   image: "text-sky-400",
   video: "text-fuchsia-400",
   audio: "text-violet-400",
-  font: "text-amber-400",
+  font: "text-violet-400",
   doc: "text-emerald-400",
   other: "text-muted-foreground",
 };
@@ -211,7 +211,7 @@ export function LeftSidebar() {
                       )}
                     />
                     {showDesignBadge && (
-                      <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white shadow-sm">
+                      <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-violet-600 text-[8px] font-bold text-white shadow-sm">
                         1
                       </span>
                     )}
@@ -376,7 +376,7 @@ function ResourcesTab() {
               className={cn(
                 "rounded-full border px-2 py-0.5 text-[10px] transition-colors",
                 active
-                  ? "border-amber-500/50 bg-amber-500/15 text-amber-300"
+                  ? "border-violet-500/50 bg-violet-500/15 text-violet-300"
                   : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/40",
               )}
             >
@@ -502,7 +502,7 @@ function SkillsTab() {
       name: name.trim(),
       description: desc.trim() || "Custom skill.",
       icon: "✨",
-      color: "text-amber-400",
+      color: "text-violet-400",
     });
     setName("");
     setDesc("");
@@ -565,7 +565,7 @@ function SkillsTab() {
               <Button
                 variant="default"
                 size="sm"
-                className="h-6 text-[11px] bg-amber-500 text-white hover:bg-amber-600"
+                className="h-6 text-[11px] bg-violet-600 text-white hover:bg-violet-500"
                 onClick={handleAddCustom}
               >
                 Add skill
@@ -678,7 +678,7 @@ function BackendsTab() {
           <Button
             variant="default"
             size="sm"
-            className="h-7 bg-amber-500 px-2 text-[10px] text-white hover:bg-amber-600"
+            className="h-7 bg-violet-600 px-2 text-[10px] text-white hover:bg-violet-500"
             onClick={handleSaveWebsite}
             disabled={websiteSaved}
           >
@@ -874,7 +874,7 @@ function DesignTab() {
             variant="default"
             size="sm"
             onClick={createStarterDesignMd}
-            className="mt-3 h-7 gap-1 bg-amber-500 text-[11px] text-white hover:bg-amber-600"
+            className="mt-3 h-7 gap-1 bg-violet-600 text-[11px] text-white hover:bg-violet-500"
           >
             <Plus className="size-3" />
             Create starter design.md
@@ -966,12 +966,12 @@ function ConversationsPanel() {
         ) : (
           <ChevronRight className="size-3 text-muted-foreground" />
         )}
-        <Cable className="size-3 text-amber-400" />
+        <Cable className="size-3 text-violet-400" />
         <span className="text-[11px] font-medium">Conversations</span>
         {totalShown > 0 && (
           <Badge
             variant="outline"
-            className="ml-auto h-4 px-1 text-[9px] border-amber-500/40 text-amber-300"
+            className="ml-auto h-4 px-1 text-[9px] border-violet-500/40 text-violet-300"
           >
             {totalShown}
           </Badge>
@@ -1060,14 +1060,14 @@ function ConversationRow({
         ) : (
           <ChevronRight className="size-2.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="truncate text-[10px] font-medium text-amber-300/90">
+        <span className="truncate text-[10px] font-medium text-violet-300/90">
           {fromName}
         </span>
         <ArrowRight className="size-2.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-[10px] font-medium text-amber-300/90">
+        <span className="truncate text-[10px] font-medium text-violet-300/90">
           {toName}
         </span>
-        <span className="ml-auto shrink-0 rounded-full bg-amber-500/15 px-1 text-[9px] text-amber-300">
+        <span className="ml-auto shrink-0 rounded-full bg-violet-500/15 px-1 text-[9px] text-violet-300">
           {group.messages.length}
         </span>
       </button>
