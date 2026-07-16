@@ -10,18 +10,19 @@ import type { SVGProps } from "react";
 type LogoProps = SVGProps<SVGSVGElement> & { className?: string };
 
 // ---- Claude Code (Anthropic) ------------------------------------------------
-// Anthropic's sunburst: radiating rounded spokes from a center. Terracotta.
+// Official Claude Code mark: a pixel-style robot face. Terracotta (#D97757).
 export function ClaudeCodeLogo({ className, ...props }: LogoProps) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="currentColor"
+      fillRule="evenodd"
+      clipRule="evenodd"
       className={className}
       aria-hidden
       {...props}
     >
-      {/* The Anthropic sunburst — simplified to the iconic radiating mark */}
-      <path d="M12 2 L13.2 8.5 L16 2.8 L14.8 9.2 L19.5 6 L16.2 11 L21.5 10.5 L17 13.5 L22 15.5 L16.8 16 L20 20 L14.5 17.5 L15.8 22 L12 18 L8.2 22 L9.5 17.5 L4 20 L7.2 16 L2 15.5 L7 13.5 L2.5 10.5 L7.8 11 L4.5 6 L9.2 9.2 L8 2.8 L10.8 8.5 Z" />
+      <path d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" />
     </svg>
   );
 }
@@ -78,17 +79,18 @@ export function OpenAILogo({ className, ...props }: LogoProps) {
 }
 
 // ---- Cursor -----------------------------------------------------------------
-// The Cursor editor mark: a cursor/pointer arrow with a "C" sweep.
+// Official Cursor mark: a faceted cube/diamond shape with an inset V.
 export function CursorLogo({ className, ...props }: LogoProps) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="currentColor"
+      fillRule="evenodd"
       className={className}
       aria-hidden
       {...props}
     >
-      <path d="M11.93 0a12 12 0 1 0 .14 24 12 12 0 0 0-.14-24zm5.87 17.07-.34.83a.56.56 0 0 1-.36.36l-.83.34a.56.56 0 0 0 0 1.04l.83.34a.56.56 0 0 1 .36.36l.34.83a.56.56 0 0 0 1.04 0l.34-.83a.56.56 0 0 1 .36-.36l.83-.34a.56.56 0 0 0 0-1.04l-.83-.34a.56.56 0 0 1-.36-.36l-.34-.83a.56.56 0 0 0-1.04 0zM12 4.5a7.5 7.5 0 0 1 7.16 5.27.56.56 0 0 1-.53.73h-1.6a.56.56 0 0 1-.47-.25A5.5 5.5 0 0 0 7.5 16.5a.56.56 0 0 1-.95.4l-1.2-1.2a.56.56 0 0 1-.16-.4A7.5 7.5 0 0 1 12 4.5z" />
+      <path d="M22.106 5.68L12.5.135a.998.998 0 00-.998 0L1.893 5.68a.84.84 0 00-.419.726v11.186c0 .3.16.577.42.727l9.607 5.547a.999.999 0 00.998 0l9.608-5.547a.84.84 0 00.42-.727V6.407a.84.84 0 00-.42-.726zm-.603 1.176L12.228 22.92c-.063.108-.228.064-.228-.061V12.34a.59.59 0 00-.295-.51l-9.11-5.26c-.107-.062-.063-.228.062-.228h18.55c.264 0 .428.286.296.514z" />
     </svg>
   );
 }
