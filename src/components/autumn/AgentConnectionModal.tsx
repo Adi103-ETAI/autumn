@@ -1,43 +1,27 @@
 // Autumn — Agent Connection Modal.
 // Full-screen overlay shown after onboarding. Lets the user connect coding agents.
-// Clones October Desktop's "Set up October" agent picker (NOTES.md §2, images 09–11).
+// Clones October Desktop's "Set up October" agent picker: a vertical centered
+// list of agent rows (logo + name + description + Sign in), with a
+// collapse/expand toggle ("See N more agents" ↔ "See fewer agents").
+// Amber/orange Autumn theme preserved.
 
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, Loader2, LogIn, ArrowRight, Leaf } from "lucide-react";
+import { X, Check, Loader2, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
+import { getAgentBrand } from "@/components/autumn/AgentLogos";
 import {
   CODING_AGENTS,
   useAutumnStore,
   type AgentConnectionStatus,
 } from "@/lib/autumn/store";
 
-// Vendor-ish brand colors for the agent icon squares.
-// Keyed by agent id. NO pure blue — Gemini uses sky-500 (only allowed blue exception).
-const AGENT_ICON_COLORS: Record<string, string> = {
-  "claude-code": "bg-orange-500/20 text-orange-300",
-  codex: "bg-emerald-500/20 text-emerald-300",
-  cursor: "bg-amber-500/20 text-amber-300",
-  grok: "bg-zinc-500/20 text-zinc-300",
-  opencode: "bg-amber-500/20 text-amber-300",
-  hermes: "bg-rose-500/20 text-rose-300",
-  cline: "bg-teal-500/20 text-teal-300",
-  pi: "bg-fuchsia-500/20 text-fuchsia-300",
-  gemini: "bg-sky-500/20 text-sky-300",
-};
-
-function agentInitial(name: string): string {
-  return name.trim().charAt(0).toUpperCase();
-}
+// Number of agents shown in the collapsed state (matches October reference).
+const COLLAPSED_COUNT = 3;
 
 export function AgentConnectionModal() {
   const show = useAutumnStore((s) => s.showAgentSetup);
@@ -46,6 +30,8 @@ export function AgentConnectionModal() {
   const connectAgent = useAutumnStore((s) => s.connectAgent);
   const disconnectAgent = useAutumnStore((s) => s.disconnectAgent);
   const setAppStage = useAutumnStore((s) => s.setAppStage);
+
+  const [expanded, setExpanded] = useState(false);
 
   const connectedCount = Object.values(connectedAgents).filter(
     (s) => s === "connected",
@@ -61,6 +47,12 @@ export function AgentConnectionModal() {
     setShowAgentSetup(false);
   };
 
+  // Agents to render: collapsed shows first N, expanded shows all.
+  const visibleAgents = expanded
+    ? CODING_AGENTS
+    : CODING_AGENTS.slice(0, COLLAPSED_COUNT);
+  const hiddenCount = CODING_AGENTS.length - COLLAPSED_COUNT;
+
   return (
     <AnimatePresence>
       {show && (
@@ -71,10 +63,10 @@ export function AgentConnectionModal() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Backdrop: pure black (pointer-events-none so clicks reach the card) */}
-          <div className="absolute inset-0 pointer-events-none bg-black/80" />
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80" />
 
-          {/* Card */}
+          {/* Card — tall, centered, narrow (matches October's vertical list) */}
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -83,81 +75,45 @@ export function AgentConnectionModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl bg-[#1a202c] border border-white/5 shadow-2xl shadow-black/40 overflow-hidden"
+            className="relative z-10 w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl bg-[#0a0d12] border border-white/10 shadow-2xl shadow-black/60 overflow-hidden"
           >
-            {/* Header */}
-            <header className="flex items-start gap-3 p-6 pb-4 border-b border-border/50">
-              <AutumnLogo size={32} glow />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Set up Autumn
-                  </h2>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-[10px] font-medium",
-                      hasConnected
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                        : "border-border/60 text-muted-foreground",
-                    )}
-                  >
-                    {connectedCount}/{CODING_AGENTS.length} connected
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Connect your agents and tools to get started.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground hover:text-foreground shrink-0"
+            {/* Header — centered title, close button top-right */}
+            <header className="relative flex flex-col items-center text-center pt-7 pb-5 px-6">
+              <button
+                type="button"
                 onClick={handleClose}
                 aria-label="Close"
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="size-4" />
-              </Button>
+              </button>
+              <AutumnLogo size={28} />
+              <h2 className="mt-3 text-xl font-semibold text-foreground tracking-tight">
+                Set up Autumn
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Connect your agents and tools to get started.
+              </p>
             </header>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6 pt-4 min-h-0 autumn-scroll">
-              {/* Success banner */}
-              <AnimatePresence>
-                {hasConnected && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                      <Check className="size-4 text-emerald-400 shrink-0" />
-                      <span className="text-sm font-medium text-emerald-300">
-                        You&apos;re set — continue to your workspace.
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Agent grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {CODING_AGENTS.map((agent, i) => {
+            {/* Body — vertical list of agent rows */}
+            <div className="flex-1 overflow-y-auto px-3 pb-2 min-h-0 autumn-scroll">
+              <AnimatePresence initial={false}>
+                {visibleAgents.map((agent, i) => {
                   const status: AgentConnectionStatus =
                     connectedAgents[agent.id] ?? "not_yet";
                   return (
                     <motion.div
                       key={agent.id}
-                      initial={{ opacity: 0, y: 8 }}
+                      layout
+                      initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 + i * 0.03, duration: 0.25 }}
+                      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                      transition={{ delay: expanded ? 0 : 0.04 * i, duration: 0.2 }}
                     >
-                      <AgentCard
+                      <AgentRow
                         id={agent.id}
                         name={agent.name}
-                        vendor={agent.vendor}
                         description={agent.description}
                         status={status}
                         onSignIn={() => connectAgent(agent.id)}
@@ -166,35 +122,62 @@ export function AgentConnectionModal() {
                     </motion.div>
                   );
                 })}
+              </AnimatePresence>
+
+              {/* Expand / collapse toggle */}
+              <div className="flex justify-center py-3">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {expanded ? (
+                    <>
+                      See fewer agents
+                      <ChevronUp className="size-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      See {hiddenCount} more agents
+                      <ChevronDown className="size-3.5" />
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
-            {/* Footer */}
-            <footer className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 p-6 pt-4 border-t border-border/50 bg-card/60">
-              <div className="space-y-1 max-w-sm">
-                <p className="text-xs text-muted-foreground">
+            {/* Footer — note + Continue button */}
+            <footer className="flex flex-col items-center gap-3 px-6 pt-4 pb-6 border-t border-white/5 bg-black/40">
+              {hasConnected ? (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                  <Check className="size-3.5" />
+                  <span>
+                    {connectedCount} of {CODING_AGENTS.length} agents connected.
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center">
                   Connect at least one coding agent to continue.
                 </p>
-                <p className="text-[11px] text-muted-foreground/70">
-                  Signing in to an Autumn account isn&apos;t required —
-                  that&apos;s separate.
-                </p>
-              </div>
+              )}
               <Button
                 size="lg"
                 disabled={!hasConnected}
                 onClick={handleContinue}
                 className={cn(
-                  "gap-2 px-6 shrink-0",
+                  "w-full gap-2 px-6 border-0",
                   hasConnected
-                    ? "bg-amber-500 hover:bg-amber-600 text-white border-0"
-                    : "bg-white/5 text-white/30 border-0",
+                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                    : "bg-white/5 text-white/30",
                 )}
               >
-                <Leaf className="size-4" />
                 Continue to workspace
                 <ArrowRight className="size-4" />
               </Button>
+              <p className="text-[11px] text-muted-foreground/60 text-center max-w-xs">
+                Signing in to an Autumn account isn&apos;t required —
+                that&apos;s separate.
+              </p>
             </footer>
           </motion.div>
         </motion.div>
@@ -203,10 +186,11 @@ export function AgentConnectionModal() {
   );
 }
 
-function AgentCard({
+// ---- Agent row (logo + name/desc + sign-in) --------------------------------
+
+function AgentRow({
   id,
   name,
-  vendor,
   description,
   status,
   onSignIn,
@@ -214,40 +198,33 @@ function AgentCard({
 }: {
   id: string;
   name: string;
-  vendor: string;
   description: string;
   status: AgentConnectionStatus;
   onSignIn: () => void;
   onDisconnect: () => void;
 }) {
-  const iconColor = AGENT_ICON_COLORS[id] ?? "bg-zinc-500/20 text-zinc-300";
+  const brand = getAgentBrand(id);
+  const { Logo } = brand;
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 hover:border-border/70 transition-colors p-3 h-full">
-      {/* Agent icon: colored square with initial */}
+    <div className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/[0.03] transition-colors group">
+      {/* Circular logo */}
       <div
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg text-base font-bold",
-          iconColor,
+          "flex size-9 shrink-0 items-center justify-center rounded-full",
+          brand.bg,
         )}
         aria-hidden
       >
-        {agentInitial(name)}
+        <Logo className={cn("size-5", brand.color)} />
       </div>
 
       {/* Name + description */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-sm font-semibold text-foreground truncate">
-            {name}
-          </span>
-          <span className="text-[10px] text-muted-foreground truncate">
-            {vendor}
-          </span>
+        <div className="text-sm font-medium text-foreground truncate">
+          {name}
         </div>
-        <p className="text-xs text-muted-foreground truncate">
-          {description}
-        </p>
+        <p className="text-xs text-muted-foreground truncate">{description}</p>
       </div>
 
       {/* Status button */}
@@ -260,6 +237,8 @@ function AgentCard({
   );
 }
 
+// ---- Status button ----------------------------------------------------------
+
 function StatusButton({
   status,
   onSignIn,
@@ -271,47 +250,41 @@ function StatusButton({
 }) {
   if (status === "waiting") {
     return (
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        type="button"
         disabled
-        className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 shrink-0 cursor-wait"
+        className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-300 cursor-wait shrink-0"
       >
         <Loader2 className="size-3.5 animate-spin" />
         Waiting...
-      </Button>
+      </button>
     );
   }
 
   if (status === "connected") {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onDisconnect}
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-300 hover:border-emerald-500/60 hover:bg-emerald-500/20 transition-colors shrink-0"
-            aria-label="Disconnect"
-          >
-            <Check className="size-3.5" />
-            Connected
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>Disconnect</TooltipContent>
-      </Tooltip>
+      <button
+        type="button"
+        onClick={onDisconnect}
+        className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-300 hover:border-emerald-500/60 hover:bg-emerald-500/20 transition-colors shrink-0"
+        aria-label={`Disconnect (currently connected)`}
+        title="Click to disconnect"
+      >
+        <Check className="size-3.5" />
+        Connected
+      </button>
     );
   }
 
-  // not_yet
+  // not_yet — "Sign in" with amber accent
   return (
-    <Button
-      variant="outline"
-      size="sm"
+    <button
+      type="button"
       onClick={onSignIn}
-      className="gap-1.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/15 hover:text-amber-200 shrink-0"
+      className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 px-2.5 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/15 hover:text-amber-200 hover:border-amber-500/60 transition-colors shrink-0"
     >
-      <LogIn className="size-3.5" />
       Sign in
-    </Button>
+      <ArrowRight className="size-3" />
+    </button>
   );
 }
