@@ -34,6 +34,7 @@ import {
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { CanvasBackgroundLayer } from "./CanvasBackgroundLayer";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
@@ -305,6 +306,8 @@ function CanvasInner() {
 
   return (
     <div className="absolute inset-0 autumn-canvas">
+      {/* Scenic photographic background layer (sits behind the react-flow canvas) */}
+      <CanvasBackgroundLayer />
       {/* Empty state */}
       <AnimatePresence>
         {isEmpty && (

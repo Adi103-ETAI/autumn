@@ -31,6 +31,7 @@ import {
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
+import { BackgroundPicker } from "./BackgroundPicker";
 import { cn } from "@/lib/utils";
 
 // ── Node kind group indicator ────────────────────────────────────────────────
@@ -172,6 +173,8 @@ export function CanvasToolbar() {
             icon={Maximize2}
             color="text-violet-400"
           />
+          {/* Scenic background picker */}
+          <BackgroundPicker />
         </div>
 
         {/* Multi-select bulk actions (only shown when something is selected) */}

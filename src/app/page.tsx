@@ -32,6 +32,12 @@ import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
 import { OnboardingWizard } from "@/components/autumn/OnboardingWizard";
 import { HomeScreen } from "@/components/autumn/HomeScreen";
 import { AgentConnectionModal } from "@/components/autumn/AgentConnectionModal";
+import { LeftSidebar } from "@/components/autumn/LeftSidebar";
+import { FloatingTopBar } from "@/components/autumn/FloatingTopBar";
+import { VoiceMicButton } from "@/components/autumn/VoiceMicButton";
+import { VoiceSetupModal } from "@/components/autumn/VoiceSetupModal";
+import { AiFinderOverlay } from "@/components/autumn/AiFinderOverlay";
+import { AppsIntegrationModal } from "@/components/autumn/AppsIntegrationModal";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -126,8 +132,11 @@ export default function Home() {
       <TopBar />
       <div className="flex-1 flex overflow-hidden">
         <Dock />
+        <LeftSidebar />
         <main className="flex-1 relative overflow-hidden">
           <CanvasView />
+          <FloatingTopBar />
+          <VoiceMicButton />
         </main>
         <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
           <RightPanelTabs />
@@ -166,6 +175,9 @@ export default function Home() {
       <NodeSearchOverlay />
       <ShortcutHelpOverlay />
       <AgentHistoryPanel />
+      <AiFinderOverlay />
+      <VoiceSetupModal />
+      <AppsIntegrationModal />
       {showAgentSetup && <AgentConnectionModal />}
     </div>
   );
