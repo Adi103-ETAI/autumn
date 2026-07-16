@@ -1,7 +1,9 @@
 // Autumn — Onboarding Wizard.
-// A full-screen 4-step onboarding flow that clones October Desktop's wizard
-// (NOTES.md §2, images 01–08). Two-column layout: question + option cards on
-// the left, a live preview pane on the right.
+// Full-screen 4-step onboarding flow. Layout mirrors October Desktop's wizard:
+// edge-to-edge two-column split (45% left / 55% right), label-only option
+// buttons in a single row, "Skip for now" top-right of the left column, and a
+// thin progress bar pinned to the bottom of the left column. The right column
+// shows a centered app-window mockup. Colors stay Autumn amber/orange.
 //
 // Steps:
 //   0 — Role          (single select)
@@ -15,7 +17,6 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
@@ -37,7 +38,6 @@ import {
   LayoutTemplate,
   FolderOpen,
   Check,
-  ArrowLeft,
   ArrowRight,
   type LucideIcon,
 } from "lucide-react";
@@ -55,7 +55,7 @@ import {
 interface OptionDef<V extends string> {
   value: V;
   label: string;
-  icon: LucideIcon;
+  icon: LucideIcon; // kept for the preview pane chips; the option buttons themselves are label-only
 }
 
 const ROLE_OPTIONS: readonly OptionDef<OnboardingRole>[] = [
@@ -127,257 +127,121 @@ const AI_TOOL_LABEL: Record<string, string> = {
   none: "None yet",
 };
 
-// ---- Option card -----------------------------------------------------------
+// Current step's option list (for the mockup chip row + the option buttons).
+function optionsForStep(step: number): OptionDef<string>[] {
+  if (step === 0) return ROLE_OPTIONS as unknown as OptionDef<string>[];
+  if (step === 1) return PROJECT_OPTIONS as unknown as OptionDef<string>[];
+  if (step === 2) return AI_TOOL_OPTIONS;
+  return START_OPTIONS as unknown as OptionDef<string>[];
+}
 
-function OptionCard({
-  icon: Icon,
+// ---- Label-only option button (matches reference: centered, no icon) ------
+
+function OptionButton({
   label,
   selected,
   multi,
-  fullWidth,
   onClick,
 }: {
-  icon: LucideIcon;
   label: string;
   selected: boolean;
   multi?: boolean;
-  fullWidth?: boolean;
   onClick: () => void;
 }) {
   return (
     <motion.button
       type="button"
       onClick={onClick}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       aria-pressed={selected}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200",
+        "relative flex h-11 items-center justify-center rounded-lg border px-3 text-center text-sm font-medium transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40",
-        fullWidth && "sm:col-span-2",
         selected
-          ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30"
-          : "border-border/50 bg-card/40 hover:bg-accent/40 hover:border-border",
+          ? "border-amber-500/60 bg-amber-500/10 text-amber-100"
+          : "border-border/50 bg-card/40 text-foreground/70 hover:border-border hover:bg-accent/40 hover:text-foreground",
       )}
     >
-      <span
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-          selected
-            ? "bg-amber-500/15 text-amber-300"
-            : "bg-muted/50 text-muted-foreground group-hover:text-foreground",
-        )}
-      >
-        <Icon className="size-5" />
-      </span>
-      <span
-        className={cn(
-          "flex-1 text-sm font-medium",
-          selected ? "text-foreground" : "text-foreground/80",
-        )}
-      >
-        {label}
-      </span>
-
-      {/* Selection indicator */}
-      {multi ? (
-        <span
-          className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded-md border transition-all",
-            selected
-              ? "border-violet-600 bg-amber-500 text-white"
-              : "border-border/60 bg-transparent",
-          )}
+      {label}
+      {/* compact selection tick — corner, not a big circle */}
+      {selected && (
+        <motion.span
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+          className="absolute right-1.5 top-1.5 flex size-3.5 items-center justify-center rounded-full bg-amber-500 text-white"
         >
-          {selected && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            >
-              <Check className="size-3.5" strokeWidth={3} />
-            </motion.span>
-          )}
-        </span>
-      ) : (
-        <AnimatePresence>
-          {selected && (
-            <motion.span
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
-            >
-              <Check className="size-3.5" strokeWidth={3} />
-            </motion.span>
-          )}
-        </AnimatePresence>
+          <Check className="size-2.5" strokeWidth={3} />
+        </motion.span>
+      )}
+      {multi && !selected && (
+        <span className="absolute right-1.5 top-1.5 size-3.5 rounded-full border border-border/60" />
       )}
     </motion.button>
   );
 }
 
-// ---- Preview pane ----------------------------------------------------------
+// ---- App-window mockup (right column) --------------------------------------
 
-function PreviewContent({ step, data }: { step: number; data: OnboardingData }) {
-  if (step === 0) {
-    return (
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          Your role
-        </div>
-        {data.role ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-200">
-            <Briefcase className="size-3" />
-            {ROLE_LABEL[data.role]}
-          </span>
-        ) : (
-          <p className="text-xs italic text-muted-foreground">
-            Pick a role to see it here…
-          </p>
-        )}
-      </div>
-    );
-  }
+function AppMockup({ step, data }: { step: number; data: OnboardingData }) {
+  const opts = optionsForStep(step);
+  // Reflect the current selection in the mockup's chip row.
+  const selectedLabels: string[] = [];
+  if (step === 0 && data.role) selectedLabels.push(ROLE_LABEL[data.role]);
+  if (step === 1 && data.projectType) selectedLabels.push(PROJECT_LABEL[data.projectType]);
+  if (step === 2) selectedLabels.push(...data.aiTools.map((t) => AI_TOOL_LABEL[t] ?? t));
+  if (step === 3 && data.startMode) selectedLabels.push(START_LABEL[data.startMode]);
 
-  if (step === 1) {
-    const pt = data.projectType;
-    const Icon =
-      pt === "mobile"
-        ? Smartphone
-        : pt === "website"
-          ? Globe
-          : pt === "game"
-            ? Gamepad2
-            : Sparkles;
-    return (
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          Building
-        </div>
-        {pt ? (
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
-              <Icon className="size-4" />
-            </span>
-            <span className="text-sm font-medium text-foreground">
-              {PROJECT_LABEL[pt]}
-            </span>
-          </div>
-        ) : (
-          <p className="text-xs italic text-muted-foreground">
-            Pick a project type…
-          </p>
-        )}
-        {/* faux mockup lines */}
-        <div className="mt-3 space-y-1.5">
-          <div className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-amber-500/50 to-transparent" />
-          <div className="h-1.5 w-1/2 rounded-full bg-muted/50" />
-          <div className="h-1.5 w-2/3 rounded-full bg-muted/40" />
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 2) {
-    return (
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          Your stack
-        </div>
-        {data.aiTools.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {data.aiTools.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center rounded-md border border-violet-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100"
-              >
-                {AI_TOOL_LABEL[t] ?? t}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs italic text-muted-foreground">
-            Pick the tools you use…
-          </p>
-        )}
-        <p className="mt-3 text-[10px] text-muted-foreground">
-          Autumn plays nice with your stack.
-        </p>
-      </div>
-    );
-  }
-
-  // step === 3
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-        Start mode
-      </div>
-      {data.startMode ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-200">
-          <Check className="size-3" strokeWidth={3} />
-          {START_LABEL[data.startMode]}
-        </span>
-      ) : (
-        <p className="text-xs italic text-muted-foreground">
-          Choose how to begin…
-        </p>
-      )}
-    </div>
-  );
-}
-
-function PreviewPane({ step, data }: { step: number; data: OnboardingData }) {
-  return (
-    <Card className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1a202c] p-5 shadow-lg shadow-black/30">
-      {/* gradient top hairline */}
-      <div className="absolute inset-x-0 top-0 h-px bg-white/5" />
-
-      {/* Header: logo + wordmark + tagline */}
-      <div className="mb-5 flex items-center gap-3">
-        <AutumnLogo size={40} glow />
-        <div>
-          <div className="text-base font-semibold leading-tight text-foreground">
-            Autumn
-          </div>
-          <div className="text-[11px] text-muted-foreground">
-            Built for whoever ships.
-          </div>
-        </div>
-      </div>
-
-      {/* Live preview area */}
-      <div className="mb-4 min-h-[136px] rounded-xl border border-border/40 bg-background/40 p-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${step}-${data.role ?? ""}-${data.projectType ?? ""}-${data.aiTools.join(",")}-${data.startMode ?? ""}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-          >
-            <PreviewContent step={step} data={data} />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Footer: live dot + workspace + framework */}
-      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+    <div className="w-full max-w-md rounded-xl border border-white/10 bg-[#0a0d12] shadow-2xl shadow-black/50 overflow-hidden">
+      {/* Window top bar — traffic lights + title + circle */}
+      <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-4 py-2.5">
         <div className="flex items-center gap-1.5">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-          </span>
-          <span className="font-medium text-emerald-300/90">Live</span>
+          <span className="size-2.5 rounded-full bg-rose-500/70" />
+          <span className="size-2.5 rounded-full bg-amber-400/70" />
+          <span className="size-2.5 rounded-full bg-emerald-500/70" />
         </div>
-        <span className="truncate">Untitled workspace</span>
-        <span className="rounded-md border border-border/50 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
-          Next.js
+        <div className="mx-auto flex items-center gap-2">
+          <span className="size-4 rounded bg-amber-500/80" />
+          <span className="text-xs font-medium text-foreground/70">
+            Autumn · Your Big Idea
+          </span>
+        </div>
+        <span className="size-5 rounded-full border border-amber-500/40 bg-amber-500/10 text-[9px] flex items-center justify-center text-amber-300 font-mono">
+          0
         </span>
       </div>
-    </Card>
+
+      {/* Window body — centered logo + tagline */}
+      <div className="flex flex-col items-center justify-center gap-3 px-6 py-12">
+        <AutumnLogo size={56} glow />
+        <p className="text-sm font-medium text-foreground/80">
+          Built for whoever ships.
+        </p>
+
+        {/* Chip row mirroring the current step's options */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+          {opts.map((o) => {
+            const isSel = selectedLabels.includes(o.label);
+            return (
+              <span
+                key={o.value}
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  isSel
+                    ? "border-amber-500/50 bg-amber-500/15 text-amber-200"
+                    : "border-white/5 bg-white/[0.02] text-muted-foreground/60",
+                )}
+              >
+                {o.label}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -397,13 +261,11 @@ function StepOptions({
   if (step === 0) {
     return (
       <>
-        {ROLE_OPTIONS.map((opt, i) => (
-          <OptionCard
+        {ROLE_OPTIONS.map((opt) => (
+          <OptionButton
             key={opt.value}
-            icon={opt.icon}
             label={opt.label}
             selected={data.role === opt.value}
-            fullWidth={i === ROLE_OPTIONS.length - 1}
             onClick={() => setField("role", opt.value)}
           />
         ))}
@@ -414,9 +276,8 @@ function StepOptions({
     return (
       <>
         {PROJECT_OPTIONS.map((opt) => (
-          <OptionCard
+          <OptionButton
             key={opt.value}
-            icon={opt.icon}
             label={opt.label}
             selected={data.projectType === opt.value}
             onClick={() => setField("projectType", opt.value)}
@@ -428,14 +289,12 @@ function StepOptions({
   if (step === 2) {
     return (
       <>
-        {AI_TOOL_OPTIONS.map((opt, i) => (
-          <OptionCard
+        {AI_TOOL_OPTIONS.map((opt) => (
+          <OptionButton
             key={opt.value}
-            icon={opt.icon}
             label={opt.label}
             multi
             selected={data.aiTools.includes(opt.value)}
-            fullWidth={i === AI_TOOL_OPTIONS.length - 1}
             onClick={() => toggleTool(opt.value)}
           />
         ))}
@@ -445,9 +304,8 @@ function StepOptions({
   return (
     <>
       {START_OPTIONS.map((opt) => (
-        <OptionCard
+        <OptionButton
           key={opt.value}
-          icon={opt.icon}
           label={opt.label}
           selected={data.startMode === opt.value}
           onClick={() => setField("startMode", opt.value)}
@@ -488,137 +346,128 @@ export function OnboardingWizard() {
     }
   };
 
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1);
-  };
-
   const stepComplete = isStepComplete();
   const current = STEPS[step] ?? STEPS[0];
+  const opts = optionsForStep(step);
+  // Single row on desktop; wraps to a 2-col grid on narrow screens. The
+  // reference uses one row of equal-width buttons — we mirror that and let
+  // flex-wrap handle overflow gracefully.
+  const gridCols =
+    opts.length >= 5
+      ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+      : "grid-cols-2 sm:grid-cols-4";
 
   return (
     <motion.div
       role="dialog"
       aria-modal="true"
       aria-label="Autumn onboarding"
-      className="fixed inset-0 z-[200] flex flex-col bg-black"
+      className="fixed inset-0 z-[200] flex flex-col bg-black lg:flex-row"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 sm:px-10">
-        <div className="flex items-center gap-2">
-          <AutumnLogo size={24} />
-          <span className="text-sm font-semibold text-foreground/90">Autumn</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={skip}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          Skip for now
-          <ArrowRight className="size-3.5" />
-        </Button>
-      </header>
-
-      {/* Progress */}
-      <div className="relative z-10 px-6 sm:px-10">
-        <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-mono tabular-nums text-foreground/70">
-            {step + 1} / 4
-          </span>
-          <span className="hidden sm:inline">{current.subtitle}</span>
-        </div>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-border/50">
-          <motion.div
-            className="h-full rounded-full bg-amber-500"
-            initial={{ width: 0 }}
-            animate={{ width: `${((step + 1) / 4) * 100}%` }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
-          />
-        </div>
-      </div>
-
-      {/* Main two-column area */}
-      <main className="relative z-10 flex flex-1 items-center justify-center overflow-y-auto px-6 py-6 sm:px-10">
-        <div className="grid w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[1.5fr_1fr] lg:gap-12">
-          {/* Left column: question + options */}
-          <div className="order-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, x: 24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -24 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-              >
-                <h2 className="mb-2 text-2xl font-bold text-foreground sm:text-3xl">
-                  {current.title}
-                </h2>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {current.subtitle}
-                </p>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <StepOptions
-                    step={step}
-                    data={data}
-                    setField={setField}
-                    toggleTool={toggleTool}
-                  />
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Right column: preview pane */}
-          <div className="order-2 rounded-2xl bg-gradient-to-br from-[#1a2332] to-[#2d3748] p-6">
-            <PreviewPane step={step} data={data} />
-          </div>
-        </div>
-      </main>
-
-      {/* Bottom controls */}
-      <footer className="relative z-10 flex items-center justify-between gap-3 px-6 py-5 sm:px-10">
-        <div className="min-w-24">
-          {step > 0 ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="text-[11px] text-muted-foreground">
-            {stepComplete
-              ? step === 3
-                ? "Ready to enter Autumn"
-                : "Looks good — tap to continue"
-              : "Select an option to continue"}
-          </span>
-          <Button
-            onClick={handleContinue}
-            disabled={!stepComplete}
-            size="lg"
-            className="gap-2 bg-amber-500 text-white hover:bg-amber-500 disabled:opacity-40"
+      {/* ============ LEFT COLUMN (45%) ============ */}
+      <section className="flex h-full flex-col bg-black lg:w-[45%] lg:min-w-[45%]">
+        {/* Top row — empty left, "Skip for now" right */}
+        <div className="flex items-start justify-end px-6 pt-6 sm:px-10 sm:pt-8">
+          <button
+            type="button"
+            onClick={skip}
+            className="text-xs text-muted-foreground/70 transition-colors hover:text-foreground"
           >
-            {step === 3 ? "Enter Autumn" : "Continue"}
-            {step === 3 ? (
-              <Sparkles className="size-4" />
-            ) : (
-              <ArrowRight className="size-4" />
-            )}
-          </Button>
+            Skip for now
+          </button>
         </div>
-      </footer>
+
+        {/* Middle — heading + subtitle + options, top-aligned */}
+        <div className="flex flex-1 flex-col justify-start px-6 pt-10 sm:px-10 sm:pt-16">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <h2 className="mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {current.title}
+              </h2>
+              <p className="mb-8 text-sm text-muted-foreground">
+                {current.subtitle}
+              </p>
+
+              {/* Option buttons — single row, label-only, centered text */}
+              <div className={cn("grid gap-2.5", gridCols)}>
+                <StepOptions
+                  step={step}
+                  data={data}
+                  setField={setField}
+                  toggleTool={toggleTool}
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Bottom — thin progress bar + step counter + "Tap to continue" */}
+        <div className="px-6 pb-6 pt-4 sm:px-10 sm:pb-8">
+          <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="font-mono tabular-nums text-foreground/60">
+              {step + 1} / 4
+            </span>
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={!stepComplete}
+              className={cn(
+                "transition-colors",
+                stepComplete
+                  ? "text-amber-300 hover:text-amber-200"
+                  : "text-muted-foreground/50",
+              )}
+            >
+              {stepComplete
+                ? step === 3
+                  ? "Tap to enter Autumn →"
+                  : "Tap to continue →"
+                : "Select an option to continue"}
+            </button>
+          </div>
+          <div className="h-[3px] w-full overflow-hidden rounded-full bg-border/40">
+            <motion.div
+              className="h-full rounded-full bg-amber-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${((step + 1) / 4) * 100}%` }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ============ RIGHT COLUMN (55%) — app-window mockup ============ */}
+      <section className="relative flex h-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#141821] via-[#0f1218] to-[#0a0d12] lg:w-[55%] lg:min-w-[55%]">
+        {/* subtle top glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 left-1/2 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-amber-500/[0.06] blur-3xl"
+        />
+        <div className="relative z-10 flex w-full items-center justify-center px-6 py-12 sm:px-12">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="flex w-full justify-center"
+            >
+              <AppMockup step={step} data={data} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </section>
     </motion.div>
   );
 }
