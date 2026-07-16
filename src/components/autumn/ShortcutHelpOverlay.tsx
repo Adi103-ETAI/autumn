@@ -39,7 +39,7 @@ const GROUPS: ShortcutGroup[] = [
   {
     title: "Global",
     icon: Command,
-    color: "text-violet-300",
+    color: "text-amber-300",
     items: [
       { keys: ["⌘", "K"], label: "Open command palette" },
       { keys: ["⌘", "F"], label: "Search canvas nodes" },
@@ -63,7 +63,7 @@ const GROUPS: ShortcutGroup[] = [
   {
     title: "Canvas",
     icon: Workflow,
-    color: "text-violet-300",
+    color: "text-amber-300",
     items: [
       { keys: ["A"], label: "Auto-arrange nodes (tiered layout)" },
       { keys: ["F"], label: "Fit view to all nodes" },
@@ -87,7 +87,7 @@ export function ShortcutHelpOverlay() {
       <DialogContent className="max-w-2xl bg-card/95 backdrop-blur-md border-border/60">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Keyboard className="size-4 text-violet-400" />
+            <Keyboard className="size-4 text-amber-400" />
             <span>Keyboard shortcuts</span>
           </DialogTitle>
           <DialogDescription className="text-xs">

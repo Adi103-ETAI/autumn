@@ -128,12 +128,12 @@ export default function Home() {
     tab === "commander" && selectedNodeId && selectedNode?.kind === "chat";
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
       <TopBar />
       <div className="flex-1 flex overflow-hidden">
         <Dock />
         <LeftSidebar />
-        <main className="flex-1 relative overflow-hidden">
+        <main className="flex-1 min-w-0 relative overflow-hidden">
           <CanvasView />
           <FloatingTopBar />
           <VoiceMicButton />

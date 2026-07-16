@@ -186,7 +186,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
             className={cn(
               "size-1.5 rounded-full",
               data.status === "working" && "bg-emerald-400 animate-pulse",
-              data.status === "thinking" && "bg-violet-400 animate-pulse",
+              data.status === "thinking" && "bg-amber-400 animate-pulse",
               data.status === "done" && "bg-zinc-400",
               data.status === "idle" && "bg-zinc-500",
               data.status === "error" && "bg-rose-500",
@@ -207,7 +207,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
             icon={MessageSquare}
             label="msgs"
             value={data.messages.length}
-            color="text-violet-300"
+            color="text-amber-300"
           />
           <StatChip
             icon={ArrowUpRight}
@@ -225,7 +225,7 @@ export function AgentChatPanel({ nodeId }: { nodeId: string }) {
             icon={Timer}
             label="avg run"
             value={avgRunMs !== null ? formatAvgDuration(avgRunMs) : "—"}
-            color="text-violet-300"
+            color="text-amber-300"
             mono
           />
           <StatChip
@@ -365,7 +365,7 @@ function MessageBubble({
             {isPeer && " → message_peer"}
           </div>
         )}
-        <div className="prose prose-sm prose-invert max-w-none [&_code]:text-violet-300 [&_code]:bg-violet-500/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono [&_pre]:bg-muted/40 [&_pre]:border [&_pre]:border-border/40 [&_pre]:rounded-md [&_pre]:p-2 [&_pre]:text-[11px] [&_pre]:overflow-x-auto">
+        <div className="prose prose-sm prose-invert max-w-none [&_code]:text-amber-300 [&_code]:bg-amber-500/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono [&_pre]:bg-muted/40 [&_pre]:border [&_pre]:border-border/40 [&_pre]:rounded-md [&_pre]:p-2 [&_pre]:text-[11px] [&_pre]:overflow-x-auto">
           <ReactMarkdown>{message.text || "…"}</ReactMarkdown>
         </div>
         {/* Message timestamp */}

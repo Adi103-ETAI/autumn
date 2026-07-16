@@ -245,8 +245,8 @@ export function VoiceMicButton() {
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="pointer-events-auto mb-1 max-w-xs rounded-xl border border-violet-500/30 bg-zinc-900/95 px-3 py-2 shadow-lg shadow-black/40 backdrop-blur"
           >
-            <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-violet-300">
-              <span className="size-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
+              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
               Listening…
             </div>
             <p className="mt-1 max-h-24 overflow-y-auto text-sm leading-snug text-zinc-100 autumn-scroll">
@@ -285,7 +285,7 @@ export function VoiceMicButton() {
         {showListeningUI && (
           <motion.span
             aria-hidden
-            className="absolute -inset-1 rounded-full bg-violet-500/20"
+            className="absolute -inset-1 rounded-full bg-amber-500/20"
             animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.8, 0.5] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -299,18 +299,18 @@ export function VoiceMicButton() {
           aria-pressed={showListeningUI}
           title={tooltip}
           className={cn(
-            "relative flex size-12 items-center justify-center rounded-full border backdrop-blur transition-colors outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60",
+            "relative flex size-12 items-center justify-center rounded-full border backdrop-blur transition-colors outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
             showListeningUI
-              ? "border-violet-400/60 bg-violet-500/20 text-violet-300 shadow-lg "
+              ? "border-violet-400/60 bg-amber-500/20 text-amber-300 shadow-lg "
               : voiceEnabled
-                ? "border-border/70 bg-zinc-900/80 text-zinc-200 hover:border-violet-400/50 hover:text-violet-300 shadow-lg shadow-black/30"
-                : "border-border/70 bg-zinc-900/80 text-zinc-300 hover:text-violet-300 hover:border-violet-400/50 shadow-lg shadow-black/30",
+                ? "border-border/70 bg-zinc-900/80 text-zinc-200 hover:border-violet-400/50 hover:text-amber-300 shadow-lg shadow-black/30"
+                : "border-border/70 bg-zinc-900/80 text-zinc-300 hover:text-amber-300 hover:border-violet-400/50 shadow-lg shadow-black/30",
           )}
         >
           <Mic
             className={cn(
               "size-5",
-              showListeningUI && "animate-pulse text-violet-300",
+              showListeningUI && "animate-pulse text-amber-300",
             )}
           />
 
@@ -318,7 +318,7 @@ export function VoiceMicButton() {
           {!voiceEnabled && (
             <span
               aria-hidden
-              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-bold text-black shadow-md shadow-violet-500/40 ring-2 ring-zinc-950"
+              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-black shadow-md shadow-violet-500/40 ring-2 ring-zinc-950"
             >
               1
             </span>

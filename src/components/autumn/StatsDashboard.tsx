@@ -46,24 +46,24 @@ function relTime(ts: number): string {
 const KIND_META: Partial<
   Record<ActivityEntry["kind"], { icon: LucideIcon; color: string }>
 > = {
-  commander_plan: { icon: Sparkles, color: "text-violet-400" },
+  commander_plan: { icon: Sparkles, color: "text-amber-400" },
   agent_status: { icon: Bot, color: "text-fuchsia-400" },
   agent_message: { icon: Bot, color: "text-emerald-400" },
-  bus_message_peer: { icon: Cable, color: "text-violet-300" },
+  bus_message_peer: { icon: Cable, color: "text-amber-300" },
   task_claim: { icon: ListChecks, color: "text-sky-400" },
   task_complete: { icon: CheckCircle2, color: "text-emerald-400" },
   task_add: { icon: Plus, color: "text-orange-400" },
-  node_added: { icon: Plus, color: "text-violet-400" },
+  node_added: { icon: Plus, color: "text-amber-400" },
   node_removed: { icon: Trash2, color: "text-rose-400" },
   edge_added: { icon: Cable, color: "text-emerald-400" },
   edge_removed: { icon: Trash2, color: "text-rose-400" },
-  canvas_saved: { icon: Save, color: "text-violet-300" },
+  canvas_saved: { icon: Save, color: "text-amber-300" },
   canvas_loaded: { icon: FolderOpen, color: "text-sky-400" },
   canvas_cleared: { icon: Eraser, color: "text-rose-400" },
-  duplicate_node: { icon: Copy, color: "text-violet-300" },
+  duplicate_node: { icon: Copy, color: "text-amber-300" },
   search: { icon: Search, color: "text-emerald-400" },
   agent_session_start: { icon: Play, color: "text-emerald-400" },
-  agent_session_stop: { icon: Square, color: "text-violet-400" },
+  agent_session_stop: { icon: Square, color: "text-amber-400" },
 };
 
 // ---------- component ----------
@@ -170,7 +170,7 @@ export function StatsDashboard() {
       {/* Header */}
       <div className="p-3 border-b border-border/50 space-y-2">
         <div className="flex items-center gap-2 text-xs">
-          <BarChart3 className="size-3.5 text-violet-400" />
+          <BarChart3 className="size-3.5 text-amber-400" />
           <span className="font-medium">Workspace Stats</span>
           <Badge variant="outline" className="text-[9px] h-4 px-1 ml-auto">
             live
@@ -262,7 +262,7 @@ export function StatsDashboard() {
         {chatNodes.length > 0 && (
           <div className="rounded-lg border border-border/50 bg-muted/30 backdrop-blur overflow-hidden">
             <div className="px-3 py-2 border-b border-border/50 flex items-center gap-1.5">
-              <Bot className="size-3 text-violet-400" />
+              <Bot className="size-3 text-amber-400" />
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 Agent Performance
               </span>
@@ -311,7 +311,7 @@ export function StatsDashboard() {
                       <td className="text-center px-2 py-1.5 tabular-nums text-sky-300">
                         {a.handoffsSent}
                       </td>
-                      <td className="text-center px-2 py-1.5 tabular-nums text-violet-300">
+                      <td className="text-center px-2 py-1.5 tabular-nums text-amber-300">
                         {a.handoffsRecv}
                       </td>
                       <td className="text-right px-3 py-1.5 tabular-nums text-muted-foreground">
@@ -329,7 +329,7 @@ export function StatsDashboard() {
         {heatmapAgents.length >= 2 && (
           <div className="rounded-lg border border-border/50 bg-muted/30 backdrop-blur overflow-hidden">
             <div className="px-3 py-2 border-b border-border/50 flex items-center gap-1.5">
-              <Cable className="size-3 text-violet-400" />
+              <Cable className="size-3 text-amber-400" />
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                 Bus Activity Heatmap
               </span>
@@ -454,15 +454,15 @@ export function StatsDashboard() {
         {/* Empty state when no agents */}
         {chatNodes.length === 0 && (
           <div className="text-center text-xs text-muted-foreground py-8 px-4">
-            <div className="size-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
-              <BarChart3 className="size-5 text-violet-400/70" />
+            <div className="size-12 rounded-2xl bg-amber-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
+              <BarChart3 className="size-5 text-amber-400/70" />
             </div>
             <div className="font-medium text-foreground/80 mb-1">
               No agents on the canvas
             </div>
             <div className="text-[10px] text-muted-foreground/70 leading-relaxed max-w-[220px] mx-auto">
               Add agents to the canvas or ask the Commander to{" "}
-              <span className="text-violet-300/80">"add a chat node"</span>.
+              <span className="text-amber-300/80">"add a chat node"</span>.
             </div>
           </div>
         )}
@@ -488,13 +488,13 @@ function OverviewCard({
 }) {
   const accentColors = {
     emerald: "bg-emerald-500/5 border-emerald-500/20",
-    amber: "bg-violet-500/5 border-violet-500/20",
-    violet: "bg-violet-500/5 border-violet-500/20",
+    amber: "bg-amber-500/5 border-violet-500/20",
+    violet: "bg-amber-500/5 border-violet-500/20",
   };
   const accentText = {
     emerald: "text-emerald-400",
-    amber: "text-violet-300",
-    violet: "text-violet-300",
+    amber: "text-amber-300",
+    violet: "text-amber-300",
   };
 
   return (

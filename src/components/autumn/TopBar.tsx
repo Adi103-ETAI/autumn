@@ -95,7 +95,7 @@ export function TopBar() {
           <input
             value={canvasName}
             onChange={(e) => setCanvasName(e.target.value)}
-            className="bg-transparent text-sm font-medium pl-2 pr-7 py-1 rounded-md hover:bg-accent/40 focus:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-violet-500/40 transition-colors w-56"
+            className="bg-transparent text-sm font-medium pl-2 pr-7 py-1 rounded-md hover:bg-accent/40 focus:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors w-56"
             aria-label="Canvas name"
           />
           <Pencil className="size-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity absolute right-2 pointer-events-none" />
@@ -158,7 +158,7 @@ export function TopBar() {
         >
           <Bell className={cn("size-4", busHistory.length > 0 && "notification-bell-pulse")} />
           {busHistory.length > 0 && (
-            <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-violet-600 text-[7px] font-bold text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-amber-500 text-[7px] font-bold text-white flex items-center justify-center">
               {busHistory.length > 9 ? "9+" : busHistory.length}
             </span>
           )}
@@ -207,7 +207,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 h-8"
+          className="gap-1.5 text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 h-8"
           onClick={() => void handleSave()}
           disabled={isSaving}
         >

@@ -56,7 +56,7 @@ export function HelpDialog() {
             agents (Atlas, Apollo, Orion, Juno, …) on the canvas, connects
             them with bus edges, and assigns each their part of the work.
             Connected agents coordinate via the{" "}
-            <code className="text-violet-300">message_peer</code> bus tool.
+            <code className="text-amber-300">message_peer</code> bus tool.
           </DialogDescription>
         </DialogHeader>
 
@@ -66,7 +66,7 @@ export function HelpDialog() {
               icon={Sparkles}
               title="Commander"
               desc="Natural language → DO_ACTIONS plan. Try voice or text."
-              color="text-violet-400"
+              color="text-amber-400"
             />
             <Feature
               icon={Bot}
@@ -101,9 +101,9 @@ export function HelpDialog() {
                     setPendingCommand(ex.text);
                     setShow(false);
                   }}
-                  className="w-full text-left rounded-md border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-violet-500/40 px-3 py-2 transition-colors group"
+                  className="w-full text-left rounded-md border border-border/50 bg-muted/20 hover:bg-muted/40 hover:border-amber-500/40 px-3 py-2 transition-colors group"
                 >
-                  <div className="text-sm font-medium text-violet-200 group-hover:text-violet-100">
+                  <div className="text-sm font-medium text-amber-200 group-hover:text-amber-100">
                     "{ex.text}"
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">

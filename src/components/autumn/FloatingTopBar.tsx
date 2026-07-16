@@ -49,7 +49,7 @@ export function FloatingTopBar() {
       label: "Browser",
       icon: Globe,
       accent:
-        "text-violet-300 hover:bg-violet-500/10 hover:text-violet-200",
+        "text-amber-300 hover:bg-amber-500/10 hover:text-amber-200",
       onClick: () => addNode({ kind: "youtube" }),
     },
     {
@@ -150,9 +150,9 @@ export function FloatingTopBar() {
             onClick={() => setAiFinderOpen(true)}
             className={cn(
               "h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium",
-              "border-violet-500/40 bg-violet-500/5",
-              "text-violet-300 hover:text-violet-200",
-              "hover:bg-violet-500/10 hover:border-violet-500/60",
+              "border-amber-500/40 bg-amber-500/5",
+              "text-amber-300 hover:text-amber-200",
+              "hover:bg-amber-500/10 hover:border-amber-500/60",
             )}
             title="Open AI Finder"
           >

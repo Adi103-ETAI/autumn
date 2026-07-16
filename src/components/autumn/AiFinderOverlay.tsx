@@ -43,8 +43,8 @@ const KIND_META: Record<
 > = {
   file: {
     icon: File,
-    color: "text-violet-300",
-    bg: "bg-violet-500/10 border-violet-500/30",
+    color: "text-amber-300",
+    bg: "bg-amber-500/10 border-violet-500/30",
     label: "file",
   },
   node: {
@@ -55,8 +55,8 @@ const KIND_META: Record<
   },
   skill: {
     icon: Sparkles,
-    color: "text-violet-300",
-    bg: "bg-violet-500/10 border-violet-500/30",
+    color: "text-amber-300",
+    bg: "bg-amber-500/10 border-violet-500/30",
     label: "skill",
   },
   task: {
@@ -166,7 +166,7 @@ export function AiFinderOverlay() {
 
         {/* Search bar */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50 pr-12">
-          <Search className="size-4 text-violet-400 shrink-0" />
+          <Search className="size-4 text-amber-400 shrink-0" />
           <Input
             ref={inputRef}
             value={localQ}
@@ -182,7 +182,7 @@ export function AiFinderOverlay() {
             autoComplete="off"
           />
           {isSearching ? (
-            <Loader2 className="size-4 animate-spin text-violet-400/70 shrink-0" />
+            <Loader2 className="size-4 animate-spin text-amber-400/70 shrink-0" />
           ) : (
             hasResults && (
               <Badge
@@ -200,8 +200,8 @@ export function AiFinderOverlay() {
           {!hasQuery ? (
             /* No query yet — show suggested searches */
             <div className="px-4 py-6 flex flex-col items-center text-center gap-3">
-              <div className="size-10 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center">
-                <Search className="size-4 text-violet-300" />
+              <div className="size-10 rounded-full bg-amber-500/10 border border-violet-500/30 flex items-center justify-center">
+                <Search className="size-4 text-amber-300" />
               </div>
               <div className="text-sm text-muted-foreground">
                 Ask anything — files, agents, skills, tasks.
@@ -218,9 +218,9 @@ export function AiFinderOverlay() {
                     onClick={() => setLocalQ(s)}
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-medium",
-                      "border border-violet-500/30 bg-violet-500/5",
-                      "text-violet-200 hover:text-violet-100",
-                      "hover:bg-violet-500/10 hover:border-violet-500/50",
+                      "border border-violet-500/30 bg-amber-500/5",
+                      "text-amber-200 hover:text-amber-100",
+                      "hover:bg-amber-500/10 hover:border-amber-500/50",
                       "transition-colors",
                     )}
                   >
@@ -285,7 +285,7 @@ export function AiFinderOverlay() {
                           <span
                             className={cn(
                               "font-mono text-[11px] truncate",
-                              isActive ? "text-violet-100" : "text-foreground/90",
+                              isActive ? "text-amber-100" : "text-foreground/90",
                             )}
                           >
                             {r.path}
@@ -317,7 +317,7 @@ export function AiFinderOverlay() {
 
                       {/* Active-row affordance */}
                       {isActive && (
-                        <CornerDownLeft className="size-3 text-violet-400 shrink-0 mt-1" />
+                        <CornerDownLeft className="size-3 text-amber-400 shrink-0 mt-1" />
                       )}
                     </motion.button>
                   </li>
@@ -342,7 +342,7 @@ export function AiFinderOverlay() {
             close
           </span>
           <div className="flex-1" />
-          <span className="font-mono text-violet-400/70">AI Finder</span>
+          <span className="font-mono text-amber-400/70">AI Finder</span>
         </div>
       </DialogContent>
     </Dialog>

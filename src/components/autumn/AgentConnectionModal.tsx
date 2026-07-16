@@ -26,9 +26,9 @@ import {
 const AGENT_ICON_COLORS: Record<string, string> = {
   "claude-code": "bg-orange-500/20 text-orange-300",
   codex: "bg-emerald-500/20 text-emerald-300",
-  cursor: "bg-violet-500/20 text-violet-300",
+  cursor: "bg-amber-500/20 text-amber-300",
   grok: "bg-zinc-500/20 text-zinc-300",
-  opencode: "bg-violet-500/20 text-violet-300",
+  opencode: "bg-amber-500/20 text-amber-300",
   hermes: "bg-rose-500/20 text-rose-300",
   cline: "bg-teal-500/20 text-teal-300",
   pi: "bg-fuchsia-500/20 text-fuchsia-300",
@@ -187,7 +187,7 @@ export function AgentConnectionModal() {
                 className={cn(
                   "gap-2 px-6 shrink-0",
                   hasConnected
-                    ? "bg-violet-600 hover:bg-violet-500 text-white border-0"
+                    ? "bg-amber-500 hover:bg-amber-600 text-white border-0"
                     : "bg-white/5 text-white/30 border-0",
                 )}
               >
@@ -275,7 +275,7 @@ function StatusButton({
         variant="outline"
         size="sm"
         disabled
-        className="gap-1.5 border-violet-500/40 text-violet-300 bg-violet-500/10 shrink-0 cursor-wait"
+        className="gap-1.5 border-amber-500/40 text-amber-300 bg-amber-500/10 shrink-0 cursor-wait"
       >
         <Loader2 className="size-3.5 animate-spin" />
         Waiting...
@@ -308,7 +308,7 @@ function StatusButton({
       variant="outline"
       size="sm"
       onClick={onSignIn}
-      className="gap-1.5 border-violet-500/40 text-violet-300 hover:bg-violet-500/15 hover:text-violet-200 shrink-0"
+      className="gap-1.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/15 hover:text-amber-200 shrink-0"
     >
       <LogIn className="size-3.5" />
       Sign in

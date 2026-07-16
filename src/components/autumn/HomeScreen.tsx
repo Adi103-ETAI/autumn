@@ -302,10 +302,10 @@ export function HomeScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 + i * 0.08, duration: 0.4, ease: "easeOut" }}
                 onClick={() => handleEntryClick(entry.key)}
-                className="group text-left rounded-xl border border-white/5 bg-[#1a202c] hover:border-violet-500/40 hover:bg-violet-500/5 p-5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
+                className="group text-left rounded-xl border border-white/5 bg-[#1a202c] hover:border-amber-500/40 hover:bg-amber-500/5 p-5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
               >
                 <div className="flex items-start gap-4">
-                  <div className="flex items-center justify-center size-10 shrink-0 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400 transition-colors group-hover:bg-violet-500/15 group-hover:text-violet-300">
+                  <div className="flex items-center justify-center size-10 shrink-0 rounded-lg bg-amber-500/10 border border-violet-500/20 text-amber-400 transition-colors group-hover:bg-amber-500/15 group-hover:text-amber-300">
                     <entry.icon className="size-5" />
                   </div>
                   <div className="min-w-0">
@@ -350,7 +350,7 @@ export function HomeScreen() {
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <Button
                   size="sm"
-                  className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
+                  className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
                   onClick={() => createBlankWorkspace()}
                 >
                   <Plus className="size-4" />
@@ -398,7 +398,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FolderOpen className="size-4 text-violet-400" />
+              <FolderOpen className="size-4 text-amber-400" />
               Open folder
             </DialogTitle>
             <DialogDescription>
@@ -420,7 +420,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
+              className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
               onClick={submitFolder}
             >
               <FolderOpen className="size-4" />
@@ -435,7 +435,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Github className="size-4 text-violet-400" />
+              <Github className="size-4 text-amber-400" />
               Clone repository
             </DialogTitle>
             <DialogDescription>
@@ -456,7 +456,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
+              className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
               onClick={submitRepo}
             >
               <GitBranch className="size-4" />
@@ -471,7 +471,7 @@ export function HomeScreen() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LinkIcon className="size-4 text-violet-400" />
+              <LinkIcon className="size-4 text-amber-400" />
               Open from link
             </DialogTitle>
             <DialogDescription>
@@ -496,7 +496,7 @@ export function HomeScreen() {
               Cancel
             </Button>
             <Button
-              className="gap-1.5 bg-violet-600 hover:bg-violet-500 text-white border-0"
+              className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
               onClick={submitLink}
             >
               <LinkIcon className="size-4" />
@@ -529,7 +529,7 @@ function WorkspaceCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 + index * 0.05, duration: 0.35, ease: "easeOut" }}
       onClick={onOpen}
-      className="group relative rounded-lg border border-white/5 bg-[#1a202c] hover:border-violet-500/40 hover:bg-violet-500/5 p-4 transition-all cursor-pointer"
+      className="group relative rounded-lg border border-white/5 bg-[#1a202c] hover:border-amber-500/40 hover:bg-amber-500/5 p-4 transition-all cursor-pointer"
     >
       {/* Remove (X) button on hover */}
       <button
@@ -544,7 +544,7 @@ function WorkspaceCard({
 
       {/* Top row: kind icon + name */}
       <div className="flex items-center gap-2.5 pr-6">
-        <div className="flex items-center justify-center size-7 shrink-0 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-400">
+        <div className="flex items-center justify-center size-7 shrink-0 rounded-md bg-amber-500/10 border border-violet-500/20 text-amber-400">
           <Icon className="size-3.5" />
         </div>
         <div className="min-w-0 text-sm font-medium text-foreground truncate">

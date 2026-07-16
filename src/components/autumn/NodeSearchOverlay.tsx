@@ -118,10 +118,10 @@ export function NodeSearchOverlay() {
       role="dialog"
       aria-label="Search canvas nodes"
     >
-      <div className="rounded-xl border border-violet-500/40 bg-card/95 backdrop-blur-xl shadow-2xl shadow-violet-500/10 overflow-hidden">
+      <div className="rounded-xl border border-amber-500/40 bg-card/95 backdrop-blur-xl shadow-2xl shadow-violet-500/10 overflow-hidden">
         {/* Search bar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-          <Search className="size-4 text-violet-400" />
+          <Search className="size-4 text-amber-400" />
           <Input
             ref={inputRef}
             value={localQ}
@@ -179,7 +179,7 @@ export function NodeSearchOverlay() {
                       className={cn(
                         "w-full text-left flex items-center gap-2.5 px-3 py-1.5 transition-colors",
                         i === activeIdx
-                          ? "bg-violet-500/15 ring-1 ring-violet-500/30"
+                          ? "bg-amber-500/15 ring-1 ring-amber-500/40"
                           : "hover:bg-accent/30",
                       )}
                     >
@@ -213,7 +213,7 @@ export function NodeSearchOverlay() {
                         </Badge>
                       )}
                       {i === activeIdx && (
-                        <CornerDownLeft className="size-3 text-violet-400" />
+                        <CornerDownLeft className="size-3 text-amber-400" />
                       )}
                     </button>
                   </li>

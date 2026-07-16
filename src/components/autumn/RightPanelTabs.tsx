@@ -34,7 +34,7 @@ export function RightPanelTabs() {
             <Sparkles className="size-3" />
             <span>Commander</span>
             {selectedNodeId && tab !== "commander" && (
-              <span className="size-1.5 rounded-full bg-violet-400 animate-pulse" />
+              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
             )}
           </TabsTrigger>
           <TabsTrigger value="tasks" className="text-xs gap-1.5">
@@ -44,7 +44,7 @@ export function RightPanelTabs() {
               className={cn(
                 "text-[9px] tabular-nums rounded-full px-1 ml-0.5",
                 tasks.length > 0
-                  ? "bg-violet-500/20 text-violet-300"
+                  ? "bg-amber-500/20 text-amber-300"
                   : "text-muted-foreground/50",
               )}
             >
@@ -65,7 +65,7 @@ export function RightPanelTabs() {
               className={cn(
                 "text-[9px] tabular-nums rounded-full px-1 ml-0.5",
                 totalRuns > 0
-                  ? "bg-violet-500/20 text-violet-300"
+                  ? "bg-amber-500/20 text-amber-300"
                   : "text-muted-foreground/50",
               )}
             >

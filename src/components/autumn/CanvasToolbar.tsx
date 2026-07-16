@@ -143,7 +143,7 @@ export function CanvasToolbar() {
             label="Add note"
             onClick={() => addNode({ kind: "sticky" })}
             icon={StickyNote}
-            color="text-violet-400"
+            color="text-amber-400"
           />
         </div>
 
@@ -171,7 +171,7 @@ export function CanvasToolbar() {
             label="Fit view"
             onClick={() => fitView({ padding: 0.2, duration: 400 })}
             icon={Maximize2}
-            color="text-violet-400"
+            color="text-amber-400"
           />
           {/* Scenic background picker */}
           <BackgroundPicker />
@@ -196,7 +196,7 @@ export function CanvasToolbar() {
                 ids.forEach((id) => store.duplicateNode(id));
               }}
               icon={Copy}
-              color="text-violet-300"
+              color="text-amber-300"
             />
             <ToolbarButton
               label="Remove all selected"
@@ -309,7 +309,7 @@ function ZoomChip() {
         <button
           type="button"
           onClick={() => zoomTo(1, { duration: 300 })}
-          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-violet-500/50 hover:text-violet-300"
+          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
           aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
         >
           <ZoomIn className="size-2.5" />

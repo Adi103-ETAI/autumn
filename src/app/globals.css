@@ -80,38 +80,38 @@
 }
 
 .dark {
-  /* Autumn — October-inspired: pure black + cool slate + purple primary */
-  --background: oklch(0.005 0.002 260);        /* near-pure black, faint cool tint */
-  --foreground: oklch(0.96 0.005 260);          /* cool white */
-  --card: oklch(0.055 0.006 260);              /* #0f1419 near-black slate */
-  --card-foreground: oklch(0.96 0.005 260);
-  --popover: oklch(0.07 0.007 260);            /* #161b22 */
-  --popover-foreground: oklch(0.96 0.005 260);
-  --primary: oklch(0.6 0.19 285);              /* purple #805ad5 */
-  --primary-foreground: oklch(0.98 0.004 260);
-  --secondary: oklch(0.16 0.009 255);          /* dark slate #2d3748 */
-  --secondary-foreground: oklch(0.96 0.005 260);
-  --muted: oklch(0.13 0.007 260);              /* #1a202c */
-  --muted-foreground: oklch(0.63 0.012 258);   /* #a0aec0 light gray */
-  --accent: oklch(0.18 0.025 285);             /* subtle purple tint */
-  --accent-foreground: oklch(0.96 0.005 260);
-  --destructive: oklch(0.64 0.22 25);
-  --border: oklch(0.2 0.008 260 / 45%);
-  --input: oklch(0.16 0.008 260 / 70%);
-  --ring: oklch(0.6 0.19 285 / 50%);
-  --chart-1: oklch(0.6 0.19 285);              /* purple */
-  --chart-2: oklch(0.7 0.17 55);               /* orange */
-  --chart-3: oklch(0.68 0.16 185);             /* teal */
-  --chart-4: oklch(0.72 0.18 145);             /* emerald */
-  --chart-5: oklch(0.65 0.22 16);              /* red-orange */
-  --sidebar: oklch(0.02 0.003 260);            /* pure black sidebar */
-  --sidebar-foreground: oklch(0.96 0.005 260);
-  --sidebar-primary: oklch(0.6 0.19 285);      /* purple */
-  --sidebar-primary-foreground: oklch(0.98 0.004 260);
-  --sidebar-accent: oklch(0.14 0.009 260);
-  --sidebar-accent-foreground: oklch(0.96 0.005 260);
-  --sidebar-border: oklch(0.2 0.008 260 / 45%);
-  --sidebar-ring: oklch(0.6 0.19 285 / 50%);
+  /* Autumn — pure black bg (no glow) + amber/orange brand accents */
+  --background: oklch(0.005 0.002 55);        /* near-pure black, faint warm tint */
+  --foreground: oklch(0.96 0.008 60);          /* warm white */
+  --card: oklch(0.07 0.006 55);               /* dark slate */
+  --card-foreground: oklch(0.96 0.008 60);
+  --popover: oklch(0.09 0.007 55);
+  --popover-foreground: oklch(0.96 0.008 60);
+  --primary: oklch(0.78 0.18 55);             /* amber — Autumn brand */
+  --primary-foreground: oklch(0.16 0.02 55);
+  --secondary: oklch(0.16 0.009 55);
+  --secondary-foreground: oklch(0.96 0.008 60);
+  --muted: oklch(0.13 0.007 55);
+  --muted-foreground: oklch(0.65 0.012 60);
+  --accent: oklch(0.2 0.03 45);               /* warm orange accent */
+  --accent-foreground: oklch(0.97 0.01 55);
+  --destructive: oklch(0.68 0.22 22);
+  --border: oklch(0.22 0.01 55 / 45%);
+  --input: oklch(0.18 0.01 55 / 70%);
+  --ring: oklch(0.78 0.18 55 / 55%);
+  --chart-1: oklch(0.7 0.2 41);
+  --chart-2: oklch(0.68 0.17 185);
+  --chart-3: oklch(0.62 0.22 280);
+  --chart-4: oklch(0.78 0.19 84);
+  --chart-5: oklch(0.72 0.22 16);
+  --sidebar: oklch(0.02 0.003 55);            /* pure black sidebar */
+  --sidebar-foreground: oklch(0.96 0.008 60);
+  --sidebar-primary: oklch(0.78 0.18 55);
+  --sidebar-primary-foreground: oklch(0.16 0.02 55);
+  --sidebar-accent: oklch(0.16 0.009 55);
+  --sidebar-accent-foreground: oklch(0.96 0.008 60);
+  --sidebar-border: oklch(0.22 0.01 55 / 45%);
+  --sidebar-ring: oklch(0.78 0.18 55 / 55%);
 }
 
 @layer base {
@@ -127,7 +127,7 @@
     /* October-inspired: pure black, no warm ambient glows.
        Single very faint cool vignette for depth only. */
     background-image:
-      radial-gradient(at 50% 0%, oklch(0.18 0.02 265 / 0.025) 0px, transparent 55%);
+      radial-gradient(at 50% 0%, oklch(0.78 0.18 55 / 0.02) 0px, transparent 55%);
     background-attachment: fixed;
   }
 }
@@ -136,7 +136,7 @@
 .autumn-canvas {
   --xy-background-color: transparent;
   --xy-edge-stroke-default: oklch(0.5 0.06 55 / 0.5);
-  --xy-edge-stroke-selected-default: oklch(0.6 0.19 285);
+  --xy-edge-stroke-selected-default: oklch(0.78 0.18 55);
   --xy-edge-stroke-width-default: 1.5;
   --xy-controls-button-background-color: oklch(0.2 0.01 55 / 80%);
   --xy-controls-button-background-color-hover: oklch(0.28 0.04 45);
@@ -157,7 +157,7 @@
 .react-flow__handle {
   width: 8px;
   height: 8px;
-  background: oklch(0.6 0.19 285);
+  background: oklch(0.78 0.18 55);
   border: 2px solid oklch(0.16 0.02 55);
 }
 
@@ -194,8 +194,8 @@
 
 /* Subtle ring for active agents — calm, no heavy glow */
 @keyframes agent-glow {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(0.6 0.19 285 / 0); }
-  50% { box-shadow: 0 0 0 1px oklch(0.6 0.19 285 / 0.25); }
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0); }
+  50% { box-shadow: 0 0 0 1px oklch(0.78 0.18 55 / 0.25); }
 }
 .agent-active {
   animation: agent-glow 3s ease-in-out infinite;
@@ -281,7 +281,7 @@
 
 /* Gradient text helper — purple/violet calm */
 .gradient-text-amber {
-  background: linear-gradient(135deg, oklch(0.65 0.2 285), oklch(0.6 0.18 265));
+  background: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.6 0.18 265));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -303,7 +303,7 @@
 
 /* Selected node — subtle ring, no heavy drop-shadow glow */
 .react-flow__node.selected {
-  filter: drop-shadow(0 0 0 oklch(0.6 0.19 285 / 0));
+  filter: drop-shadow(0 0 0 oklch(0.78 0.18 55 / 0));
 }
 
 /* Node drag cursor */
@@ -322,12 +322,12 @@
 
 /* Edge label hover */
 .react-flow__edge:hover .react-flow__edge-text {
-  fill: oklch(0.6 0.19 285);
+  fill: oklch(0.78 0.18 55);
 }
 
 /* Connection line styling */
 .react-flow__connectionline .react-flow__edge-path {
-  stroke: oklch(0.6 0.19 285);
+  stroke: oklch(0.78 0.18 55);
   stroke-width: 2;
   stroke-dasharray: 4 4;
 }
@@ -344,7 +344,7 @@
 
 /* Custom focus ring */
 *:focus-visible {
-  outline: 2px solid oklch(0.6 0.19 285 / 0.6);
+  outline: 2px solid oklch(0.78 0.18 55 / 0.6);
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -479,14 +479,14 @@ kbd {
 
 /* Connector handle glow when source is in connect mode */
 .react-flow__node.connect-source .react-flow__handle-source {
-  box-shadow: 0 0 0 4px oklch(0.6 0.19 285 / 0.3);
+  box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3);
   animation: pulse-ring 1.4s ease-out infinite;
 }
 
 /* Subtle dotted border on empty-state CTA */
 .empty-cta {
   background-image: radial-gradient(
-    oklch(0.6 0.19 285 / 0.2) 1px,
+    oklch(0.78 0.18 55 / 0.2) 1px,
     transparent 1px
   );
   background-size: 10px 10px;
@@ -506,9 +506,9 @@ kbd {
 .gradient-text-animated {
   background: linear-gradient(
     90deg,
-    oklch(0.6 0.19 285),
+    oklch(0.78 0.18 55),
     oklch(0.7 0.22 16),
-    oklch(0.6 0.19 285)
+    oklch(0.78 0.18 55)
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -636,7 +636,7 @@ kbd {
 
 /* Bus edge label button hover ring */
 .react-flow__edge:hover button {
-  filter: drop-shadow(0 0 4px oklch(0.6 0.19 285 / 0.4));
+  filter: drop-shadow(0 0 4px oklch(0.78 0.18 55 / 0.4));
 }
 
 /* Inspector dialog fade-in */
@@ -659,7 +659,7 @@ kbd {
   transition: all 0.15s ease-out;
 }
 .quick-chip:hover {
-  box-shadow: 0 0 0 1px oklch(0.6 0.19 285 / 0.3), 0 4px 12px -4px oklch(0.6 0.19 285 / 0.2);
+  box-shadow: 0 0 0 1px oklch(0.78 0.18 55 / 0.3), 0 4px 12px -4px oklch(0.78 0.18 55 / 0.2);
 }
 
 /* Refined kbd element styling */
@@ -705,7 +705,7 @@ kbd {
 }
 .bus-traffic-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -4px oklch(0.6 0.19 285 / 0.25);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.25);
 }
 
 /* Persona glyph ring for running agents — refined */
@@ -722,7 +722,7 @@ kbd {
 /* Better focus ring for chat input textarea */
 textarea:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px oklch(0.6 0.19 285 / 0.4);
+  box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4);
 }
 
 /* Bus edge label — clickable affordance */
@@ -734,7 +734,7 @@ textarea:focus-visible {
 /* Empty state — larger dotted pattern variant */
 .empty-cta-lg {
   background-image: radial-gradient(
-    oklch(0.6 0.19 285 / 0.15) 1.5px,
+    oklch(0.78 0.18 55 / 0.15) 1.5px,
     transparent 1.5px
   );
   background-size: 14px 14px;
@@ -830,14 +830,14 @@ textarea:focus-visible {
   transform: translateY(-2px);
   background-image: linear-gradient(
     180deg,
-    oklch(0.6 0.19 285 / 0.14) 0%,
+    oklch(0.78 0.18 55 / 0.14) 0%,
     oklch(0.7 0.22 16 / 0.06) 100%
   );
-  box-shadow: 0 4px 10px -4px oklch(0.6 0.19 285 / 0.28);
+  box-shadow: 0 4px 10px -4px oklch(0.78 0.18 55 / 0.28);
 }
 .autumn-dock-btn:active {
   transform: scale(0.97);
-  box-shadow: 0 0 0 2px oklch(0.6 0.19 285 / 0.4);
+  box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4);
 }
 
 /* 5. chip-zoom-reset — border + box-shadow transition for the zoom chip on hover. */
@@ -849,7 +849,7 @@ textarea:focus-visible {
     background-color 0.15s ease-out;
 }
 .chip-zoom-reset:hover {
-  box-shadow: 0 4px 12px -4px oklch(0.6 0.19 285 / 0.4);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
 }
 
 /* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
@@ -866,9 +866,9 @@ textarea:focus-visible {
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    oklch(0.6 0.19 285 / 0.08) 0%,
-    oklch(0.6 0.19 285 / 0.22) 50%,
-    oklch(0.6 0.19 285 / 0.08) 100%
+    oklch(0.78 0.18 55 / 0.08) 0%,
+    oklch(0.78 0.18 55 / 0.22) 50%,
+    oklch(0.78 0.18 55 / 0.08) 100%
   );
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
@@ -895,8 +895,8 @@ textarea:focus-visible {
 }
 .chat-node-idle-glow:hover {
   box-shadow:
-    0 4px 16px -8px var(--persona-color, oklch(0.6 0.19 285 / 0.3)),
-    0 0 0 1px var(--persona-color, oklch(0.6 0.19 285 / 0.4));
+    0 4px 16px -8px var(--persona-color, oklch(0.78 0.18 55 / 0.3)),
+    0 0 0 1px var(--persona-color, oklch(0.78 0.18 55 / 0.4));
 }
 
 /* 10. status-dot-glow — small pulsing aura behind the status dot in ChatNode. */
@@ -947,8 +947,8 @@ textarea:focus-visible {
 
 /* Handle ring when in connect mode — source (subtle, no heavy glow) */
 @keyframes handle-glow-source {
-  0%, 100% { box-shadow: 0 0 0 2px oklch(0.6 0.19 285 / 0.4); }
-  50% { box-shadow: 0 0 0 3px oklch(0.6 0.19 285 / 0.25); }
+  0%, 100% { box-shadow: 0 0 0 2px oklch(0.78 0.18 55 / 0.4); }
+  50% { box-shadow: 0 0 0 3px oklch(0.78 0.18 55 / 0.25); }
 }
 .handle-glow-source {
   animation: handle-glow-source 1.8s ease-in-out infinite;
@@ -986,10 +986,10 @@ textarea:focus-visible {
   padding: 1px;
   background: conic-gradient(
     from var(--gradient-angle),
-    oklch(0.6 0.19 285 / 0.6),
+    oklch(0.78 0.18 55 / 0.6),
     oklch(0.7 0.22 16 / 0.4),
     oklch(0.62 0.2 280 / 0.3),
-    oklch(0.6 0.19 285 / 0.6)
+    oklch(0.78 0.18 55 / 0.6)
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -1009,10 +1009,10 @@ textarea:focus-visible {
    in CommanderPanel. */
 @keyframes commander-thinking-ring {
   0%, 100% {
-    box-shadow: 0 0 0 0 oklch(0.6 0.19 285 / 0.4);
+    box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.4);
   }
   50% {
-    box-shadow: 0 0 0 6px oklch(0.6 0.19 285 / 0);
+    box-shadow: 0 0 0 6px oklch(0.78 0.18 55 / 0);
   }
 }
 .commander-thinking-ring {
@@ -1042,7 +1042,7 @@ textarea:focus-visible {
   text-align: center;
   font-weight: 700;
   border-radius: 999px;
-  background: oklch(0.6 0.19 285);
+  background: oklch(0.78 0.18 55);
   color: oklch(0.16 0.02 55);
   box-shadow: 0 0 0 1.5px oklch(0.16 0.02 55);
   pointer-events: none;
@@ -1050,9 +1050,9 @@ textarea:focus-visible {
 
 /* 6. dock-btn-active — brief highlight when a node of that kind was just added. */
 @keyframes dock-btn-flash {
-  0% { box-shadow: 0 0 0 0 oklch(0.6 0.19 285 / 0.6); }
-  50% { box-shadow: 0 0 0 4px oklch(0.6 0.19 285 / 0.3); }
-  100% { box-shadow: 0 0 0 0 oklch(0.6 0.19 285 / 0); }
+  0% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0.6); }
+  50% { box-shadow: 0 0 0 4px oklch(0.78 0.18 55 / 0.3); }
+  100% { box-shadow: 0 0 0 0 oklch(0.78 0.18 55 / 0); }
 }
 .dock-btn-active {
   animation: dock-btn-flash 0.6s ease-out;
@@ -1079,10 +1079,10 @@ textarea:focus-visible {
   padding: 1px;
   background: conic-gradient(
     from var(--input-gradient-angle),
-    oklch(0.6 0.19 285 / 0.5),
+    oklch(0.78 0.18 55 / 0.5),
     oklch(0.7 0.22 16 / 0.3),
     oklch(0.62 0.2 280 / 0.2),
-    oklch(0.6 0.19 285 / 0.5)
+    oklch(0.78 0.18 55 / 0.5)
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -1153,7 +1153,7 @@ textarea:focus-visible {
 }
 .stats-card-hover:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px -4px oklch(0.6 0.19 285 / 0.2);
+  box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.2);
 }
 
 /* Heatmap cell hover glow */
@@ -1162,7 +1162,7 @@ textarea:focus-visible {
 }
 .heatmap-cell:hover {
   transform: scale(1.15);
-  box-shadow: 0 0 8px oklch(0.6 0.19 285 / 0.4);
+  box-shadow: 0 0 8px oklch(0.78 0.18 55 / 0.4);
   z-index: 1;
 }
 
@@ -1230,7 +1230,7 @@ textarea:focus-visible {
   border-left: 2px solid transparent;
 }
 .activity-entry-hover:hover {
-  border-left-color: oklch(0.6 0.19 285 / 0.5);
+  border-left-color: oklch(0.78 0.18 55 / 0.5);
   padding-left: 12px;
 }
 
@@ -1245,7 +1245,7 @@ textarea:focus-visible {
   left: 25%;
   right: 25%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, oklch(0.6 0.19 285 / 0.6), transparent);
+  background: linear-gradient(90deg, transparent, oklch(0.78 0.18 55 / 0.6), transparent);
   border-radius: 1px;
 }
 
@@ -1265,7 +1265,7 @@ textarea:focus-visible {
   background: linear-gradient(
     180deg,
     transparent 0%,
-    oklch(0.6 0.19 285 / 0.2) 50%,
+    oklch(0.78 0.18 55 / 0.2) 50%,
     transparent 100%
   );
 }
@@ -1276,20 +1276,20 @@ textarea:focus-visible {
 }
 .quick-template-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px -2px oklch(0.6 0.19 285 / 0.3);
+  box-shadow: 0 2px 8px -2px oklch(0.78 0.18 55 / 0.3);
 }
 
 /* Right panel — subtle inner top border glow */
 .right-panel-inner {
-  box-shadow: inset 0 1px 0 oklch(0.6 0.19 285 / 0.08);
+  box-shadow: inset 0 1px 0 oklch(0.78 0.18 55 / 0.08);
 }
 
 /* ---- Task 5-a styling enhancements ---- */
 
 /* Breathing border — slow opacity pulse for idle chat node borders */
 @keyframes breathing-border {
-  0%, 100% { border-color: oklch(0.6 0.19 285 / 0.15); }
-  50% { border-color: oklch(0.6 0.19 285 / 0.4); }
+  0%, 100% { border-color: oklch(0.78 0.18 55 / 0.15); }
+  50% { border-color: oklch(0.78 0.18 55 / 0.4); }
 }
 .breathing-border {
   animation: breathing-border 4s ease-in-out infinite;
@@ -1327,15 +1327,15 @@ textarea:focus-visible {
 .commander-header-gradient {
   background: linear-gradient(
     135deg,
-    oklch(0.6 0.19 285 / 0.06) 0%,
+    oklch(0.78 0.18 55 / 0.06) 0%,
     oklch(0.55 0.15 265 / 0.04) 50%,
-    oklch(0.6 0.19 285 / 0.02) 100%
+    oklch(0.78 0.18 55 / 0.02) 100%
   );
 }
 
 /* Notification bell pulse — amber pulse for unread notifications */
 @keyframes notification-bell-pulse {
-  0%, 100% { color: oklch(0.6 0.19 285); }
+  0%, 100% { color: oklch(0.78 0.18 55); }
   50% { color: oklch(0.7 0.22 16); transform: scale(1.1); }
 }
 .notification-bell-pulse {
@@ -1365,11 +1365,11 @@ textarea:focus-visible {
   border-radius: 1.5px;
   background: linear-gradient(
     90deg,
-    oklch(0.6 0.19 285 / 0.3) 0%,
-    oklch(0.6 0.19 285 / 0.8) 25%,
-    oklch(0.6 0.19 285 / 0.3) 50%,
-    oklch(0.6 0.19 285 / 0.8) 75%,
-    oklch(0.6 0.19 285 / 0.3) 100%
+    oklch(0.78 0.18 55 / 0.3) 0%,
+    oklch(0.78 0.18 55 / 0.8) 25%,
+    oklch(0.78 0.18 55 / 0.3) 50%,
+    oklch(0.78 0.18 55 / 0.8) 75%,
+    oklch(0.78 0.18 55 / 0.3) 100%
   );
   background-size: 200% 100%;
   animation: shimmer-progress 1.8s ease-in-out infinite;
@@ -1382,7 +1382,7 @@ textarea:focus-visible {
 }
 .dock-running-indicator {
   animation: dock-running-pulse 2s ease-in-out infinite;
-  background: oklch(0.6 0.19 285);
+  background: oklch(0.78 0.18 55);
   border-radius: 50%;
 }
 
@@ -1410,15 +1410,15 @@ textarea:focus-visible {
 .status-bar-gradient-border {
   border-top: 1px solid transparent;
   background-image: linear-gradient(var(--sidebar), var(--sidebar)),
-    linear-gradient(90deg, oklch(0.6 0.19 285), oklch(0.7 0.22 16));
+    linear-gradient(90deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
 
 /* TopBar badge gradient backgrounds */
 .badge-gradient-amber {
-  background: linear-gradient(135deg, oklch(0.6 0.19 285 / 0.15), oklch(0.7 0.22 16 / 0.08));
-  border-color: oklch(0.6 0.19 285 / 0.25);
+  background: linear-gradient(135deg, oklch(0.78 0.18 55 / 0.15), oklch(0.7 0.22 16 / 0.08));
+  border-color: oklch(0.78 0.18 55 / 0.25);
 }
 .badge-gradient-outline {
   background: linear-gradient(135deg, oklch(0.21 0.012 55 / 0.5), oklch(0.19 0.012 55 / 0.3));
@@ -1685,7 +1685,7 @@ textarea:focus-visible {
   overflow: hidden;
 }
 .theme-swatch-autumn {
-  background: linear-gradient(135deg, oklch(0.6 0.19 285), oklch(0.7 0.22 16));
+  background: linear-gradient(135deg, oklch(0.78 0.18 55), oklch(0.7 0.22 16));
 }
 .theme-swatch-midnight {
   background: linear-gradient(135deg, oklch(0.7 0.19 250), oklch(0.4 0.1 265));

@@ -97,7 +97,7 @@ export function AgentSettingsDialog({
       <DialogContent className="max-w-md bg-card/95 backdrop-blur">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings2 className="size-4 text-violet-400" />
+            <Settings2 className="size-4 text-amber-400" />
             Agent settings
           </DialogTitle>
           <DialogDescription className="text-xs">
