@@ -49,7 +49,7 @@ import {
 
 const STATUS_STYLES: Record<string, { dot: string; label: string }> = {
   idle: { dot: "bg-zinc-500", label: "Idle" },
-  thinking: { dot: "bg-violet-400 animate-pulse", label: "Thinking" },
+  thinking: { dot: "bg-amber-400 animate-pulse", label: "Thinking" },
   working: { dot: "bg-emerald-400 animate-pulse", label: "Working" },
   waiting: { dot: "bg-sky-400", label: "Waiting" },
   done: { dot: "bg-zinc-400", label: "Done" },
@@ -65,8 +65,8 @@ interface ToolBadgeInfo {
 }
 
 const TOOL_PATTERNS: { pattern: RegExp; badge: ToolBadgeInfo }[] = [
-  { pattern: /\bTodoWrite\b/, badge: { name: "Todo", icon: Hash, color: "bg-violet-500/30 text-violet-300 border-violet-500/30" } },
-  { pattern: /\bRead\b|\bread_file\b/, badge: { name: "Read", icon: FileText, color: "bg-violet-500/30 text-violet-300 border-violet-500/30" } },
+  { pattern: /\bTodoWrite\b/, badge: { name: "Todo", icon: Hash, color: "bg-amber-500/30 text-amber-300 border-violet-500/30" } },
+  { pattern: /\bRead\b|\bread_file\b/, badge: { name: "Read", icon: FileText, color: "bg-amber-500/30 text-amber-300 border-violet-500/30" } },
   { pattern: /\bEdit\b|\bapply_patch\b/, badge: { name: "Edit", icon: Code2, color: "bg-emerald-500/30 text-emerald-300 border-emerald-500/30" } },
   { pattern: /\bWrite\b|\bwrite_file\b/, badge: { name: "Write", icon: FileText, color: "bg-emerald-500/30 text-emerald-300 border-emerald-500/30" } },
   { pattern: /\bBash\b/, badge: { name: "Bash", icon: Terminal, color: "bg-emerald-500/30 text-emerald-300 border-emerald-500/30" } },
@@ -182,11 +182,11 @@ export function ChatNode({ id, data, selected }: NodeProps) {
         className={cn(
           "w-[280px] rounded-xl border bg-card/95 backdrop-blur shadow-xl transition-all relative overflow-hidden chat-node-idle-glow",
           selected
-            ? "border-violet-500/60 ring-2 ring-violet-500/20"
+            ? "border-amber-500/60 ring-2 ring-amber-500/30"
             : "border-border/60 hover:border-border",
           d.status === "idle" && !selected && "breathing-border",
           d.status === "working" && "agent-active",
-          isConnectSource && "ring-2 ring-violet-400/80 animate-pulse",
+          isConnectSource && "ring-2 ring-amber-400/80 animate-pulse",
           isConnectTargetCandidate &&
             "ring-2 ring-emerald-400/60 cursor-crosshair hover:ring-emerald-400",
           d.__searchMatch && "ring-2 ring-emerald-400/70 search-match-pulse",
@@ -410,7 +410,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
 
           {/* Working shimmer (when status is working/thinking but not streaming a message) */}
           {(d.status === "working" || d.status === "thinking") && !lastMsg?.streaming && (
-            <div className="flex items-center gap-1.5 text-[10px] text-violet-300/90">
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-300/90">
               <div className="flex items-center gap-0.5">
                 <span className="thinking-dot size-1 rounded-full bg-violet-400" />
                 <span className="thinking-dot size-1 rounded-full bg-violet-400" />
@@ -419,8 +419,8 @@ export function ChatNode({ id, data, selected }: NodeProps) {
               <span className="text-[9px] uppercase tracking-wider">
                 {d.status === "thinking" ? "thinking" : "working"}
               </span>
-              <div className="flex-1 h-px bg-gradient-to-r from-violet-500/40 via-violet-500/10 to-transparent rounded-full overflow-hidden">
-                <div className="h-full w-1/3 bg-violet-400/80 shimmer-slide" />
+              <div className="flex-1 h-px bg-gradient-to-r from-amber-500/40 via-amber-500/10 to-transparent rounded-full overflow-hidden">
+                <div className="h-full w-1/3 bg-amber-400/80 shimmer-slide" />
               </div>
             </div>
           )}

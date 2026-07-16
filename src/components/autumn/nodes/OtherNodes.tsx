@@ -43,7 +43,7 @@ function NodeShell({
       className={cn(
         `${width} rounded-xl border bg-card/95 backdrop-blur shadow-lg transition-all`,
         selected
-          ? "border-violet-500/60 ring-2 ring-violet-500/20"
+          ? "border-amber-500/60 ring-2 ring-amber-500/30"
           : "border-border/60 hover:border-border",
       )}
       style={{ boxShadow: `0 6px 16px -8px ${color}40` }}
@@ -154,7 +154,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40 rounded-t-xl bg-zinc-900/80">
         <div className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-rose-500/80" />
-          <span className="size-2.5 rounded-full bg-violet-400/80" />
+          <span className="size-2.5 rounded-full bg-amber-400/80" />
           <span className="size-2.5 rounded-full bg-emerald-500/80" />
         </div>
         <span className="text-[11px] font-medium text-zinc-300 ml-1 truncate">
@@ -182,7 +182,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             className={cn(
               "whitespace-pre-wrap break-words",
               l.kind === "stderr" && "text-rose-400",
-              l.kind === "command" && "text-violet-200",
+              l.kind === "command" && "text-amber-200",
               l.kind === "info" && "text-sky-300",
               l.kind === "system" && "text-zinc-500",
               (!l.kind || l.kind === "stdout") && "text-emerald-200/85",
@@ -209,7 +209,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             placeholder={isEmpty ? "type a command…" : ""}
             aria-label="Terminal input"
           />
-          <span className="text-violet-300 animate-pulse">▌</span>
+          <span className="text-amber-300 animate-pulse">▌</span>
         </div>
       </div>
       {d.dir && (
@@ -272,10 +272,10 @@ interface StickyData {
   color?: string;
 }
 const STICKY_COLORS: Record<string, string> = {
-  amber: "bg-violet-400/90 text-violet-950 border-violet-300",
+  amber: "bg-amber-400/90 text-violet-950 border-amber-300",
   rose: "bg-rose-400/90 text-rose-950 border-rose-300",
   emerald: "bg-emerald-400/90 text-emerald-950 border-emerald-300",
-  violet: "bg-violet-400/90 text-violet-950 border-violet-300",
+  violet: "bg-amber-400/90 text-violet-950 border-amber-300",
   cyan: "bg-cyan-400/90 text-cyan-950 border-cyan-300",
 };
 const STICKY_ROTATIONS = ["-2deg", "1deg", "-1deg", "2deg", "0deg"];
@@ -312,7 +312,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       className={cn(
         "w-[200px] rounded-sm border shadow-md transition-all hover:rotate-0 hover:scale-[1.02]",
         colorClass,
-        selected && "ring-2 ring-violet-500/40",
+        selected && "ring-2 ring-amber-500/40",
       )}
       style={{ transform: `rotate(${rotation})` }}
     >
@@ -436,8 +436,8 @@ export function BrowserNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as BrowserData;
   return (
     <NodeShell id={id} selected={selected} color="#8b5cf6" width="w-[260px]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-violet-500/5">
-        <Globe className="size-3.5 text-violet-400" />
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-amber-500/5">
+        <Globe className="size-3.5 text-amber-400" />
         <span className="text-xs font-medium truncate">{d.name || "Browser"}</span>
       </div>
       <div className="px-3 py-2 border-b border-border/40 flex items-center gap-1.5">
@@ -449,7 +449,7 @@ export function BrowserNode({ id, data, selected }: NodeProps) {
         </div>
       </div>
       <div className="h-28 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 flex items-center justify-center">
-        <Globe className="size-8 text-violet-400/40" />
+        <Globe className="size-8 text-amber-400/40" />
       </div>
     </NodeShell>
   );

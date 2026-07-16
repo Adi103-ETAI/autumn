@@ -231,8 +231,8 @@ export function VoiceSetupModal() {
         {/* Header */}
         <DialogHeader className="space-y-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-full bg-violet-500/15 ring-1 ring-violet-500/30">
-              <Mic className="size-4 text-violet-300" />
+            <div className="flex size-9 items-center justify-center rounded-full bg-amber-500/15 ring-1 ring-amber-500/40">
+              <Mic className="size-4 text-amber-300" />
             </div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-semibold text-foreground">
@@ -277,7 +277,7 @@ export function VoiceSetupModal() {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="border-violet-500/40 bg-violet-500/10 text-violet-300"
+                    className="border-amber-500/40 bg-amber-500/10 text-amber-300"
                   >
                     Step 1
                   </Badge>
@@ -331,7 +331,7 @@ export function VoiceSetupModal() {
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="border-violet-500/40 bg-violet-500/10 text-violet-300"
+                    className="border-amber-500/40 bg-amber-500/10 text-amber-300"
                   >
                     Step 2
                   </Badge>
@@ -368,7 +368,7 @@ export function VoiceSetupModal() {
                     variant="ghost"
                     size="sm"
                     onClick={startTest}
-                    className="shrink-0 text-xs text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
+                    className="shrink-0 text-xs text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
                   >
                     Retry
                   </Button>

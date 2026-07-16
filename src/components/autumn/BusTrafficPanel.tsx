@@ -61,7 +61,7 @@ export function BusTrafficPanel() {
       {/* Bus overview */}
       <div className="p-3 border-b border-border/50 space-y-2">
         <div className="flex items-center gap-2 text-xs">
-          <Cable className="size-3.5 text-violet-400" />
+          <Cable className="size-3.5 text-amber-400" />
           <span className="font-medium">AutumnBus</span>
           <Badge variant="outline" className="text-[9px] h-4 px-1 ml-auto">
             <span className="size-1 rounded-full bg-emerald-400 mr-1 animate-pulse" />
@@ -85,12 +85,12 @@ export function BusTrafficPanel() {
               {nodes.filter((n) => n.kind === "chat").length}
             </div>
           </div>
-          <div className="rounded-md bg-violet-500/5 border border-violet-500/20 px-2 py-1.5">
+          <div className="rounded-md bg-amber-500/5 border border-violet-500/20 px-2 py-1.5">
             <div className="text-[9px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
               <Radio className="size-2.5" />
               Msgs
             </div>
-            <div className="text-sm font-semibold text-violet-300">{totalMsgs}</div>
+            <div className="text-sm font-semibold text-amber-300">{totalMsgs}</div>
           </div>
         </div>
       </div>
@@ -114,21 +114,21 @@ export function BusTrafficPanel() {
                   className={cn(
                     "flex items-center gap-1.5 text-[11px] rounded-md px-2 py-1 transition-colors",
                     count > 0
-                      ? "bg-violet-500/10 border border-violet-500/20"
+                      ? "bg-amber-500/10 border border-violet-500/20"
                       : "bg-muted/20",
                   )}
                 >
-                  <span className="font-medium text-violet-300/90">
+                  <span className="font-medium text-amber-300/90">
                     {nodeName(e.source)}
                   </span>
                   <ArrowRight className="size-3 text-muted-foreground" />
-                  <span className="font-medium text-violet-300/90">
+                  <span className="font-medium text-amber-300/90">
                     {nodeName(e.target)}
                   </span>
                   {count > 0 && (
                     <Badge
                       variant="outline"
-                      className="ml-auto text-[9px] h-4 px-1 border-violet-500/40 text-violet-300"
+                      className="ml-auto text-[9px] h-4 px-1 border-amber-500/40 text-amber-300"
                     >
                       {count} msg{count === 1 ? "" : "s"}
                     </Badge>
@@ -186,13 +186,13 @@ export function BusTrafficPanel() {
 function BusEmptyState() {
   return (
     <div className="text-center text-xs text-muted-foreground py-10 px-4 empty-cta rounded-lg">
-      <div className="size-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
-        <Inbox className="size-5 text-violet-400/70" />
+      <div className="size-12 rounded-2xl bg-amber-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
+        <Inbox className="size-5 text-amber-400/70" />
       </div>
       <div className="font-medium text-foreground/80 mb-1">No bus traffic yet</div>
       <div className="text-[10px] text-muted-foreground/70 leading-relaxed">
         Connect two agents with a bus edge and send one of them a task.
-        The handoff <code className="text-violet-300/80">message_peer</code> packet
+        The handoff <code className="text-amber-300/80">message_peer</code> packet
         will appear here.
       </div>
     </div>
@@ -225,8 +225,8 @@ function BusTrafficCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-violet-500/5 hover:bg-violet-500/10 transition-colors p-2 space-y-1 group bus-card-enter relative overflow-hidden",
-        expanded && "ring-1 ring-violet-500/30",
+        "rounded-lg border bg-amber-500/5 hover:bg-amber-500/10 transition-colors p-2 space-y-1 group bus-card-enter relative overflow-hidden",
+        expanded && "ring-1 ring-amber-500/40",
       )}
       style={{
         borderColor: fromPersona ? `${fromPersona.color}40` : "oklch(0.78 0.18 55 / 0.2)",
@@ -240,7 +240,7 @@ function BusTrafficCard({
       <div className="flex items-center gap-1.5 pl-1">
         <Badge
           variant="outline"
-          className="text-[9px] h-4 px-1 border-violet-500/30 text-violet-300"
+          className="text-[9px] h-4 px-1 border-violet-500/30 text-amber-300"
         >
           {pulse.kind}
         </Badge>
@@ -264,7 +264,7 @@ function BusTrafficCard({
           {fromPersona?.glyph ?? "?"}
         </div>
         <span className="font-medium truncate">{nodeName(pulse.fromNodeId)}</span>
-        <ArrowRight className="size-3 text-violet-400 persona-arrow-flow shrink-0" />
+        <ArrowRight className="size-3 text-amber-400 persona-arrow-flow shrink-0" />
         <div
           className="size-4 rounded-sm flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
           style={{ background: toPersona?.color ?? "#888" }}
@@ -276,12 +276,12 @@ function BusTrafficCard({
       </div>
       <button
         onClick={onToggle}
-        className="block w-full text-left text-[11px] text-muted-foreground italic pl-1 border-l-2 border-violet-500/30 hover:border-violet-500/60 transition-colors"
+        className="block w-full text-left text-[11px] text-muted-foreground italic pl-1 border-l-2 border-violet-500/30 hover:border-amber-500/60 transition-colors"
       >
         <span className={cn("line-clamp-2", expanded && "line-clamp-none whitespace-pre-wrap")}>
           {pulse.text}
         </span>
-        <span className="flex items-center gap-0.5 text-[9px] text-violet-400/60 mt-1">
+        <span className="flex items-center gap-0.5 text-[9px] text-amber-400/60 mt-1">
           {expanded ? (
             <>
               <ChevronUp className="size-2.5" /> collapse

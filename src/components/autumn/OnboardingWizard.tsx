@@ -153,10 +153,10 @@ function OptionCard({
       aria-pressed={selected}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl border p-4 text-left transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40",
         fullWidth && "sm:col-span-2",
         selected
-          ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/20"
+          ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30"
           : "border-border/50 bg-card/40 hover:bg-accent/40 hover:border-border",
       )}
     >
@@ -164,7 +164,7 @@ function OptionCard({
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors",
           selected
-            ? "bg-violet-500/15 text-violet-300"
+            ? "bg-amber-500/15 text-amber-300"
             : "bg-muted/50 text-muted-foreground group-hover:text-foreground",
         )}
       >
@@ -185,7 +185,7 @@ function OptionCard({
           className={cn(
             "flex size-5 shrink-0 items-center justify-center rounded-md border transition-all",
             selected
-              ? "border-violet-600 bg-violet-600 text-white"
+              ? "border-violet-600 bg-amber-500 text-white"
               : "border-border/60 bg-transparent",
           )}
         >
@@ -207,7 +207,7 @@ function OptionCard({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
-              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white"
+              className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
             >
               <Check className="size-3.5" strokeWidth={3} />
             </motion.span>
@@ -228,7 +228,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
           Your role
         </div>
         {data.role ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/15 px-3 py-1 text-xs font-medium text-violet-200">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-200">
             <Briefcase className="size-3" />
             {ROLE_LABEL[data.role]}
           </span>
@@ -258,7 +258,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
         </div>
         {pt ? (
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-md bg-violet-500/15 text-violet-300">
+            <span className="flex size-7 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
               <Icon className="size-4" />
             </span>
             <span className="text-sm font-medium text-foreground">
@@ -272,7 +272,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
         )}
         {/* faux mockup lines */}
         <div className="mt-3 space-y-1.5">
-          <div className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-violet-500/40 to-transparent" />
+          <div className="h-1.5 w-3/4 rounded-full bg-gradient-to-r from-amber-500/50 to-transparent" />
           <div className="h-1.5 w-1/2 rounded-full bg-muted/50" />
           <div className="h-1.5 w-2/3 rounded-full bg-muted/40" />
         </div>
@@ -291,7 +291,7 @@ function PreviewContent({ step, data }: { step: number; data: OnboardingData }) 
             {data.aiTools.map((t) => (
               <span
                 key={t}
-                className="inline-flex items-center rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-100"
+                className="inline-flex items-center rounded-md border border-violet-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100"
               >
                 {AI_TOOL_LABEL[t] ?? t}
               </span>
@@ -533,7 +533,7 @@ export function OnboardingWizard() {
         </div>
         <div className="h-1 w-full overflow-hidden rounded-full bg-border/50">
           <motion.div
-            className="h-full rounded-full bg-violet-600"
+            className="h-full rounded-full bg-amber-500"
             initial={{ width: 0 }}
             animate={{ width: `${((step + 1) / 4) * 100}%` }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
@@ -608,7 +608,7 @@ export function OnboardingWizard() {
             onClick={handleContinue}
             disabled={!stepComplete}
             size="lg"
-            className="gap-2 bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40"
+            className="gap-2 bg-amber-500 text-white hover:bg-amber-500 disabled:opacity-40"
           >
             {step === 3 ? "Enter Autumn" : "Continue"}
             {step === 3 ? (

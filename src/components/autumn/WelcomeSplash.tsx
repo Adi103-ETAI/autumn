@@ -25,17 +25,17 @@ const FEATURES = [
     icon: Terminal,
     title: "AI Commander",
     description: "Speak naturally to the Commander — it spawns, wires, and dispatches agents for you.",
-    color: "text-violet-400",
+    color: "text-amber-400",
     border: "border-violet-500/30",
-    bg: "bg-violet-500/10",
+    bg: "bg-amber-500/10",
   },
   {
     icon: Cable,
     title: "Agent Bus",
     description: "Agents communicate via bus edges, sending message_peer handoffs to coordinate work.",
-    color: "text-violet-400",
+    color: "text-amber-400",
     border: "border-violet-500/30",
-    bg: "bg-violet-500/10",
+    bg: "bg-amber-500/10",
   },
 ];
 

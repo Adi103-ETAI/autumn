@@ -320,7 +320,7 @@ function CanvasInner() {
           >
             <div className="text-center max-w-md px-6 pointer-events-auto">
               {/* Animated gradient border container */}
-              <div className="relative rounded-2xl p-[2px] breathing-border bg-gradient-to-r from-violet-500/30 via-violet-500/10 to-violet-500/30">
+              <div className="relative rounded-2xl p-[2px] breathing-border bg-gradient-to-r from-amber-500/40 via-orange-500/20 to-amber-500/40">
                 <div className="rounded-2xl bg-[#0a0d12] border border-white/5 px-8 py-10">
                   {/* Autumn maple-leaf logo */}
                   <AutumnLogo size={56} glow className="mx-auto mb-5" />
@@ -356,16 +356,16 @@ function CanvasInner() {
       {/* Connect-mode banner */}
       {connectMode?.from && fromNode && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 fade-in-up">
-          <div className="flex items-center gap-2 rounded-full border border-violet-500/50 bg-violet-500/10 backdrop-blur-md px-3 py-1.5 shadow-lg">
-            <Cable className="size-3.5 text-violet-300 animate-pulse" />
-            <span className="text-xs text-violet-100">
+          <div className="flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/10 backdrop-blur-md px-3 py-1.5 shadow-lg">
+            <Cable className="size-3.5 text-amber-300 animate-pulse" />
+            <span className="text-xs text-amber-100">
               Click another agent to wire{" "}
               <strong className="font-semibold">{fromNode.name}</strong>{" "}
               → them
             </span>
             <button
               onClick={() => setConnectMode(null)}
-              className="ml-1 text-[10px] text-violet-200/70 hover:text-violet-100 underline"
+              className="ml-1 text-[10px] text-amber-200/70 hover:text-amber-100 underline"
             >
               cancel
             </button>
@@ -397,7 +397,7 @@ function CanvasInner() {
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1}
-          color="oklch(0.35 0.01 260 / 0.2)"
+          color="oklch(0.4 0.02 55 / 0.25)"
         />
         <Controls
           className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg !backdrop-blur"
@@ -409,7 +409,7 @@ function CanvasInner() {
             nodeColor={(n) =>
               MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
             }
-            maskColor="oklch(0.005 0.002 260 / 0.7)"
+            maskColor="oklch(0.005 0.002 55 / 0.7)"
             pannable
             zoomable
           />

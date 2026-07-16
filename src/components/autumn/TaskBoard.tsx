@@ -22,7 +22,7 @@ import { runAgentForNode } from "@/lib/autumn/agent-runner";
 const STATUS_META = {
   open: { icon: Circle, color: "text-zinc-400", label: "Open", accent: "oklch(0.7 0.02 55)" },
   blocked: { icon: Lock, color: "text-rose-400", label: "Blocked", accent: "oklch(0.65 0.22 16)" },
-  in_progress: { icon: Clock, color: "text-violet-400", label: "In progress", accent: "oklch(0.78 0.18 55)" },
+  in_progress: { icon: Clock, color: "text-amber-400", label: "In progress", accent: "oklch(0.78 0.18 55)" },
   done: { icon: CheckCircle2, color: "text-emerald-400", label: "Done", accent: "oklch(0.72 0.19 150)" },
 } as const;
 
@@ -93,11 +93,11 @@ export function TaskBoard() {
             </div>
             <div className="text-base font-semibold text-emerald-400">{done}</div>
           </div>
-          <div className="rounded-md bg-violet-500/5 border border-violet-500/20 px-2 py-1.5">
+          <div className="rounded-md bg-amber-500/5 border border-violet-500/20 px-2 py-1.5">
             <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
               Active
             </div>
-            <div className="text-base font-semibold text-violet-400">{inProgress}</div>
+            <div className="text-base font-semibold text-amber-400">{inProgress}</div>
           </div>
           <div className="rounded-md bg-rose-500/5 border border-rose-500/20 px-2 py-1.5">
             <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
@@ -218,13 +218,13 @@ export function TaskBoard() {
         })}
         {sorted.length === 0 && (
           <div className="text-center text-xs text-muted-foreground py-12 empty-cta rounded-lg">
-            <div className="size-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
-              <Plus className="size-5 text-violet-400/70" />
+            <div className="size-12 rounded-2xl bg-amber-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-3">
+              <Plus className="size-5 text-amber-400/70" />
             </div>
             <div className="font-medium text-foreground/80 mb-1">No tasks on the board</div>
             <div className="text-[10px] text-muted-foreground/70 leading-relaxed max-w-[220px] mx-auto">
               Add a task below, or ask the Commander to{" "}
-              <span className="text-violet-300/80">"add a task to the board"</span>.
+              <span className="text-amber-300/80">"add a task to the board"</span>.
             </div>
           </div>
         )}

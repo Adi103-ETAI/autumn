@@ -45,7 +45,7 @@ const PRESETS: AgentPreset[] = [
     harness: "claude-code",
     model: "claude-sonnet-4",
     effort: "high",
-    effortColor: "text-violet-400 border-violet-500/40",
+    effortColor: "text-amber-400 border-amber-500/40",
   },
   {
     id: "reviewer",
@@ -67,7 +67,7 @@ const PRESETS: AgentPreset[] = [
     harness: "codex",
     model: "gpt-5-codex",
     effort: "high",
-    effortColor: "text-violet-400 border-violet-500/40",
+    effortColor: "text-amber-400 border-amber-500/40",
   },
   {
     id: "frontend",
@@ -85,7 +85,7 @@ const PRESETS: AgentPreset[] = [
     name: "Test Engineer",
     description: "Unit tests, e2e, CI/CD",
     icon: TestTube2,
-    iconColor: "text-violet-400",
+    iconColor: "text-amber-400",
     harness: "claude-code",
     model: "claude-sonnet-4",
     effort: "low",

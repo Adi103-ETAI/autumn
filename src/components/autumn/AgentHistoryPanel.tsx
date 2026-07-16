@@ -147,12 +147,12 @@ export function AgentHistoryPanel() {
         </SheetHeader>
 
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50">
-          <History className="size-3.5 text-violet-400" />
+          <History className="size-3.5 text-amber-400" />
           <Badge variant="outline" className="text-[10px] h-5 px-1.5">
             {runs.length} {runs.length === 1 ? "run" : "runs"}
           </Badge>
           {avgLiveMs !== null && (
-            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-violet-500/30 text-violet-400">
+            <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-violet-500/30 text-amber-400">
               <Timer className="size-2.5 mr-0.5" />
               Avg {formatDuration(avgLiveMs)}
             </Badge>
@@ -284,7 +284,7 @@ export function AgentHistoryPanel() {
                                 )}
                                 {endTs !== undefined && (
                                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
-                                    <Square className="size-3 text-violet-400" />
+                                    <Square className="size-3 text-amber-400" />
                                     <span className="font-mono">
                                       {new Date(endTs).toLocaleString()}
                                     </span>
@@ -292,7 +292,7 @@ export function AgentHistoryPanel() {
                                 )}
                                 {durationMs !== undefined && (
                                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
-                                    <Clock className="size-3 text-violet-300" />
+                                    <Clock className="size-3 text-amber-300" />
                                     <span className="font-mono">
                                       {durationMs} ms ·{" "}
                                       {formatDuration(durationMs)}

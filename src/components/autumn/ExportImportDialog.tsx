@@ -109,7 +109,7 @@ export function ExportImportDialog() {
       <DialogContent className="max-w-2xl bg-card/95 backdrop-blur">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileJson className="size-4 text-violet-400" />
+            <FileJson className="size-4 text-amber-400" />
             Export / Import canvas
           </DialogTitle>
           <DialogDescription className="text-xs">

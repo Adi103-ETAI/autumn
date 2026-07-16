@@ -81,7 +81,7 @@ export function StatusBar() {
       {isThinking && (
         <>
           <div className="h-3 w-px bg-border/60" />
-          <span className="flex items-center gap-1 text-violet-400">
+          <span className="flex items-center gap-1 text-amber-400">
             <Loader2 className="size-2.5 status-thinking-spinner" />
             <span>commander</span>
           </span>
@@ -92,7 +92,7 @@ export function StatusBar() {
         <Cpu className="size-3" />
         <span>{agentCount} agents</span>
         {runningCount > 0 && (
-          <span className="text-violet-400 ml-1 flex items-center gap-1">
+          <span className="text-amber-400 ml-1 flex items-center gap-1">
             <Zap className="size-2.5 animate-pulse" />
             {runningCount} running
           </span>
@@ -110,7 +110,7 @@ export function StatusBar() {
       {busHistory.length > 0 && (
         <>
           <div className="h-3 w-px bg-border/60" />
-          <div className="hidden sm:flex items-center gap-1.5 text-violet-300/80">
+          <div className="hidden sm:flex items-center gap-1.5 text-amber-300/80">
             <Radio className="size-2.5" />
             <span>{busHistory.length} bus msg{busHistory.length === 1 ? "" : "s"}</span>
           </div>
@@ -119,8 +119,8 @@ export function StatusBar() {
       {pulses.length > 0 && (
         <>
           <div className="h-3 w-px bg-border/60" />
-          <div className="flex items-center gap-1.5 text-violet-400">
-            <span className="size-1.5 rounded-full bg-violet-400 animate-pulse" />
+          <div className="flex items-center gap-1.5 text-amber-400">
+            <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span>
               {pulses.length} live
             </span>

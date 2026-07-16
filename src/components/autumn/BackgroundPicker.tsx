@@ -32,7 +32,7 @@ export function BackgroundPicker() {
           className={cn(
             "group inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5",
             "text-xs text-muted-foreground transition-all",
-            "hover:bg-muted/50 hover:border-violet-500/40 hover:text-foreground",
+            "hover:bg-muted/50 hover:border-amber-500/40 hover:text-foreground",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60",
           )}
         >
@@ -48,7 +48,7 @@ export function BackgroundPicker() {
                 : undefined
             }
           />
-          <Mountain className="size-3.5 text-violet-400 transition-transform group-hover:scale-110" />
+          <Mountain className="size-3.5 text-amber-400 transition-transform group-hover:scale-110" />
           <span className="hidden sm:inline font-medium">{current.label}</span>
         </button>
       </PopoverTrigger>
@@ -62,7 +62,7 @@ export function BackgroundPicker() {
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
             Canvas background
           </div>
-          <Mountain className="size-3.5 text-violet-400/70" />
+          <Mountain className="size-3.5 text-amber-400/70" />
         </div>
 
         <div className="grid grid-cols-3 gap-2">
@@ -113,7 +113,7 @@ export function BackgroundPicker() {
 
                 {/* Active checkmark badge */}
                 {active && (
-                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-violet-600 text-black shadow">
+                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-black shadow">
                     <Check className="size-3" strokeWidth={3} />
                   </span>
                 )}
@@ -122,7 +122,7 @@ export function BackgroundPicker() {
                 <span
                   className={cn(
                     "truncate text-[10px] font-medium leading-tight",
-                    active ? "text-violet-400" : "text-muted-foreground",
+                    active ? "text-amber-400" : "text-muted-foreground",
                   )}
                 >
                   {bg.label}

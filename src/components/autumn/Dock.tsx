@@ -61,7 +61,7 @@ const TOOLS: DockTool[] = [
     kind: "sticky",
     label: "Note",
     icon: StickyNote,
-    color: "text-violet-400",
+    color: "text-amber-400",
     description: "Add a sticky note with markdown support",
   },
   {
@@ -75,7 +75,7 @@ const TOOLS: DockTool[] = [
     kind: "youtube",
     label: "Browser",
     icon: Globe,
-    color: "text-violet-400",
+    color: "text-amber-400",
     description: "Add a browser node for web content",
   },
   {

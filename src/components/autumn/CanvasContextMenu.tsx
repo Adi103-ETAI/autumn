@@ -62,12 +62,12 @@ const PANE_ITEMS: {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
 }[] = [
-  { kind: "chat", label: "Add agent", icon: Bot, color: "text-violet-300" },
+  { kind: "chat", label: "Add agent", icon: Bot, color: "text-amber-300" },
   { kind: "terminal", label: "Add terminal", icon: TerminalSquare, color: "text-emerald-400" },
   { kind: "screen", label: "Add screen", icon: Monitor, color: "text-sky-400" },
-  { kind: "sticky", label: "Add note", icon: StickyNote, color: "text-violet-400" },
+  { kind: "sticky", label: "Add note", icon: StickyNote, color: "text-amber-400" },
   { kind: "analytics", label: "Add analytics", icon: BarChart3, color: "text-orange-400" },
-  { kind: "youtube", label: "Add browser", icon: Globe, color: "text-violet-400" },
+  { kind: "youtube", label: "Add browser", icon: Globe, color: "text-amber-400" },
   { kind: "remotion", label: "Add remotion", icon: Clapperboard, color: "text-blue-400" },
 ];
 
@@ -192,7 +192,7 @@ export function CanvasContextMenu({
                 addAt("chat");
               }
             }}
-            color="text-violet-300"
+            color="text-amber-300"
           />
           {PANE_ITEMS.filter((item) => item.kind !== "chat").map((item) => (
             <MenuItem
