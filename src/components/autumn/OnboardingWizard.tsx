@@ -209,9 +209,8 @@ function AppMockup({ step, data }: { step: number; data: OnboardingData }) {
             Autumn · Your Big Idea
           </span>
         </div>
-        <span className="size-5 rounded-full border border-amber-500/40 bg-amber-500/10 text-[9px] flex items-center justify-center text-amber-300 font-mono">
-          0
-        </span>
+        {/* spacer to balance the traffic lights on the left (keeps the title centered) */}
+        <div className="w-12" aria-hidden />
       </div>
 
       {/* Window body — centered logo + tagline */}
@@ -349,13 +348,17 @@ export function OnboardingWizard() {
   const stepComplete = isStepComplete();
   const current = STEPS[step] ?? STEPS[0];
   const opts = optionsForStep(step);
-  // Single row on desktop; wraps to a 2-col grid on narrow screens. The
-  // reference uses one row of equal-width buttons — we mirror that and let
-  // flex-wrap handle overflow gracefully.
+  // Layout per step:
+  //   5 options (role)       → 3 on top + 2 on bottom (sm+), 2-col on mobile
+  //   6 options (AI tools)   → 3 + 3 (sm+), 2-col on mobile
+  //   4 options (project)    → single row of 4 (sm+), 2x2 on mobile
+  //   3 options (start mode) → single row of 3
   const gridCols =
     opts.length >= 5
-      ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-      : "grid-cols-2 sm:grid-cols-4";
+      ? "grid-cols-2 sm:grid-cols-3"
+      : opts.length === 4
+        ? "grid-cols-2 sm:grid-cols-4"
+        : "grid-cols-2 sm:grid-cols-3";
 
   return (
     <motion.div
