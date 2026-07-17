@@ -1,14 +1,16 @@
-// Autumn — Floating canvas toolbar.
-// Bottom-center overlay on the canvas with quick actions: arrange, fit, clear,
-// live node/edge counter, zoom level, multi-select bulk actions, QuickSpawnMenu
-// trigger, select all, and group indicator.
+// Autumn — Bottom Dock (October-style redesign).
+// A macOS-style horizontal dock pinned to the bottom-center of the canvas.
+// Mirrors October Desktop's dock layout:
+//   Left:  mic (Set up voice) + app icons (agent/screen/note/terminal/browser/video)
+//   Center: "Project chat" input bar (opens the Commander)
+//   Right:  screen count + zoom controls + "+" add button
+// Also keeps the BackgroundPicker, search, arrange, fit-view as dock icons.
 
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -16,17 +18,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  LayoutGrid,
-  Maximize2,
-  Trash2,
   Bot,
+  TerminalSquare,
   MonitorSmartphone,
   StickyNote,
+  Globe,
+  Clapperboard,
   Search,
-  ZoomIn,
-  Copy,
-  CheckSquare,
-  ChevronDown,
+  LayoutGrid,
+  Maximize2,
+  Plus,
+  Minus,
+  Mic,
+  MessageSquare,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
@@ -34,63 +39,39 @@ import { QuickSpawnMenu } from "./QuickSpawnMenu";
 import { BackgroundPicker } from "./BackgroundPicker";
 import { cn } from "@/lib/utils";
 
-// ── Node kind group indicator ────────────────────────────────────────────────
+// ── Dock app icons (left cluster) ───────────────────────────────────────────
 
-const KIND_META: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
-  chat: { label: "Agents", color: "bg-fuchsia-400", icon: Bot },
-  terminal: { label: "Terminals", color: "bg-emerald-400", icon: Bot },
-  screen: { label: "Screens", color: "bg-sky-400", icon: MonitorSmartphone },
-  sticky: { label: "Notes", color: "bg-violet-400", icon: StickyNote },
-};
-
-function GroupIndicator() {
-  const nodes = useAutumnStore((s) => s.nodes);
-  const counts: Record<string, number> = {};
-  for (const n of nodes) {
-    counts[n.kind] = (counts[n.kind] ?? 0) + 1;
-  }
-  const kinds = Object.entries(counts).filter(([kind]) => KIND_META[kind]);
-
-  if (kinds.length === 0) return null;
-
-  return (
-    <div className="flex items-center gap-1">
-      {kinds.map(([kind, count]) => {
-        const meta = KIND_META[kind];
-        if (!meta) return null;
-        return (
-          <span key={kind} className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-            <span className={cn("size-1.5 rounded-full", meta.color)} />
-            {count}
-          </span>
-        );
-      })}
-    </div>
-  );
+interface DockApp {
+  kind: NodeKind;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
 }
+
+const DOCK_APPS: DockApp[] = [
+  { kind: "screen", label: "Screen", icon: MonitorSmartphone, color: "text-sky-400" },
+  { kind: "sticky", label: "Note", icon: StickyNote, color: "text-amber-400" },
+  { kind: "terminal", label: "Terminal", icon: TerminalSquare, color: "text-emerald-400" },
+  { kind: "youtube", label: "Browser", icon: Globe, color: "text-amber-400" },
+  { kind: "remotion", label: "Video", icon: Clapperboard, color: "text-cyan-400" },
+];
 
 export function CanvasToolbar() {
   const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
-  const clearCanvas = useAutumnStore((s) => s.clearCanvas);
   const addNode = useAutumnStore((s) => s.addNode);
-  const nodeCount = useAutumnStore((s) => s.nodes.length);
-  const edgeCount = useAutumnStore((s) => s.edges.length);
-  const selectedNodeIds = useAutumnStore((s) => s.selectedNodeIds);
-  const removeNodes = useAutumnStore((s) => s.removeNodes);
-  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
-  const clearSelection = useAutumnStore((s) => s.clearSelection);
-  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
-  const selectAllNodes = useAutumnStore((s) => s.selectAllNodes);
   const nodes = useAutumnStore((s) => s.nodes);
-  const { fitView } = useReactFlow();
-  // Subscribe to the react-flow viewport transform for a reactive zoom reading.
+  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
+  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
+  const setVoiceSetupOpen = useAutumnStore((s) => s.setVoiceSetupOpen);
+  const voiceEnabled = useAutumnStore((s) => s.voiceEnabled);
+  const canvasName = useAutumnStore((s) => s.canvasName);
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
   const zoom = useStore((s) => s.transform[2]);
 
-  // QuickSpawnMenu open state
+  // QuickSpawnMenu open state (for the + Agent button)
   const [spawnMenuOpen, setSpawnMenuOpen] = useState(false);
   const spawnRef = useRef<HTMLDivElement>(null);
 
-  // Close spawn menu on outside click
   useEffect(() => {
     if (!spawnMenuOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -109,184 +90,170 @@ export function CanvasToolbar() {
     };
   }, [spawnMenuOpen]);
 
-  const hasMulti = selectedNodeIds.length > 0;
+  const screenCount = nodes.filter((n) => n.kind === "screen").length;
   const zoomPct = Math.round(zoom * 100);
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={300}>
+      {/* Zoom chip (bottom-left, separate from dock) */}
       <ZoomChip />
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-1.5 shadow-2xl" style={{ boxShadow: "0 8px 32px -8px oklch(0.78 0.18 55 / 0.1), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)" }}>
-        {/* Quick add — agent button triggers QuickSpawnMenu */}
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border/40" ref={spawnRef}>
-          <div className="relative">
-            <ToolbarButton
-              label="Add agent"
-              onClick={() => setSpawnMenuOpen((v) => !v)}
-              icon={Bot}
-              color="text-fuchsia-400"
-              extraElement={
-                <ChevronDown className="size-2.5 text-fuchsia-400/70" />
-              }
-            />
-            <QuickSpawnMenu
-              open={spawnMenuOpen}
-              onClose={() => setSpawnMenuOpen(false)}
-            />
-          </div>
-          <ToolbarButton
-            label="Add screen"
-            onClick={() => addNode({ kind: "screen" })}
-            icon={MonitorSmartphone}
-            color="text-sky-400"
+
+      {/* macOS-style bottom dock */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-2xl border border-white/15 bg-zinc-900/70 backdrop-blur-2xl px-2 py-1.5 shadow-2xl autumn-dock-shadow">
+        {/* ── Left cluster: mic + app icons ── */}
+        <DockIconButton
+          label={voiceEnabled ? "Voice active" : "Set up voice"}
+          onClick={() => setVoiceSetupOpen(true)}
+          icon={Mic}
+          color={voiceEnabled ? "text-emerald-400" : "text-muted-foreground"}
+          indicator={voiceEnabled ? "active" : undefined}
+        />
+
+        <div className="h-7 w-px bg-white/10 mx-0.5" />
+
+        {/* Agent button — opens QuickSpawnMenu */}
+        <div className="relative" ref={spawnRef}>
+          <DockIconButton
+            label="Add agent"
+            onClick={() => setSpawnMenuOpen((v) => !v)}
+            icon={Bot}
+            color="text-fuchsia-400"
           />
-          <ToolbarButton
-            label="Add note"
-            onClick={() => addNode({ kind: "sticky" })}
-            icon={StickyNote}
-            color="text-amber-400"
+          <QuickSpawnMenu
+            open={spawnMenuOpen}
+            onClose={() => setSpawnMenuOpen(false)}
           />
         </div>
 
-        {/* Canvas actions */}
-        <div className="flex items-center gap-0.5 px-1 border-r border-border/40">
-          <ToolbarButton
-            label="Search nodes (⌘F)"
-            onClick={() => setShowNodeSearch(true)}
-            icon={Search}
-            color="text-emerald-400"
+        {/* App icon row */}
+        {DOCK_APPS.map((app) => (
+          <DockIconButton
+            key={app.kind}
+            label={`Add ${app.label}`}
+            onClick={() => addNode({ kind: app.kind })}
+            icon={app.icon}
+            color={app.color}
           />
-          <ToolbarButton
-            label="Select all (⌘A)"
-            onClick={selectAllNodes}
-            icon={CheckSquare}
-            color="text-sky-400"
-          />
-          <ToolbarButton
-            label="Arrange nodes"
-            onClick={arrangeNodes}
-            icon={LayoutGrid}
-            color="text-emerald-400"
-          />
-          <ToolbarButton
-            label="Fit view"
-            onClick={() => fitView({ padding: 0.2, duration: 400 })}
-            icon={Maximize2}
-            color="text-amber-400"
-          />
-          {/* Scenic background picker */}
-          <BackgroundPicker />
-        </div>
+        ))}
 
-        {/* Multi-select bulk actions (only shown when something is selected) */}
-        {hasMulti && (
-          <div className="flex items-center gap-0.5 px-1 border-r border-border/40 fade-in-up">
-            <div className="px-1.5 flex items-center gap-1 text-[10px] text-sky-400">
-              <Badge
-                variant="outline"
-                className="h-5 px-1.5 text-[9px] border-sky-400/40 text-sky-300"
-              >
-                {selectedNodeIds.length} selected
-              </Badge>
-            </div>
-            <ToolbarButton
-              label="Duplicate all selected"
-              onClick={() => {
-                const store = useAutumnStore.getState();
-                const ids = [...store.selectedNodeIds];
-                ids.forEach((id) => store.duplicateNode(id));
-              }}
-              icon={Copy}
-              color="text-amber-300"
-            />
-            <ToolbarButton
-              label="Remove all selected"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Remove ${selectedNodeIds.length} selected node${
-                      selectedNodeIds.length === 1 ? "" : "s"
-                    }?`,
-                  )
-                ) {
-                  removeNodes(selectedNodeIds);
-                }
-              }}
-              icon={Trash2}
-              color="text-rose-400"
-            />
-            <ToolbarButton
-              label="Clear selection"
-              onClick={clearSelection}
-              icon={Maximize2}
-              color="text-muted-foreground"
-            />
-          </div>
-        )}
+        <div className="h-7 w-px bg-white/10 mx-0.5" />
 
-        {/* Danger */}
-        <div className="flex items-center gap-0.5 pl-1">
-          <ToolbarButton
-            label="Clear canvas"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Clear all nodes and edges from the canvas? This cannot be undone.",
-                )
-              ) {
-                clearCanvas();
-              }
-            }}
-            icon={Trash2}
-            color="text-rose-400"
-          />
-        </div>
-
-        {/* Stats + zoom + group indicator */}
-        <div className="flex items-center gap-2 pl-2 pr-1 border-l border-border/40 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-fuchsia-400" />
-            {nodeCount}
+        {/* ── Center: Project chat input bar ── */}
+        <button
+          type="button"
+          onClick={() => setRightPanelTab("commander")}
+          className="group flex items-center gap-2 h-8 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-500/30 transition-colors min-w-[180px] max-w-[280px]"
+          title="Open project chat (Commander)"
+          aria-label={`Open project chat for ${canvasName}`}
+        >
+          <MessageSquare className="size-3.5 text-amber-400 shrink-0" />
+          <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors truncate flex-1 text-left">
+            Project chat…
           </span>
-          <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-violet-400" />
-            {edgeCount}
-          </span>
-          <GroupIndicator />
-          <span className="flex items-center gap-1 font-mono text-[10px]">
-            <ZoomIn className="size-2.5 text-muted-foreground/70" />
+          <span className="size-1.5 rounded-full bg-emerald-400 pulse-ring shrink-0" />
+        </button>
+
+        <div className="h-7 w-px bg-white/10 mx-0.5" />
+
+        {/* ── Right cluster: canvas tools + screen count + zoom ── */}
+        <DockIconButton
+          label="Search nodes (⌘F)"
+          onClick={() => setShowNodeSearch(true)}
+          icon={Search}
+          color="text-emerald-400"
+        />
+        <DockIconButton
+          label="Arrange nodes"
+          onClick={arrangeNodes}
+          icon={LayoutGrid}
+          color="text-emerald-400"
+        />
+        <DockIconButton
+          label="Fit view"
+          onClick={() => fitView({ padding: 0.2, duration: 400 })}
+          icon={Maximize2}
+          color="text-amber-400"
+        />
+        <BackgroundPicker compact />
+
+        <div className="h-7 w-px bg-white/10 mx-0.5" />
+
+        {/* Screen count */}
+        <div className="flex items-center gap-1 px-1.5 text-[10px] text-muted-foreground">
+          <MonitorSmartphone className="size-3 text-sky-400" />
+          <span className="font-mono">{screenCount}</span>
+          <span className="hidden md:inline">screen{screenCount === 1 ? "" : "s"}</span>
+        </div>
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-0.5 px-1">
+          <DockIconButton
+            label="Zoom out"
+            onClick={() => zoomOut({ duration: 200 })}
+            icon={Minus}
+            color="text-muted-foreground"
+            size="sm"
+          />
+          <button
+            type="button"
+            onClick={() => fitView({ padding: 0.2, duration: 300 })}
+            className="px-1.5 h-7 rounded-lg hover:bg-white/10 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors min-w-[36px]"
+            title="Reset zoom (fit view)"
+          >
             {zoomPct}%
-          </span>
+          </button>
+          <DockIconButton
+            label="Zoom in"
+            onClick={() => zoomIn({ duration: 200 })}
+            icon={Plus}
+            color="text-muted-foreground"
+            size="sm"
+          />
         </div>
       </div>
     </TooltipProvider>
   );
 }
 
-function ToolbarButton({
+// ── Dock icon button ─────────────────────────────────────────────────────────
+
+function DockIconButton({
   label,
   onClick,
   icon: Icon,
   color,
-  extraElement,
+  size = "md",
+  indicator,
 }: {
   label: string;
   onClick: () => void;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
-  extraElement?: React.ReactNode;
+  size?: "sm" | "md";
+  indicator?: "active";
 }) {
   return (
     <Tooltip side="top">
       <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 rounded-full hover:bg-accent/60 transition-colors"
+        <button
+          type="button"
           onClick={onClick}
+          className={cn(
+            "relative rounded-xl flex items-center justify-center transition-all",
+            "hover:bg-white/10 hover:-translate-y-0.5 active:translate-y-0",
+            "autumn-dock-icon",
+            size === "md" ? "size-9" : "size-7",
+          )}
+          aria-label={label}
         >
-          <Icon className={`size-4 ${color}`} />
-          {extraElement}
-        </Button>
+          <Icon className={cn(size === "md" ? "size-4" : "size-3.5", color)} />
+          {indicator === "active" && (
+            <span
+              className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-emerald-400"
+              aria-hidden
+            />
+          )}
+        </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
         {label}
@@ -295,9 +262,8 @@ function ToolbarButton({
   );
 }
 
-// ZoomChip — small bottom-left chip that shows the current zoom level as a
-// percentage. Click to reset to 100%. Reactively subscribes to the react-flow
-// viewport transform so it updates the moment the user zooms.
+// ── ZoomChip (bottom-left, separate from dock) ───────────────────────────────
+
 function ZoomChip() {
   const zoom = useStore((s) => s.transform[2]);
   const { zoomTo } = useReactFlow();
@@ -309,10 +275,10 @@ function ZoomChip() {
         <button
           type="button"
           onClick={() => zoomTo(1, { duration: 300 })}
-          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
+          className="chip-zoom-reset absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-white/15 bg-zinc-900/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300 transition-colors"
           aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
         >
-          <ZoomIn className="size-2.5" />
+          <ImageIcon className="size-2.5" />
           <span>{zoomPct}%</span>
         </button>
       </TooltipTrigger>
