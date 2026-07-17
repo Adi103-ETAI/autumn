@@ -10,7 +10,6 @@ import {
   ReactFlowProvider,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   useReactFlow,
   type Node,
@@ -398,10 +397,6 @@ function CanvasInner() {
           gap={20}
           size={1}
           color="oklch(0.4 0.02 55 / 0.25)"
-        />
-        <Controls
-          className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg !backdrop-blur"
-          showInteractive={false}
         />
         {showMinimap && (
           <MiniMap
