@@ -89,9 +89,7 @@ const TOOLS: DockTool[] = [
 
 export function Dock() {
   const addNode = useAutumnStore((s) => s.addNode);
-  const nodes = useAutumnStore((s) => s.nodes);
   const running = useAutumnStore((s) => s.isAgentRunning);
-  const chatCount = nodes.filter((n) => n.kind === "chat").length;
   const anyRunning = Object.values(running).some(Boolean);
 
   // Track which dock button was just activated (for flash animation)
@@ -144,12 +142,6 @@ export function Dock() {
                   >
                     <t.icon className={`size-4 ${t.color}`} />
                   </Button>
-                  {/* Count badge for Agent dock button */}
-                  {t.kind === "chat" && chatCount > 0 && (
-                    <span className="dock-count-badge">
-                      {chatCount > 9 ? "9+" : chatCount}
-                    </span>
-                  )}
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs max-w-[220px]">
