@@ -84,7 +84,7 @@ export interface Workspace {
 export type AgentConnectionStatus = "not_yet" | "waiting" | "connected";
 
 export interface AgentConnection {
-  id: string; // "github-cli" | "claude-code" | "codex" | "copilot" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
+  id: string; // "github-cli" | "claude-code" | "codex" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
   name: string;
   description: string;
   vendor: string;
@@ -97,7 +97,6 @@ export const CODING_AGENTS: Omit<AgentConnection, "status">[] = [
   { id: "codex", name: "Codex", description: "OpenAI's coding agent.", vendor: "OpenAI" },
   { id: "cursor", name: "Cursor", description: "Cursor's CLI coding agent.", vendor: "Cursor" },
   { id: "grok", name: "Grok", description: "xAI's coding agent.", vendor: "xAI" },
-  { id: "copilot", name: "GitHub Copilot", description: "GitHub's AI pair programmer.", vendor: "GitHub" },
   { id: "opencode", name: "opencode", description: "Open-source terminal coding agent — no sign-in needed.", vendor: "Open source" },
   { id: "cline", name: "Cline", description: "Open-source coding agent for VS Code.", vendor: "Open source" },
   { id: "gemini", name: "Gemini", description: "Google's coding agent.", vendor: "Google" },

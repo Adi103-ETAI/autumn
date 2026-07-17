@@ -1,13 +1,22 @@
-// Autumn — Official-style brand logos for coding agents.
-// Each logo is an inline SVG component that accepts a className for sizing.
-// Logos use their brand's signature color via `currentColor` where the
-// container sets the text color, OR hardcoded brand fills for multi-color marks.
+// Autumn — Official brand logos for coding agents.
 //
-// Sources: recreated from official brand guidelines. Monochrome-friendly.
+// Logos come from two sources:
+//   1. Inline SVG components (monochrome, use `currentColor`) — for agents
+//      whose official mark is a single-color shape (Claude Code, Cursor,
+//      GitHub CLI, Cline, Grok).
+//   2. Static image files in /public/agents — for agents whose official mark
+//      is multi-color or raster (Codex, Hermes, opencode, Gemini, Pi).
+//
+// The AGENT_BRANDS registry maps an agent id to { Logo, bg, color } where:
+//   - Logo: a React component rendering the mark
+//   - bg: Tailwind classes for the circular container background
+//   - color: Tailwind text color class (used by inline-SVG logos via currentColor)
 
 import type { SVGProps } from "react";
 
 type LogoProps = SVGProps<SVGSVGElement> & { className?: string };
+
+// ---- Inline SVG logos (monochrome, currentColor) ---------------------------
 
 // ---- Claude Code (Anthropic) ------------------------------------------------
 // Official Claude Code mark: a pixel-style robot face. Terracotta (#D97757).
@@ -27,26 +36,6 @@ export function ClaudeCodeLogo({ className, ...props }: LogoProps) {
   );
 }
 
-// ---- GitHub Copilot ---------------------------------------------------------
-// The Copilot emblem: two overlapping rounded shapes (goggles/face).
-export function CopilotLogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M9.75 5.5a3.5 3.5 0 0 0-3.5 3.5v.5a3 3 0 0 0-3 3v1a3 3 0 0 0 3 3 2.5 2.5 0 0 0 2.5 2.5h6A2.5 2.5 0 0 0 17.25 16.5a3 3 0 0 0 3-3v-1a3 3 0 0 0-3-3V9a3.5 3.5 0 0 0-3.5-3.5h-1zm-2 6a2 2 0 0 1 2-2h4.5a2 2 0 0 1 2 2v.5a2 2 0 0 1-2 2h-4.5a2 2 0 0 1-2-2z"
-      />
-    </svg>
-  );
-}
-
 // ---- GitHub (Octocat mark for GitHub CLI) -----------------------------------
 export function GitHubLogo({ className, ...props }: LogoProps) {
   return (
@@ -58,22 +47,6 @@ export function GitHubLogo({ className, ...props }: LogoProps) {
       {...props}
     >
       <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.21 11.19.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.36-1.34-1.73-1.34-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.84 1.21 1.84 1.21 1.07 1.8 2.81 1.28 3.49.98.11-.76.42-1.28.76-1.57-2.67-.3-5.47-1.31-5.47-5.81 0-1.28.47-2.33 1.24-3.15-.12-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.3 1.2a11.6 11.6 0 0 1 6 0c2.29-1.52 3.3-1.2 3.3-1.2.66 1.64.24 2.86.12 3.16.77.82 1.24 1.87 1.24 3.15 0 4.51-2.81 5.51-5.49 5.8.43.36.81 1.08.81 2.18 0 1.57-.01 2.84-.01 3.23 0 .31.21.68.83.56A12.04 12.04 0 0 0 24 12.29C24 5.78 18.63.5 12 .5z" />
-    </svg>
-  );
-}
-
-// ---- Codex (OpenAI) ---------------------------------------------------------
-// The OpenAI hexagonal flower / spiral. Multi-petal symmetric.
-export function OpenAILogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <path d="M22.28 10.05a5.7 5.7 0 0 0-.5-4.72 5.82 5.82 0 0 0-6.28-2.76A5.78 5.78 0 0 0 4.7 4.66a5.7 5.7 0 0 0-3.82 2.76 5.82 5.82 0 0 0 .72 6.84 5.7 5.7 0 0 0 .5 4.72 5.82 5.82 0 0 0 6.28 2.76 5.78 5.78 0 0 0 10.8-2.08 5.7 5.7 0 0 0 3.82-2.76 5.82 5.82 0 0 0-.72-6.85zm-9.02 12.6a4.3 4.3 0 0 1-2.76-1l.14-.08 4.58-2.64a.74.74 0 0 0 .38-.66v-6.46l1.94 1.12c.02.01.03.03.04.05v5.34a4.34 4.34 0 0 1-4.32 4.33zM4.3 17.44a4.3 4.3 0 0 1-.52-2.9l.14.09 4.58 2.64a.74.74 0 0 0 .76 0l5.59-3.22v2.24c0 .02 0 .04-.02.06l-4.63 2.67a4.34 4.34 0 0 1-5.9-1.58zM3.1 7.62a4.3 4.3 0 0 1 2.28-1.9v5.44a.74.74 0 0 0 .38.65l5.56 3.21-1.94 1.12a.07.07 0 0 1-.06 0L4.66 13.5a4.34 4.34 0 0 1-1.56-5.88zm15.86 3.66L13.38 8.06l1.93-1.12a.07.07 0 0 1 .07 0l4.63 2.67a4.34 4.34 0 0 1-.66 7.83v-5.44a.74.74 0 0 0-.39-.66zm1.93-2.9l-.14-.09-4.57-2.65a.74.74 0 0 0-.76 0L9.8 8.86V6.62c0-.02 0-.04.02-.06l4.63-2.67a4.34 4.34 0 0 1 6.44 4.49zM8.76 13.06l-1.93-1.12a.07.07 0 0 1-.04-.05V6.55a4.34 4.34 0 0 1 7.12-3.33l-.14.08L9.2 5.94a.74.74 0 0 0-.38.66zm1.05-2.27L12 9.56l2.2 1.27v2.54L12 14.64l-2.2-1.27z" />
     </svg>
   );
 }
@@ -95,120 +68,72 @@ export function CursorLogo({ className, ...props }: LogoProps) {
   );
 }
 
+// ---- Cline ------------------------------------------------------------------
+// Official Cline mark: a rounded-square robot head with two eye-holes + antenna.
+export function ClineLogo({ className, ...props }: LogoProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      fillRule="evenodd"
+      className={className}
+      aria-hidden
+      {...props}
+    >
+      <path d="M17.035 3.991c2.75 0 4.98 2.24 4.98 5.003v1.667l1.45 2.896a1.01 1.01 0 01-.002.909l-1.448 2.864v1.668c0 2.762-2.23 5.002-4.98 5.002H7.074c-2.751 0-4.98-2.24-4.98-5.002V17.33l-1.48-2.855a1.01 1.01 0 01-.003-.927l1.482-2.887V8.994c0-2.763 2.23-5.003 4.98-5.003h9.962zM8.265 9.6a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 004.547 0v-4.042A2.274 2.274 0 008.265 9.6zm7.326 0a2.274 2.274 0 00-2.274 2.274v4.042a2.274 2.274 0 104.548 0v-4.042A2.274 2.274 0 0015.59 9.6z" />
+      <path d="M12.054 5.558a2.779 2.779 0 100-5.558 2.779 2.779 0 000 5.558z" />
+    </svg>
+  );
+}
+
 // ---- Grok (xAI) -------------------------------------------------------------
-// The xAI / Grok mark: a stylized X.
+// Official Grok mark: a stylized swoosh/slash.
 export function GrokLogo({ className, ...props }: LogoProps) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="currentColor"
+      fillRule="evenodd"
       className={className}
       aria-hidden
       {...props}
     >
-      <path d="M18.9 2H21l-6.55 7.49L22 22h-6.8l-4.77-6.24L4.8 22H2.7l7.02-8.03L2 2h6.96l4.3 5.69L18.9 2zm-1.19 18h1.65L7.4 3.7H5.64L17.71 20z" />
+      <path d="M9.27 15.29l7.978-5.897c.391-.29.95-.177 1.137.272.98 2.369.542 5.215-1.41 7.169-1.951 1.954-4.667 2.382-7.149 1.406l-2.711 1.257c3.889 2.661 8.611 2.003 11.562-.953 2.341-2.344 3.066-5.539 2.388-8.42l.006.007c-.983-4.232.242-5.924 2.75-9.383.06-.082.12-.164.179-.248l-3.301 3.305v-.01L9.267 15.292M7.623 16.723c-2.792-2.67-2.31-6.801.071-9.184 1.761-1.763 4.647-2.483 7.166-1.425l2.705-1.25a7.808 7.808 0 00-1.829-1A8.975 8.975 0 005.984 5.83c-2.533 2.536-3.33 6.436-1.962 9.764 1.022 2.487-.653 4.246-2.34 6.022-.599.63-1.199 1.259-1.682 1.925l7.62-6.815" />
     </svg>
   );
 }
 
-// ---- Gemini (Google) --------------------------------------------------------
-// The Gemini 4-point sparkle / star.
-export function GeminiLogo({ className, ...props }: LogoProps) {
+// ---- Static-image logos (full-color, served from /public/agents) ------------
+// These render an <img> pointing at the static file. The container circle
+// uses a transparent/neutral background so the brand colors show through.
+
+function StaticLogo({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
+    <img
+      src={src}
+      alt={alt}
       aria-hidden
-      {...props}
-    >
-      <path d="M12 0c.66 0 1.21.5 1.27 1.15.46 4.6 2.98 7.12 7.58 7.58a1.28 1.28 0 0 1 0 2.54c-4.6.46-7.12 2.98-7.58 7.58a1.28 1.28 0 0 1-2.54 0c-.46-4.6-2.98-7.12-7.58-7.58a1.28 1.28 0 0 1 0-2.54c4.6-.46 7.12-2.98 7.58-7.58C10.79.5 11.34 0 12 0z" />
-    </svg>
+      className={className}
+      draggable={false}
+    />
   );
 }
 
-// ---- opencode ---------------------------------------------------------------
-// Open-source terminal coding agent: code brackets with a dot.
-export function OpenCodeLogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <polyline points="8 6 2 12 8 18" />
-      <polyline points="16 6 22 12 16 18" />
-      <line x1="14" y1="4" x2="10" y2="20" />
-    </svg>
-  );
-}
-
-// ---- Cline ------------------------------------------------------------------
-// Open-source coding agent: a terminal cursor line.
-export function ClineLogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <polyline points="4 7 8 12 4 17" />
-      <line x1="12" y1="19" x2="20" y2="19" />
-    </svg>
-  );
-}
-
-// ---- Hermes (Nous Research) -------------------------------------------------
-// Stylized "H" with wings.
-export function HermesLogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <path d="M5 3h2.5v7.5h9V3H19v18h-2.5v-8h-9v8H5V3z" />
-    </svg>
-  );
-}
-
-// ---- Pi (Inflection) --------------------------------------------------------
-// The π symbol.
-export function PiLogo({ className, ...props }: LogoProps) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden
-      {...props}
-    >
-      <path d="M3 6h18v2.5h-2.2v7.8c0 .9.4 1.2 1.2 1.2.4 0 .8-.1 1-.2v2c-.4.2-1 .3-1.8.3-2 0-2.9-1-2.9-3v-8.1H13v9.5h-2.5v-9.5H7.4c0 2.5-.2 4.5-.7 6-.4 1.3-1 2.3-1.9 3l-1.6-1.7c.7-.6 1.2-1.3 1.5-2.2.3-.9.4-2.3.4-4.1V8.5H3V6z" />
-    </svg>
-  );
-}
-
-// ---- Registry: agent id → logo component + brand color ----------------------
+// ---- Registry: agent id → logo + brand styling ------------------------------
 
 export interface AgentBrand {
-  Logo: (props: LogoProps) => JSX.Element;
+  Logo: (props: LogoProps | { className?: string }) => React.ReactElement;
   /** Background tint for the circular container. */
   bg: string;
-  /** Text/icon color (the logo uses currentColor). */
+  /** Text/icon color (inline-SVG logos use currentColor). */
   color: string;
 }
 
@@ -224,14 +149,11 @@ export const AGENT_BRANDS: Record<string, AgentBrand> = {
     color: "text-[#D97757]",
   },
   "codex": {
-    Logo: OpenAILogo,
-    bg: "bg-zinc-800",
-    color: "text-white",
-  },
-  "copilot": {
-    Logo: CopilotLogo,
-    bg: "bg-zinc-800",
-    color: "text-white",
+    Logo: (props) => (
+      <StaticLogo src="/agents/codex.webp" alt="Codex" {...props} />
+    ),
+    bg: "bg-transparent",
+    color: "",
   },
   "cursor": {
     Logo: CursorLogo,
@@ -244,29 +166,38 @@ export const AGENT_BRANDS: Record<string, AgentBrand> = {
     color: "text-white",
   },
   "opencode": {
-    Logo: OpenCodeLogo,
-    bg: "bg-amber-500/15",
-    color: "text-amber-400",
-  },
-  "hermes": {
-    Logo: HermesLogo,
-    bg: "bg-rose-500/15",
-    color: "text-rose-400",
+    Logo: (props) => (
+      <StaticLogo src="/agents/opencode.webp" alt="opencode" {...props} />
+    ),
+    bg: "bg-transparent",
+    color: "",
   },
   "cline": {
     Logo: ClineLogo,
     bg: "bg-teal-500/15",
     color: "text-teal-400",
   },
-  "pi": {
-    Logo: PiLogo,
-    bg: "bg-fuchsia-500/15",
-    color: "text-fuchsia-400",
-  },
   "gemini": {
-    Logo: GeminiLogo,
-    bg: "bg-sky-500/15",
-    color: "text-sky-400",
+    Logo: (props) => (
+      <StaticLogo src="/agents/gemini.svg" alt="Gemini" {...props} />
+    ),
+    bg: "bg-transparent",
+    color: "",
+  },
+  "hermes": {
+    Logo: (props) => (
+      <StaticLogo src="/agents/hermesagent.webp" alt="Hermes" {...props} />
+    ),
+    bg: "bg-transparent",
+    color: "",
+  },
+  "pi": {
+    // pi.svg is white-on-transparent — needs a dark circle to be visible.
+    Logo: (props) => (
+      <StaticLogo src="/agents/pi.svg" alt="Pi" {...props} />
+    ),
+    bg: "bg-zinc-800",
+    color: "",
   },
 };
 
