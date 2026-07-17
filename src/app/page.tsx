@@ -11,7 +11,6 @@ import { useAutumnStore } from "@/lib/autumn/store";
 import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
 import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
 import { TopBar } from "@/components/autumn/TopBar";
-import { Dock } from "@/components/autumn/Dock";
 import { CanvasView } from "@/components/autumn/CanvasView";
 import { CommanderPanel } from "@/components/autumn/CommanderPanel";
 import { AgentChatPanel } from "@/components/autumn/AgentChatPanel";
@@ -147,7 +146,6 @@ export default function Home() {
       <MenuBar />
       <TopBar />
       <div className="flex-1 flex overflow-hidden">
-        <Dock />
         <LeftSidebar />
         <main className="flex-1 min-w-0 relative overflow-hidden">
           <CanvasView />
