@@ -31,6 +31,7 @@ import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
 import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
 import { OnboardingWizard } from "@/components/autumn/OnboardingWizard";
 import { HomeScreen } from "@/components/autumn/HomeScreen";
+import { MenuBar } from "@/components/autumn/MenuBar";
 import { AgentConnectionModal } from "@/components/autumn/AgentConnectionModal";
 import { LeftSidebar } from "@/components/autumn/LeftSidebar";
 import { FloatingTopBar } from "@/components/autumn/FloatingTopBar";
@@ -101,11 +102,18 @@ export default function Home() {
   }, [importCanvasState]);
 
   // ---- STAGE: onboarding ----
-  // First-time users see the 4-step wizard. Full-screen, no chrome.
+  // First-time users see the 4-step wizard. The global MenuBar sits above it.
   if (appStage === "onboarding") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <OnboardingWizard />
+      <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
+        <MenuBar />
+        <div className="flex-1 min-h-0 overflow-auto">
+          <OnboardingWizard />
+        </div>
+        {/* Global overlays reachable from the MenuBar */}
+        {showHelp && <HelpDialog />}
+        <ShortcutHelpOverlay />
+        {showAgentSetup && <AgentConnectionModal />}
       </div>
     );
   }
@@ -115,8 +123,14 @@ export default function Home() {
   // launcher. The agent-connection modal overlays if open.
   if (appStage === "home") {
     return (
-      <div className="min-h-screen bg-background text-foreground">
-        <HomeScreen />
+      <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
+        <MenuBar />
+        <div className="flex-1 min-h-0 overflow-auto">
+          <HomeScreen />
+        </div>
+        {/* Global overlays reachable from the MenuBar */}
+        {showHelp && <HelpDialog />}
+        <ShortcutHelpOverlay />
         {showAgentSetup && <AgentConnectionModal />}
       </div>
     );
@@ -129,6 +143,7 @@ export default function Home() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
+      <MenuBar />
       <TopBar />
       <div className="flex-1 flex overflow-hidden">
         <Dock />
