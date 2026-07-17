@@ -1,7 +1,7 @@
-// Autumn — Floating canvas toolbar (bottom dock).
-// Quick actions: add agent/screen/note, search, select-all, arrange, fit view,
-// background picker, multi-select bulk actions, and clear canvas. Zoom controls
-// and screen count now live in the MinimapPanel under the minimap.
+// Autumn — Floating canvas toolbar.
+// Bottom-center overlay on the canvas with quick actions: arrange, fit, clear,
+// live node/edge counter, zoom level, multi-select bulk actions, QuickSpawnMenu
+// trigger, select all, and group indicator.
 
 "use client";
 
@@ -23,25 +23,71 @@ import {
   MonitorSmartphone,
   StickyNote,
   Search,
+  ZoomIn,
   Copy,
   CheckSquare,
   ChevronDown,
+  TerminalSquare,
+  Globe,
+  Clapperboard,
 } from "lucide-react";
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, useStore } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
 import { BackgroundPicker } from "./BackgroundPicker";
+import { cn } from "@/lib/utils";
+
+// ── Node kind group indicator ────────────────────────────────────────────────
+
+const KIND_META: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
+  chat: { label: "Agents", color: "bg-fuchsia-400", icon: Bot },
+  terminal: { label: "Terminals", color: "bg-emerald-400", icon: Bot },
+  screen: { label: "Screens", color: "bg-sky-400", icon: MonitorSmartphone },
+  sticky: { label: "Notes", color: "bg-violet-400", icon: StickyNote },
+};
+
+function GroupIndicator() {
+  const nodes = useAutumnStore((s) => s.nodes);
+  const counts: Record<string, number> = {};
+  for (const n of nodes) {
+    counts[n.kind] = (counts[n.kind] ?? 0) + 1;
+  }
+  const kinds = Object.entries(counts).filter(([kind]) => KIND_META[kind]);
+
+  if (kinds.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1">
+      {kinds.map(([kind, count]) => {
+        const meta = KIND_META[kind];
+        if (!meta) return null;
+        return (
+          <span key={kind} className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+            <span className={cn("size-1.5 rounded-full", meta.color)} />
+            {count}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 export function CanvasToolbar() {
   const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
   const clearCanvas = useAutumnStore((s) => s.clearCanvas);
   const addNode = useAutumnStore((s) => s.addNode);
+  const nodeCount = useAutumnStore((s) => s.nodes.length);
+  const edgeCount = useAutumnStore((s) => s.edges.length);
   const selectedNodeIds = useAutumnStore((s) => s.selectedNodeIds);
   const removeNodes = useAutumnStore((s) => s.removeNodes);
+  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
   const clearSelection = useAutumnStore((s) => s.clearSelection);
   const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
   const selectAllNodes = useAutumnStore((s) => s.selectAllNodes);
+  const nodes = useAutumnStore((s) => s.nodes);
   const { fitView } = useReactFlow();
+  // Subscribe to the react-flow viewport transform for a reactive zoom reading.
+  const zoom = useStore((s) => s.transform[2]);
 
   // QuickSpawnMenu open state
   const [spawnMenuOpen, setSpawnMenuOpen] = useState(false);
@@ -67,9 +113,11 @@ export function CanvasToolbar() {
   }, [spawnMenuOpen]);
 
   const hasMulti = selectedNodeIds.length > 0;
+  const zoomPct = Math.round(zoom * 100);
 
   return (
     <TooltipProvider delayDuration={200}>
+      <ZoomChip />
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-1.5 shadow-2xl" style={{ boxShadow: "0 8px 32px -8px oklch(0.78 0.18 55 / 0.1), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)" }}>
         {/* Quick add — agent button triggers QuickSpawnMenu */}
         <div className="flex items-center gap-0.5 pr-1 border-r border-border/40" ref={spawnRef}>
@@ -99,6 +147,24 @@ export function CanvasToolbar() {
             onClick={() => addNode({ kind: "sticky" })}
             icon={StickyNote}
             color="text-amber-400"
+          />
+          <ToolbarButton
+            label="Add terminal"
+            onClick={() => addNode({ kind: "terminal" })}
+            icon={TerminalSquare}
+            color="text-emerald-400"
+          />
+          <ToolbarButton
+            label="Add browser"
+            onClick={() => addNode({ kind: "youtube" })}
+            icon={Globe}
+            color="text-amber-400"
+          />
+          <ToolbarButton
+            label="Add video"
+            onClick={() => addNode({ kind: "remotion" })}
+            icon={Clapperboard}
+            color="text-blue-400"
           />
         </div>
 
@@ -195,6 +261,23 @@ export function CanvasToolbar() {
             color="text-rose-400"
           />
         </div>
+
+        {/* Stats + zoom + group indicator */}
+        <div className="flex items-center gap-2 pl-2 pr-1 border-l border-border/40 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-fuchsia-400" />
+            {nodeCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-violet-400" />
+            {edgeCount}
+          </span>
+          <GroupIndicator />
+          <span className="flex items-center gap-1 font-mono text-[10px]">
+            <ZoomIn className="size-2.5 text-muted-foreground/70" />
+            {zoomPct}%
+          </span>
+        </div>
       </div>
     </TooltipProvider>
   );
@@ -228,6 +311,34 @@ function ToolbarButton({
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
         {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ZoomChip — small bottom-left chip that shows the current zoom level as a
+// percentage. Click to reset to 100%. Reactively subscribes to the react-flow
+// viewport transform so it updates the moment the user zooms.
+function ZoomChip() {
+  const zoom = useStore((s) => s.transform[2]);
+  const { zoomTo } = useReactFlow();
+  const zoomPct = Math.round(zoom * 100);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => zoomTo(1, { duration: 300 })}
+          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
+          aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
+        >
+          <ZoomIn className="size-2.5" />
+          <span>{zoomPct}%</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        Reset to 100%
       </TooltipContent>
     </Tooltip>
   );
