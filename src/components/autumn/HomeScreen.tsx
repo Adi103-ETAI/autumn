@@ -104,7 +104,6 @@ const KIND_ICONS: Record<WorkspaceKind, typeof Plus> = {
 interface EntryPoint {
   key: "new" | "folder" | "repo" | "link";
   title: string;
-  description: string;
   icon: typeof Plus;
 }
 
@@ -112,25 +111,21 @@ const ENTRY_POINTS: EntryPoint[] = [
   {
     key: "new",
     title: "New workspace",
-    description: "Start with a blank canvas",
     icon: Plus,
   },
   {
     key: "folder",
     title: "Open folder",
-    description: "Open a local project directory",
     icon: FolderOpen,
   },
   {
     key: "repo",
     title: "Clone repo",
-    description: "Clone a Git repository",
     icon: Github,
   },
   {
     key: "link",
     title: "Open from link",
-    description: "Open a shared canvas URL",
     icon: LinkIcon,
   },
 ];
@@ -362,30 +357,19 @@ export function HomeScreen() {
             Open or create
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex flex-wrap gap-2.5">
             {ENTRY_POINTS.map((entry, i) => (
               <motion.button
                 key={entry.key}
                 type="button"
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 + i * 0.08, duration: 0.4, ease: "easeOut" }}
+                transition={{ delay: 0.05 + i * 0.06, duration: 0.32, ease: "easeOut" }}
                 onClick={() => handleEntryClick(entry.key)}
-                className="group text-left rounded-xl border border-white/5 bg-[#1a202c] hover:border-amber-500/40 hover:bg-amber-500/5 p-5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                className="group inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-white/5 bg-[#1a202c] hover:border-amber-500/40 hover:bg-amber-500/5 text-sm font-medium text-foreground/90 hover:text-foreground transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
               >
-                <div className="flex items-start gap-4">
-                  <div className="flex items-center justify-center size-10 shrink-0 rounded-lg bg-amber-500/10 border border-violet-500/20 text-amber-400 transition-colors group-hover:bg-amber-500/15 group-hover:text-amber-300">
-                    <entry.icon className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground">
-                      {entry.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {entry.description}
-                    </div>
-                  </div>
-                </div>
+                <entry.icon className="size-4 text-amber-400 transition-colors group-hover:text-amber-300" />
+                <span>{entry.title}</span>
               </motion.button>
             ))}
           </div>
