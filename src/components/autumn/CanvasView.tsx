@@ -33,6 +33,7 @@ import {
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { MinimapPanel } from "./MinimapPanel";
 import { CanvasBackgroundLayer } from "./CanvasBackgroundLayer";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
@@ -401,6 +402,7 @@ function CanvasInner() {
         {showMinimap && (
           <MiniMap
             className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
+            style={{ bottom: "92px", width: "150px", height: "110px" }}
             nodeColor={(n) =>
               MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
             }
@@ -409,6 +411,7 @@ function CanvasInner() {
             zoomable
           />
         )}
+        {showMinimap && <MinimapPanel />}
         <CanvasToolbar />
       </ReactFlow>
       <CanvasContextMenu
