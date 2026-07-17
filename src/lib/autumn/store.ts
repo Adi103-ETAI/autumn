@@ -737,7 +737,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   skills: STARTER_SKILLS.map((s) => ({ ...s, id: s.id, installed: false })),
   backends: { website: "localhost:3000", data: [], ai: [] },
   designMd: "",
-  canvasBackgroundId: "autumn-dots",
+  canvasBackgroundId: "midnight-villa",
   voiceSetupOpen: false,
   voiceEnabled: false,
   voiceTranscript: "",

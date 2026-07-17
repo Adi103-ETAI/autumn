@@ -39,6 +39,7 @@ import { VoiceMicButton } from "@/components/autumn/VoiceMicButton";
 import { VoiceSetupModal } from "@/components/autumn/VoiceSetupModal";
 import { AiFinderOverlay } from "@/components/autumn/AiFinderOverlay";
 import { AppsIntegrationModal } from "@/components/autumn/AppsIntegrationModal";
+import { TipCard } from "@/components/autumn/TipCard";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -150,6 +151,7 @@ export default function Home() {
         <LeftSidebar />
         <main className="flex-1 min-w-0 relative overflow-hidden">
           <CanvasView />
+          <TipCard />
           <FloatingTopBar />
           <VoiceMicButton />
         </main>

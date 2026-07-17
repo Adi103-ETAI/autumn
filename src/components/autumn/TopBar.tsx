@@ -1,4 +1,9 @@
-// Autumn — TopBar component.
+// Autumn — TopBar component (October-style redesign).
+// Clean, minimal top header matching the October Desktop reference:
+//   Left:  Autumn logo + editable workspace name + framework badge
+//   Right: Live status, + Screens, Sync, Sessions, Sign in
+// The heavier actions (Save/Export/Activity/Help/Share/Canvases/Home) live in
+// the global MenuBar above this bar, so the TopBar stays uncluttered.
 
 "use client";
 
@@ -7,285 +12,135 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  HelpCircle,
-  MoreVertical,
   Pencil,
-  RotateCcw,
-  Save,
-  Share2,
-  Sparkles,
-  Wifi,
-  FolderOpen,
-  Loader2,
-  Check,
-  Trash2,
-  LayoutGrid,
-  Download,
-  Clock,
-  Command as CommandIcon,
-  Bell,
-  Home,
+  MonitorSmartphone,
+  RefreshCw,
+  Users,
+  User,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
-import { shareCurrentCanvas } from "@/lib/autumn/share-canvas";
 import { cn } from "@/lib/utils";
 
 export function TopBar() {
   const canvasName = useAutumnStore((s) => s.canvasName);
   const setCanvasName = useAutumnStore((s) => s.setCanvasName);
-  const resetCanvas = useAutumnStore((s) => s.resetCanvas);
-  const setShowHelp = useAutumnStore((s) => s.setShowHelp);
-  const setShowCanvasSwitcher = useAutumnStore((s) => s.setShowCanvasSwitcher);
-  const setShowCommandPalette = useAutumnStore((s) => s.setShowCommandPalette);
-  const setShowExportDialog = useAutumnStore((s) => s.setShowExportDialog);
-  const setShowActivityLog = useAutumnStore((s) => s.setShowActivityLog);
+  const canvasId = useAutumnStore((s) => s.canvasId);
+  const workspaces = useAutumnStore((s) => s.workspaces);
+  const addNode = useAutumnStore((s) => s.addNode);
   const saveCanvas = useAutumnStore((s) => s.saveCanvas);
-  const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
-  const isSaving = useAutumnStore((s) => s.isSaving);
-  const lastSavedAt = useAutumnStore((s) => s.lastSavedAt);
-  const nodeCount = useAutumnStore((s) => s.nodes.length);
-  const edgeCount = useAutumnStore((s) => s.edges.length);
-  const taskDone = useAutumnStore(
-    (s) => s.tasks.filter((t) => t.status === "done").length,
-  );
-  const taskTotal = useAutumnStore((s) => s.tasks.length);
-  const busHistory = useAutumnStore((s) => s.busHistory);
+  const setAppStage = useAutumnStore((s) => s.setAppStage);
 
-  const handleSave = async () => {
+  // Derive the framework badge from the active workspace (if any).
+  const activeWorkspace = workspaces.find((w) => w.id === canvasId);
+  const framework = activeWorkspace?.framework;
+
+  const handleSync = async () => {
     await saveCanvas();
     const err = useAutumnStore.getState().saveError;
     if (err) {
-      toast.error(`Save failed: ${err}`);
+      toast.error(`Sync failed: ${err}`);
     } else {
-      toast.success("Canvas saved", {
-        description: `"${canvasName}" persisted to the local database.`,
+      toast.success("Synced", {
+        description: `"${canvasName}" saved to the local database.`,
       });
     }
   };
 
   return (
-    <header className="autumn-topbar-gradient h-14 shrink-0 border-b border-border/50 backdrop-blur-md flex items-center px-3 gap-3">
-      <div className="flex items-center gap-2">
-        <AutumnLogo size={28} priority />
-        <div className="leading-tight">
-          <div className="text-sm font-semibold tracking-tight">Autumn</div>
-          <div className="text-[10px] text-muted-foreground -mt-0.5">
-            spatial workshop
-          </div>
-        </div>
-      </div>
-
-      <div className="h-6 w-px bg-border/60 mx-1" />
-
-      <div className="flex items-center gap-2">
-        <span
-          className="size-1.5 rounded-full bg-emerald-400 pulse-ring"
-          aria-label="Workshop online"
-          title="Workshop online"
-        />
+    <header className="autumn-topbar-gradient h-12 shrink-0 border-b border-white/10 backdrop-blur-md flex items-center px-3 gap-3">
+      {/* Left cluster: logo + workspace name + framework */}
+      <div className="flex items-center gap-2.5">
+        <AutumnLogo size={24} priority />
         <div className="group relative flex items-center">
           <input
             value={canvasName}
             onChange={(e) => setCanvasName(e.target.value)}
-            className="bg-transparent text-sm font-medium pl-2 pr-7 py-1 rounded-md hover:bg-accent/40 focus:bg-accent/40 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors w-56"
-            aria-label="Canvas name"
+            className="bg-transparent text-sm font-medium pl-2 pr-7 py-1 rounded-md hover:bg-white/5 focus:bg-white/5 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors w-48"
+            aria-label="Workspace name"
           />
-          <Pencil className="size-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity absolute right-2 pointer-events-none" />
+          <Pencil className="size-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity absolute right-2 pointer-events-none" />
         </div>
-      </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-        onClick={() => setShowCanvasSwitcher(true)}
-      >
-        <FolderOpen className="size-3.5" />
-        <span className="hidden sm:inline">Canvases</span>
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-        onClick={() => useAutumnStore.getState().setAppStage("home")}
-        title="Back to home"
-      >
-        <Home className="size-3.5" />
-        <span className="hidden sm:inline">Home</span>
-      </Button>
-
-      <div className="flex items-center gap-1.5">
-        <Badge variant="secondary" className="gap-1 text-[11px] h-6 badge-gradient-amber">
-          <Wifi className="size-3 text-emerald-400" />
-          bus live
-        </Badge>
-        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
-          {nodeCount} nodes
-        </Badge>
-        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
-          {edgeCount} edges
-        </Badge>
-        <Badge variant="outline" className="text-[11px] h-6 badge-gradient-outline">
-          {taskDone}/{taskTotal} tasks
-        </Badge>
+        {framework && (
+          <Badge
+            variant="outline"
+            className="text-[10px] h-5 px-1.5 border-white/15 bg-white/5 text-muted-foreground font-mono"
+          >
+            {framework}
+          </Badge>
+        )}
       </div>
 
       <div className="flex-1" />
 
-      {/* Save status indicator */}
-      {lastSavedAt && !isSaving && (
-        <span className="text-[10px] text-muted-foreground/70 hidden md:flex items-center gap-1">
-          <Check className="size-3 text-emerald-400" />
-          saved
-        </span>
-      )}
-
-      {/* Notification bell with unread bus message count */}
-      {busHistory.length > 0 && (
-        <button
-          className="relative flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => useAutumnStore.getState().setShowActivityLog(true)}
-          title={`${busHistory.length} unread bus message${busHistory.length === 1 ? "" : "s"}`}
-        >
-          <Bell className={cn("size-4", busHistory.length > 0 && "notification-bell-pulse")} />
-          {busHistory.length > 0 && (
-            <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-amber-500 text-[7px] font-bold text-white flex items-center justify-center">
-              {busHistory.length > 9 ? "9+" : busHistory.length}
-            </span>
-          )}
-        </button>
-      )}
-
+      {/* Right cluster: Live + Screens + Sync + Sessions + Sign in */}
       <div className="flex items-center gap-1.5">
+        {/* Live status */}
+        <div className="flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] text-muted-foreground">
+          <span
+            className="size-1.5 rounded-full bg-emerald-400 pulse-ring"
+            aria-label="Live"
+            title="Live"
+          />
+          <span className="hidden sm:inline">Live</span>
+        </div>
+
+        {/* + Screens */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-          onClick={() => setShowActivityLog(true)}
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-white/5 h-7 text-[11px]"
+          onClick={() => addNode({ kind: "screen" })}
+          title="Add a screen node"
         >
-          <Clock className="size-4" />
-          <span className="hidden md:inline">Activity</span>
+          <Plus className="size-3" />
+          <span className="hidden sm:inline">Screens</span>
         </Button>
+
+        {/* Sync */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-          onClick={() => setShowExportDialog(true)}
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-white/5 h-7 text-[11px]"
+          onClick={() => void handleSync()}
+          title="Sync / save this canvas"
         >
-          <Download className="size-4" />
-          <span className="hidden md:inline">Export</span>
+          <RefreshCw className="size-3.5" />
+          <span className="hidden sm:inline">Sync</span>
         </Button>
+
+        {/* Sessions */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-          onClick={() => setShowHelp(true)}
+          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-white/5 h-7 text-[11px]"
+          onClick={() =>
+            toast("Sessions coming soon", {
+              description: "Multi-session canvas switching is in development.",
+            })
+          }
+          title="Sessions"
         >
-          <HelpCircle className="size-4" />
-          <span className="hidden sm:inline">Help</span>
+          <Users className="size-3.5" />
+          <span className="hidden sm:inline">Sessions</span>
         </Button>
+
+        <div className="h-5 w-px bg-white/10 mx-0.5" />
+
+        {/* Sign in */}
         <Button
           variant="ghost"
           size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-          onClick={() => {
-            shareCurrentCanvas();
-          }}
-        >
-          <Share2 className="size-4" />
-          <span className="hidden sm:inline">Share</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-amber-300 hover:text-amber-200 hover:bg-amber-500/10 h-8"
-          onClick={() => void handleSave()}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
+          className={cn(
+            "gap-1.5 h-7 text-[11px]",
+            "text-muted-foreground hover:text-foreground hover:bg-white/5",
           )}
-          <span className="hidden sm:inline">
-            {isSaving ? "Saving…" : "Save"}
-          </span>
+          onClick={() => setAppStage("home")}
+          title="Sign in / Home"
+        >
+          <User className="size-3.5" />
+          <span className="hidden sm:inline">Sign in</span>
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8 hover:bg-accent/60">
-              <MoreVertical className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Canvas actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setShowCommandPalette(true)}
-              className="gap-2"
-            >
-              <CommandIcon className="size-4" />
-              Command palette
-              <span className="ml-auto text-[9px] text-muted-foreground font-mono">⌘K</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setShowCanvasSwitcher(true)}
-              className="gap-2"
-            >
-              <FolderOpen className="size-4" />
-              Open canvas switcher
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setShowExportDialog(true)}
-              className="gap-2"
-            >
-              <Download className="size-4" />
-              Export / import JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={arrangeNodes} className="gap-2">
-              <LayoutGrid className="size-4" />
-              Arrange nodes
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setShowActivityLog(true)}
-              className="gap-2"
-            >
-              <Clock className="size-4" />
-              Activity timeline
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setShowHelp(true)}
-              className="gap-2"
-            >
-              <Sparkles className="size-4" />
-              Show onboarding
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={resetCanvas}
-              className="gap-2 text-rose-400"
-            >
-              <RotateCcw className="size-4" />
-              Reset to seed canvas
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => void useAutumnStore.getState().clearCanvas()}
-              className="gap-2 text-rose-400"
-            >
-              <Trash2 className="size-4" />
-              Clear all
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   );

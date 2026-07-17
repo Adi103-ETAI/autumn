@@ -868,6 +868,29 @@ textarea:focus-visible {
   box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
 }
 
+/* 6. autumn-dock-shadow — macOS-style dock depth shadow for the bottom dock. */
+.autumn-dock-shadow {
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.6),
+    0 4px 12px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* 7. autumn-dock-icon — subtle hover magnification for dock app icons. */
+.autumn-dock-icon {
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.15s ease-out;
+}
+.autumn-dock-icon:hover {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 70%
+  );
+}
+
 /* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
         TaskBoard progress, ChatNode idle glow) ---- */
 
