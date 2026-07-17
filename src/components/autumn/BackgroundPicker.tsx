@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useAutumnStore, CANVAS_BACKGROUNDS } from "@/lib/autumn/store";
 import { cn } from "@/lib/utils";
 
-export function BackgroundPicker({ compact = false }: { compact?: boolean }) {
+export function BackgroundPicker() {
   const canvasBackgroundId = useAutumnStore((s) => s.canvasBackgroundId);
   const setCanvasBackgroundId = useAutumnStore((s) => s.setCanvasBackgroundId);
   const [open, setOpen] = useState(false);
@@ -34,16 +34,12 @@ export function BackgroundPicker({ compact = false }: { compact?: boolean }) {
             "text-xs text-muted-foreground transition-all",
             "hover:bg-muted/50 hover:border-amber-500/40 hover:text-foreground",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60",
-            compact &&
-              "!border-transparent !bg-transparent !px-0 !py-0 size-9 rounded-xl hover:bg-white/10 hover:-translate-y-0.5 hover:!border-transparent flex items-center justify-center",
           )}
-          title={compact ? `Background: ${current.label}` : undefined}
         >
           {/* Swatch icon — uses the current background's gradient or a fallback */}
           <span
             className={cn(
               "size-5 rounded-[4px] border border-white/10 bg-cover bg-center shadow-sm",
-              compact && "size-4 rounded-[3px]",
               current.swatch,
             )}
             style={
@@ -52,15 +48,7 @@ export function BackgroundPicker({ compact = false }: { compact?: boolean }) {
                 : undefined
             }
           />
-          {!compact && (
-            <>
-              <Mountain className="size-3.5 text-amber-400 transition-transform group-hover:scale-110" />
-              <span className="hidden sm:inline font-medium">{current.label}</span>
-            </>
-          )}
-          {compact && (
-            <Mountain className="size-3 text-amber-400 absolute -bottom-0.5 -right-0.5 bg-zinc-900 rounded-full p-0.5 size-3.5" />
-          )}
+          <Mountain className="size-3.5 text-amber-400 transition-transform group-hover:scale-110" />
         </button>
       </PopoverTrigger>
 
