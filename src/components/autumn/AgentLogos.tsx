@@ -189,8 +189,8 @@ export const AGENT_BRANDS: Record<string, AgentBrand> = {
   },
   "opencode": {
     Logo: OpencodeLogo,
-    bg: "bg-orange-500/15",
-    color: "text-orange-400",
+    bg: "bg-zinc-800",
+    color: "text-white",
   },
   "gemini": {
     Logo: (props) => (
@@ -201,8 +201,8 @@ export const AGENT_BRANDS: Record<string, AgentBrand> = {
   },
   "hermes": {
     Logo: HermesLogo,
-    bg: "bg-violet-500/15",
-    color: "text-violet-400",
+    bg: "bg-zinc-800",
+    color: "text-white",
   },
   "pi": {
     // pi.svg is white-on-transparent — needs a dark circle to be visible.
