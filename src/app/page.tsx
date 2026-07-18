@@ -36,6 +36,7 @@ import { VoiceSetupModal } from "@/components/autumn/VoiceSetupModal";
 import { AiFinderOverlay } from "@/components/autumn/AiFinderOverlay";
 import { AppsIntegrationModal } from "@/components/autumn/AppsIntegrationModal";
 import { TipCard } from "@/components/autumn/TipCard";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 
 export default function Home() {
   useKeyboardShortcuts();
@@ -44,6 +45,8 @@ export default function Home() {
   const initAppStage = useAutumnStore((s) => s.initAppStage);
   const showAgentSetup = useAutumnStore((s) => s.showAgentSetup);
   const tab = useAutumnStore((s) => s.rightPanelTab);
+  const rightPanelOpen = useAutumnStore((s) => s.rightPanelOpen);
+  const toggleRightPanel = useAutumnStore((s) => s.toggleRightPanel);
   const showHelp = useAutumnStore((s) => s.showHelp);
   const setShowHelp = useAutumnStore((s) => s.setShowHelp);
   const settingsNodeId = useAutumnStore((s) => s.settingsNodeId);
@@ -137,26 +140,52 @@ export default function Home() {
     <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
       <MenuBar />
       <TopBar />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
         <LeftSidebar />
         <main className="flex-1 min-w-0 relative overflow-hidden">
           <CanvasView />
           <TipCard />
           <ProjectChatDock />
         </main>
-        <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
-          <RightPanelTabs />
-          <div className="flex-1 overflow-hidden flex flex-col">
-            {tab === "tasks" ? (
-              <TaskBoard />
-            ) : tab === "stats" ? (
-              <StatsDashboard />
-            ) : (
-              <BusTrafficPanel />
-            )}
-          </div>
-        </aside>
+        {rightPanelOpen ? (
+          <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
+            <RightPanelTabs />
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {tab === "tasks" ? (
+                <TaskBoard />
+              ) : tab === "stats" ? (
+                <StatsDashboard />
+              ) : (
+                <BusTrafficPanel />
+              )}
+            </div>
+          </aside>
+        ) : (
+          <button
+            onClick={toggleRightPanel}
+            className="flex w-10 flex-col items-center gap-2 border-l border-border/50 bg-sidebar/40 py-3 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-sidebar/60 hover:text-foreground"
+            title="Expand right panel"
+            aria-label="Expand right panel"
+          >
+            <PanelRightOpen className="size-4" />
+            <span className="text-[10px] font-medium uppercase tracking-wider [writing-mode:vertical-rl]">
+              {tab}
+            </span>
+          </button>
+        )}
       </div>
+      {/* Floating collapse toggle — always reachable, sits just left of the right panel */}
+      {rightPanelOpen && (
+        <button
+          onClick={toggleRightPanel}
+          className="absolute top-[88px] z-30 flex size-7 items-center justify-center rounded-l-md border border-r-0 border-border/50 bg-sidebar/70 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-sidebar hover:text-foreground"
+          style={{ right: "380px" }}
+          title="Collapse right panel"
+          aria-label="Collapse right panel"
+        >
+          <PanelRightClose className="size-4" />
+        </button>
+      )}
       <StatusBar />
       {showHelp && <HelpDialog />}
       <AgentSettingsDialog
