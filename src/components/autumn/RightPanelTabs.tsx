@@ -5,7 +5,7 @@
 
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, ListChecks, Radio, BarChart3 } from "lucide-react";
+import { ListChecks, Radio, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function RightPanelTabs() {
@@ -26,17 +26,10 @@ export function RightPanelTabs() {
       <Tabs
         value={tab}
         onValueChange={(v) =>
-          setTab(v as "commander" | "tasks" | "bus" | "stats")
+          setTab(v as "tasks" | "bus" | "stats")
         }
       >
-        <TabsList className="grid w-full grid-cols-4 bg-muted/30 h-9">
-          <TabsTrigger value="commander" className="text-xs gap-1.5">
-            <Sparkles className="size-3" />
-            <span>Commander</span>
-            {selectedNodeId && tab !== "commander" && (
-              <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
-            )}
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 bg-muted/30 h-9">
           <TabsTrigger value="tasks" className="text-xs gap-1.5">
             <ListChecks className="size-3" />
             <span>Tasks</span>

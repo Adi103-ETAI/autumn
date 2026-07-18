@@ -540,7 +540,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   recentActions: [],
   isCommanderThinking: false,
   isAgentRunning: {},
-  rightPanelTab: "commander",
+  rightPanelTab: "tasks",
   isListening: false,
   showHelp: false,
   commandHistory: [],
@@ -852,7 +852,17 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
-  setRightPanelTab: (t) => set({ rightPanelTab: t }),
+  setRightPanelTab: (t) => {
+    // The Commander chat tab was removed from the right sidebar (chat now
+    // lives in the floating ProjectChatDock above the dock). Redirect any
+    // legacy "open commander" calls to open the floating project chat so
+    // the 10+ entry points (HelpDialog, MenuBar, ChatNode, etc.) still work.
+    if (t === "commander") {
+      set({ projectChatOpen: true, projectChatMinimized: false });
+      return;
+    }
+    set({ rightPanelTab: t });
+  },
   setListening: (v) => set({ isListening: v }),
   setShowHelp: (v) => set({ showHelp: v }),
   setSettingsNode: (id) => set({ settingsNodeId: id }),
