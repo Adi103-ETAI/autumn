@@ -197,7 +197,7 @@ export default function Home() {
                   >
                     <Icon
                       className={cn(
-                        "size-4 transition-colors",
+                        "size-5 transition-colors",
                         isActive && rightPanelOpen
                           ? "text-amber-300"
                           : "text-muted-foreground",
