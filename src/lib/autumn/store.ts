@@ -329,6 +329,10 @@ export interface AutumnStore {
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
 
+  // Floating "Project chat" panel above the dock (October-style).
+  projectChatOpen: boolean;
+  projectChatMinimized: boolean;
+
   // Round 9 — canvas themes + bus message detail dialog
   canvasTheme: "autumn" | "midnight" | "forest" | "neon";
   selectedBusMessageId: string | null; // when set, BusMessageDetailDialog shows this entry
@@ -397,6 +401,11 @@ export interface AutumnStore {
 
   // minimap + edge labels (Task 4-c)
   setShowMinimap: (v: boolean) => void;
+
+  // Floating "Project chat" panel above the dock.
+  setProjectChatOpen: (v: boolean) => void;
+  setProjectChatMinimized: (v: boolean) => void;
+  toggleProjectChat: () => void;
   updateEdgeLabel: (edgeId: string, label: string) => void;
   selectAllNodes: () => void;
 
@@ -570,6 +579,10 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
+
+  // Floating "Project chat" panel above the dock (closed by default).
+  projectChatOpen: false,
+  projectChatMinimized: false,
 
   // Round 9 — canvas themes + bus message detail + run all
   canvasTheme: "autumn",
@@ -1043,6 +1056,16 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   setShowMinimap: (v) => set({ showMinimap: v }),
+
+  // Floating "Project chat" panel above the dock.
+  setProjectChatOpen: (v) => set({ projectChatOpen: v, projectChatMinimized: false }),
+  setProjectChatMinimized: (v) => set({ projectChatMinimized: v }),
+  toggleProjectChat: () =>
+    set((s) => ({
+      // If fully closed → open expanded. If open → close. If minimized → expand.
+      projectChatOpen: s.projectChatMinimized ? true : !s.projectChatOpen,
+      projectChatMinimized: false,
+    })),
   updateEdgeLabel: (edgeId, label) =>
     set((s) => ({
       edges: s.edges.map((e) => (e.id === edgeId ? { ...e, label } : e)),
