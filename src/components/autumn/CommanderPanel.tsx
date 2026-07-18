@@ -515,7 +515,7 @@ export function CommanderPanel() {
   );
 }
 
-function renderPlanText(plan: CommanderResult): string {
+export function renderPlanText(plan: CommanderResult): string {
   if (plan.kind === "ask") return plan.ask;
   return plan.say;
 }

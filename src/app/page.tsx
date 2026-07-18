@@ -12,6 +12,7 @@ import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
 import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
 import { TopBar } from "@/components/autumn/TopBar";
 import { CanvasView } from "@/components/autumn/CanvasView";
+import { ProjectChatDock } from "@/components/autumn/ProjectChatDock";
 import { CommanderPanel } from "@/components/autumn/CommanderPanel";
 import { AgentChatPanel } from "@/components/autumn/AgentChatPanel";
 import { TaskBoard } from "@/components/autumn/TaskBoard";
@@ -148,6 +149,7 @@ export default function Home() {
         <main className="flex-1 min-w-0 relative overflow-hidden">
           <CanvasView />
           <TipCard />
+          <ProjectChatDock />
         </main>
         <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
           <RightPanelTabs />
