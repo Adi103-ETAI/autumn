@@ -13,8 +13,6 @@ import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
 import { TopBar } from "@/components/autumn/TopBar";
 import { CanvasView } from "@/components/autumn/CanvasView";
 import { ProjectChatDock } from "@/components/autumn/ProjectChatDock";
-import { CommanderPanel } from "@/components/autumn/CommanderPanel";
-import { AgentChatPanel } from "@/components/autumn/AgentChatPanel";
 import { TaskBoard } from "@/components/autumn/TaskBoard";
 import { BusTrafficPanel } from "@/components/autumn/BusTrafficPanel";
 import { StatsDashboard } from "@/components/autumn/StatsDashboard";
@@ -48,10 +46,6 @@ export default function Home() {
   const tab = useAutumnStore((s) => s.rightPanelTab);
   const showHelp = useAutumnStore((s) => s.showHelp);
   const setShowHelp = useAutumnStore((s) => s.setShowHelp);
-  const selectedNodeId = useAutumnStore((s) => s.selectedNodeId);
-  const selectedNode = useAutumnStore((s) =>
-    s.nodes.find((n) => n.id === s.selectedNodeId),
-  );
   const settingsNodeId = useAutumnStore((s) => s.settingsNodeId);
   const setSettingsNode = useAutumnStore((s) => s.setSettingsNode);
   const showCanvasSwitcher = useAutumnStore((s) => s.showCanvasSwitcher);
@@ -137,8 +131,7 @@ export default function Home() {
 
   // ---- STAGE: workspace ----
   // The spatial canvas with dock, right panel, and all the tooling.
-  const showAgentChat =
-    tab === "commander" && selectedNodeId && selectedNode?.kind === "chat";
+  // (Project chat now lives in the floating ProjectChatDock above the dock.)
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
@@ -154,11 +147,7 @@ export default function Home() {
         <aside className="w-[380px] border-l border-border/50 bg-sidebar/40 backdrop-blur-sm flex flex-col">
           <RightPanelTabs />
           <div className="flex-1 overflow-hidden flex flex-col">
-            {showAgentChat && selectedNodeId ? (
-              <AgentChatPanel nodeId={selectedNodeId} />
-            ) : tab === "commander" ? (
-              <CommanderPanel />
-            ) : tab === "tasks" ? (
+            {tab === "tasks" ? (
               <TaskBoard />
             ) : tab === "stats" ? (
               <StatsDashboard />
