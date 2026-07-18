@@ -749,22 +749,6 @@ textarea:focus-visible {
   );
 }
 
-/* Autumn — global macOS-style menu bar.
-   Slim (h-8), translucent dark, sits above every app stage. Subtle bottom
-   hairline + inner top highlight to echo the October Desktop reference. */
-.autumn-menubar {
-  background: linear-gradient(
-    180deg,
-    oklch(0.165 0.008 55 / 92%) 0%,
-    oklch(0.145 0.007 55 / 88%) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 4%),
-    0 1px 0 0 oklch(0 0 0 / 30%);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 /* Right panel divider */
 .autumn-right-panel {
   background: linear-gradient(
@@ -866,29 +850,6 @@ textarea:focus-visible {
 }
 .chip-zoom-reset:hover {
   box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
-}
-
-/* 6. autumn-dock-shadow — macOS-style dock depth shadow for the bottom dock. */
-.autumn-dock-shadow {
-  box-shadow:
-    0 10px 40px -10px rgba(0, 0, 0, 0.6),
-    0 4px 12px -4px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-    0 1px 0 0 rgba(255, 255, 255, 0.08) inset;
-}
-
-/* 7. autumn-dock-icon — subtle hover magnification for dock app icons. */
-.autumn-dock-icon {
-  transition:
-    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-    background-color 0.15s ease-out;
-}
-.autumn-dock-icon:hover {
-  background-image: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.08) 0%,
-    transparent 70%
-  );
 }
 
 /* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
@@ -1095,6 +1056,35 @@ textarea:focus-visible {
 }
 .dock-btn-active {
   animation: dock-btn-flash 0.6s ease-out;
+}
+
+/* 6b. dock-app-tile — colorful app-icon tiles (macOS/October dock style).
+   Each button carries a per-tool gradient + a soft colored glow on hover. */
+.dock-app-tile {
+  position: relative;
+  isolation: isolate;
+}
+.dock-app-tile::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 0.9rem;
+  background: var(--tile-glow, transparent);
+  filter: blur(8px);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.2s ease;
+}
+.dock-app-tile:hover::after {
+  opacity: 0.7;
+}
+@keyframes dock-tile-flash {
+  0% { transform: scale(1); filter: brightness(1.6); }
+  50% { transform: scale(0.92); filter: brightness(1.3); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.dock-tile-active {
+  animation: dock-tile-flash 0.6s ease-out;
 }
 
 /* 7. Commander input gradient border on focus. */
