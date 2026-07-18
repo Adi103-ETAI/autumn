@@ -435,6 +435,8 @@ export interface AutumnStore {
   // Left sidebar (4 tabs, mirrors October's Resources/Skills/Backends/Design)
   leftSidebarOpen: boolean;
   leftSidebarTab: "resources" | "skills" | "backends" | "design";
+  // Right panel collapse (Tasks / Bus / Stats sidebar)
+  rightPanelOpen: boolean;
   // Resources — project context files shared with all agents
   projectFiles: ProjectFile[];
   // Skills — installable skills (Website Cloner, GSD, ...)
@@ -460,6 +462,9 @@ export interface AutumnStore {
   setLeftSidebarOpen: (v: boolean) => void;
   toggleLeftSidebar: () => void;
   setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design") => void;
+  // Right panel collapse
+  setRightPanelOpen: (v: boolean) => void;
+  toggleRightPanel: () => void;
   addProjectFile: (file: Omit<ProjectFile, "id" | "addedAt">) => void;
   removeProjectFile: (id: string) => void;
   addSkill: (skill: Omit<Skill, "id" | "installedAt" | "installed">) => void;
@@ -741,6 +746,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
   leftSidebarOpen: true,
+  // Right panel (Tasks / Bus / Stats) starts expanded.
+  rightPanelOpen: true,
   leftSidebarTab: "resources",
   projectFiles: [
     { id: "pf1", name: "README.md", category: "doc", size: 4200, source: "repo", addedAt: Date.now() - 86400000 },
@@ -762,6 +769,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   setLeftSidebarOpen: (v) => set({ leftSidebarOpen: v }),
   toggleLeftSidebar: () => set((s) => ({ leftSidebarOpen: !s.leftSidebarOpen })),
+  setRightPanelOpen: (v) => set({ rightPanelOpen: v }),
+  toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setLeftSidebarTab: (t) => set({ leftSidebarTab: t, leftSidebarOpen: true }),
   addProjectFile: (file) =>
     set((s) => ({
