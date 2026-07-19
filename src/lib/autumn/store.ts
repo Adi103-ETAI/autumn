@@ -454,6 +454,8 @@ export interface AutumnStore {
   // Third-party apps integration modal (Shopify/Lovable/Figma/Shortcut/Post Bridge/Canvas)
   appsModalOpen: boolean;
   connectedApps: string[];
+  // Agent picker panel (popover above the bottom dock — agent + app grid)
+  agentPickerOpen: boolean;
   // AI Finder — natural-language file search overlay
   aiFinderOpen: boolean;
   aiFinderQuery: string;
@@ -480,6 +482,8 @@ export interface AutumnStore {
   setVoiceEnabled: (v: boolean) => void;
   setVoiceTranscript: (t: string) => void;
   setAppsModalOpen: (v: boolean) => void;
+  setAgentPickerOpen: (v: boolean) => void;
+  toggleAgentPicker: () => void;
   toggleApp: (id: string) => void;
   setAiFinderOpen: (v: boolean) => void;
   setAiFinderQuery: (q: string) => void;
@@ -763,6 +767,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   voiceTranscript: "",
   appsModalOpen: false,
   connectedApps: [],
+  agentPickerOpen: false,
   aiFinderOpen: false,
   aiFinderQuery: "",
   aiFinderResults: [],
@@ -822,6 +827,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   setVoiceEnabled: (v) => set({ voiceEnabled: v }),
   setVoiceTranscript: (t) => set({ voiceTranscript: t }),
   setAppsModalOpen: (v) => set({ appsModalOpen: v }),
+  setAgentPickerOpen: (v) => set({ agentPickerOpen: v }),
+  toggleAgentPicker: () => set((s) => ({ agentPickerOpen: !s.agentPickerOpen })),
   toggleApp: (id) =>
     set((s) => ({
       connectedApps: s.connectedApps.includes(id)
