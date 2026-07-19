@@ -140,6 +140,15 @@ export interface AiFinderResult {
   score: number; // 0..1 relevance
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  kind: "info" | "success" | "warning" | "agent";
+  read: boolean;
+  createdAt: number;
+}
+
 // October-style scenic photographic canvas backgrounds.
 // Each has an id, label, and a CSS background (gradient swatch + optional image url).
 export interface CanvasBackground {
@@ -230,6 +239,33 @@ export const STARTER_SKILLS: Omit<Skill, "id" | "installedAt" | "installed">[] =
     description: "Design, document, and scaffold REST/GraphQL APIs from a natural-language spec.",
     icon: "🔌",
     color: "text-emerald-400",
+  },
+];
+
+export const STARTER_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: "n1",
+    title: "Claude Code finished",
+    body: "design.md was scaffolded and 4 components generated in 1m 12s.",
+    kind: "agent",
+    read: false,
+    createdAt: Date.now() - 1000 * 60 * 4,
+  },
+  {
+    id: "n2",
+    title: "New skill available",
+    body: "“Website Cloner” can be installed from the Skills tab.",
+    kind: "info",
+    read: false,
+    createdAt: Date.now() - 1000 * 60 * 22,
+  },
+  {
+    id: "n3",
+    title: "Bus traffic recorded",
+    body: "Hermes → Claude Code exchanged 3 messages.",
+    kind: "success",
+    read: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 2,
   },
 ];
 
@@ -432,9 +468,9 @@ export interface AutumnStore {
   createBlankWorkspace: (name?: string) => string;
 
   // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
-  // Left sidebar (4 tabs, mirrors October's Resources/Skills/Backends/Design)
+  // Left sidebar (6 tabs: Resources/Skills/Backends/Design/Chat/Notifications)
   leftSidebarOpen: boolean;
-  leftSidebarTab: "resources" | "skills" | "backends" | "design";
+  leftSidebarTab: "resources" | "skills" | "backends" | "design" | "chat" | "notifications";
   // Right panel collapse (Tasks / Bus / Stats sidebar)
   rightPanelOpen: boolean;
   // Resources — project context files shared with all agents
@@ -460,10 +496,12 @@ export interface AutumnStore {
   aiFinderOpen: boolean;
   aiFinderQuery: string;
   aiFinderResults: AiFinderResult[];
+  // Notifications — bell tab in the left sidebar
+  notifications: AppNotification[];
 
   setLeftSidebarOpen: (v: boolean) => void;
   toggleLeftSidebar: () => void;
-  setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design") => void;
+  setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design" | "chat" | "notifications") => void;
   // Right panel collapse
   setRightPanelOpen: (v: boolean) => void;
   toggleRightPanel: () => void;
@@ -488,6 +526,10 @@ export interface AutumnStore {
   setAiFinderOpen: (v: boolean) => void;
   setAiFinderQuery: (q: string) => void;
   runAiFinder: (q: string) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
+  pushNotification: (n: Omit<AppNotification, "id" | "read" | "createdAt">) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -771,6 +813,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   aiFinderOpen: false,
   aiFinderQuery: "",
   aiFinderResults: [],
+  notifications: STARTER_NOTIFICATIONS.map((n) => ({ ...n })),
 
   setLeftSidebarOpen: (v) => set({ leftSidebarOpen: v }),
   toggleLeftSidebar: () => set((s) => ({ leftSidebarOpen: !s.leftSidebarOpen })),
@@ -865,6 +908,29 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     results.sort((a, b) => b.score - a.score);
     set({ aiFinderResults: results.slice(0, 12), aiFinderQuery: q });
   },
+  markNotificationRead: (id) =>
+    set((s) => ({
+      notifications: s.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n,
+      ),
+    })),
+  markAllNotificationsRead: () =>
+    set((s) => ({
+      notifications: s.notifications.map((n) => ({ ...n, read: true })),
+    })),
+  clearNotifications: () => set({ notifications: [] }),
+  pushNotification: (n) =>
+    set((s) => ({
+      notifications: [
+        {
+          ...n,
+          id: `n${Date.now()}`,
+          read: false,
+          createdAt: Date.now(),
+        },
+        ...s.notifications,
+      ],
+    })),
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),

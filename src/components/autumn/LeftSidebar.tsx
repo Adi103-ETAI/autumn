@@ -1,11 +1,11 @@
 // Autumn — Left Sidebar (mirrors October Desktop's left sidebar).
 // Sits to the right of the existing left Dock. Layout:
-//   - 48px vertical icon rail (always visible) with 4 tabs + collapse toggle
+//   - 48px vertical icon rail (always visible) with 6 tabs + collapse toggle
 //   - 280px expandable content panel (Framer Motion width/opacity transition)
 //
-// Tabs: Resources / Skills / Backends / Design
-// A Conversations sub-panel (collapsible) lives at the bottom of the content panel,
-// showing inter-agent bus traffic grouped by edge.
+// Tabs: Resources / Skills / Backends / Design / Chat / Notifications
+// Chat holds inter-agent bus traffic (ConversationsPanel moved here).
+// Notifications holds the bell inbox with unread badge.
 
 "use client";
 
@@ -39,7 +39,13 @@ import {
   FileType,
   File as FileIcon,
   Download,
-  Cable,
+  MessageSquare,
+  Bell,
+  BellRing,
+  CheckCheck,
+  Info,
+  AlertTriangle,
+  Bot,
 } from "lucide-react";
 
 import { useAutumnStore } from "@/lib/autumn/store";
@@ -47,6 +53,7 @@ import type {
   ProjectFile,
   ProjectFileCategory,
   Skill,
+  AppNotification,
 } from "@/lib/autumn/store";
 import type { BusPulse } from "@/lib/autumn/types";
 import { Button } from "@/components/ui/button";
@@ -62,7 +69,13 @@ import { cn } from "@/lib/utils";
 
 // ---- Tab metadata -----------------------------------------------------------
 
-type TabId = "resources" | "skills" | "backends" | "design";
+type TabId =
+  | "resources"
+  | "skills"
+  | "backends"
+  | "design"
+  | "chat"
+  | "notifications";
 
 const TABS: {
   id: TabId;
@@ -108,6 +121,24 @@ const TABS: {
     ring: "ring-sky-500/40",
     bg: "bg-sky-500/15",
     description: "One design.md for the canvas",
+  },
+  {
+    id: "chat",
+    label: "Chat",
+    icon: MessageSquare,
+    color: "text-violet-400",
+    ring: "ring-violet-500/40",
+    bg: "bg-violet-500/15",
+    description: "Agent-to-agent conversations",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    icon: Bell,
+    color: "text-rose-400",
+    ring: "ring-rose-500/40",
+    bg: "bg-rose-500/15",
+    description: "Activity & alerts",
   },
 ];
 
@@ -160,6 +191,17 @@ function humanSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
 // ---- Main component ---------------------------------------------------------
 
 export function LeftSidebar() {
@@ -168,8 +210,12 @@ export function LeftSidebar() {
   const setLeftSidebarTab = useAutumnStore((s) => s.setLeftSidebarTab);
   const toggleLeftSidebar = useAutumnStore((s) => s.toggleLeftSidebar);
   const designMd = useAutumnStore((s) => s.designMd);
+  const notifications = useAutumnStore((s) => s.notifications);
+  const busHistory = useAutumnStore((s) => s.busHistory);
 
   const activeTab = TABS.find((t) => t.id === leftSidebarTab) ?? TABS[0];
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const convoCount = busHistory.length;
 
   const handleTabClick = (tabId: TabId) => {
     if (leftSidebarTab === tabId && leftSidebarOpen) {
@@ -190,6 +236,9 @@ export function LeftSidebar() {
             const isActive = leftSidebarTab === tab.id && leftSidebarOpen;
             const showDesignBadge =
               tab.id === "design" && designMd.trim().length === 0;
+            const showNotifBadge =
+              tab.id === "notifications" && unreadCount > 0;
+            const showChatBadge = tab.id === "chat" && convoCount > 0;
             return (
               <Tooltip key={tab.id}>
                 <TooltipTrigger asChild>
@@ -198,8 +247,7 @@ export function LeftSidebar() {
                     className={cn(
                       "relative flex size-9 items-center justify-center rounded-lg transition-all duration-200",
                       "hover:bg-accent/50",
-                      isActive &&
-                        cn("ring-1 ring-inset", tab.ring, tab.bg),
+                      isActive && cn("ring-1 ring-inset", tab.ring, tab.bg),
                     )}
                     aria-label={tab.label}
                     aria-pressed={isActive}
@@ -213,6 +261,16 @@ export function LeftSidebar() {
                     {showDesignBadge && (
                       <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white shadow-sm">
                         1
+                      </span>
+                    )}
+                    {showChatBadge && (
+                      <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-violet-500 text-[8px] font-bold text-white shadow-sm">
+                        {convoCount > 9 ? "9+" : convoCount}
+                      </span>
+                    )}
+                    {showNotifBadge && (
+                      <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-bold text-white shadow-sm">
+                        {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
                   </button>
@@ -275,10 +333,9 @@ export function LeftSidebar() {
                 {leftSidebarTab === "skills" && <SkillsTab />}
                 {leftSidebarTab === "backends" && <BackendsTab />}
                 {leftSidebarTab === "design" && <DesignTab />}
+                {leftSidebarTab === "chat" && <ChatTab />}
+                {leftSidebarTab === "notifications" && <NotificationsTab />}
               </div>
-
-              {/* Conversations sub-panel (collapsible bottom) */}
-              <ConversationsPanel />
             </div>
           </motion.div>
         )}
@@ -348,11 +405,20 @@ function ResourcesTab() {
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Files you add here are shared with Autumn&apos;s agents — Claude Code and
-        the canvas terminals can read and use them. Drop in research, PDFs, brand
-        assets or references.
-      </p>
+      {/* Project context card */}
+      <div className="rounded-md border border-border/40 bg-muted/20 p-2.5">
+        <div className="mb-1 flex items-center gap-1.5">
+          <FolderOpen className="size-3 text-amber-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-300/90">
+            Project context
+          </span>
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-muted-foreground">
+          Files you add here are shared with Autumn&apos;s agents — Claude Code
+          and the canvas terminals can read and use them. Drop in research, PDFs,
+          brand assets or references you want Autumn to consider.
+        </p>
+      </div>
 
       {/* Search */}
       <div className="relative">
@@ -365,43 +431,65 @@ function ResourcesTab() {
         />
       </div>
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1">
+      {/* Category icon tabs (Images / Videos / Audio / Fonts / Docs / Other) */}
+      <div className="grid grid-cols-6 gap-1">
         {(Object.keys(CATEGORY_LABEL) as ProjectFileCategory[]).map((cat) => {
           const active = activeCats.has(cat);
+          const Icon = CATEGORY_ICON[cat];
           return (
-            <button
-              key={cat}
-              onClick={() => toggleCat(cat)}
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] transition-colors",
-                active
-                  ? "border-amber-500/50 bg-amber-500/15 text-amber-300"
-                  : "border-border/50 bg-muted/20 text-muted-foreground hover:bg-muted/40",
-              )}
-            >
-              {CATEGORY_LABEL[cat]}
-            </button>
+            <Tooltip key={cat}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => toggleCat(cat)}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 rounded-md border py-1.5 transition-colors",
+                    active
+                      ? "border-amber-500/50 bg-amber-500/15 text-amber-300"
+                      : "border-border/40 bg-muted/10 text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                  )}
+                  aria-label={CATEGORY_LABEL[cat]}
+                  aria-pressed={active}
+                >
+                  <Icon className="size-3.5" />
+                  <span className="text-[8px] font-medium">
+                    {CATEGORY_LABEL[cat]}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={4}>
+                {CATEGORY_LABEL[cat]}
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
 
-      {/* File list */}
-      <div className="flex flex-col gap-1">
-        {filtered.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border/40 px-3 py-6 text-center text-[11px] text-muted-foreground">
-            No files match.
-          </div>
-        ) : (
-          filtered.map((file) => (
-            <FileRow
+      {/* Section label */}
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          In this project
+        </span>
+        <span className="text-[9px] text-muted-foreground/70">
+          already in your repo
+        </span>
+      </div>
+
+      {/* File grid (2 columns) */}
+      {filtered.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/40 px-3 py-6 text-center text-[11px] text-muted-foreground">
+          No files match.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-1.5">
+          {filtered.map((file) => (
+            <FileTile
               key={file.id}
               file={file}
               onRemove={() => removeProjectFile(file.id)}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Bottom upload actions */}
       <div className="mt-1 grid grid-cols-2 gap-1.5 border-t border-border/40 pt-3">
@@ -457,25 +545,22 @@ function ResourcesTab() {
   );
 }
 
-function FileRow({ file, onRemove }: { file: ProjectFile; onRemove: () => void }) {
+function FileTile({ file, onRemove }: { file: ProjectFile; onRemove: () => void }) {
   const Icon = CATEGORY_ICON[file.category];
   return (
-    <div className="group flex items-center gap-2 rounded-md border border-border/40 bg-muted/20 px-2 py-1.5 transition-colors hover:bg-muted/40">
-      <Icon className={cn("size-3.5 shrink-0", CATEGORY_COLOR[file.category])} />
-      <div className="flex min-w-0 flex-1 flex-col leading-tight">
-        <span className="truncate text-[11px] font-medium">{file.name}</span>
-        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
-          <span>{humanSize(file.size)}</span>
-          <span className="rounded-sm bg-muted/60 px-1 capitalize">{file.source}</span>
-        </div>
-      </div>
+    <div className="group relative flex flex-col items-center gap-1 rounded-md border border-border/40 bg-muted/20 p-2 transition-colors hover:bg-muted/40">
       <button
         onClick={onRemove}
-        className="opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100"
         aria-label={`Remove ${file.name}`}
       >
-        <X className="size-3.5 text-muted-foreground hover:text-rose-400" />
+        <X className="size-3 text-muted-foreground hover:text-rose-400" />
       </button>
+      <Icon className={cn("size-6", CATEGORY_COLOR[file.category])} />
+      <span className="w-full truncate text-center text-[10px] font-medium" title={file.name}>
+        {file.name}
+      </span>
+      <span className="text-[8px] text-muted-foreground">{humanSize(file.size)}</span>
     </div>
   );
 }
@@ -496,8 +581,6 @@ function SkillsTab() {
       toast("Skill name is required");
       return;
     }
-    // addSkill expects Omit<Skill, "id" | "installed" | "installedAt">.
-    // The store runtime generates an id if missing — we just pass name/desc/icon/color.
     addSkill({
       name: name.trim(),
       description: desc.trim() || "Custom skill.",
@@ -513,12 +596,12 @@ function SkillsTab() {
   return (
     <div className="flex flex-col gap-3 p-3">
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Add a skill and every agent on this canvas can use it — mention it in a
-        chat, or just name it in a terminal. It installs into your project so all
-        agents pick it up.
+        Add a skill and every agent on this canvas can use it — @mention it in a
+        chat, or just name it in a terminal. It installs into your project so
+        Claude Code, Codex, opencode, Cursor and the rest all pick it up.
       </p>
 
-      <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto autumn-scroll -mx-1 px-1">
+      <div className="flex flex-col gap-2 max-h-[52vh] overflow-y-auto autumn-scroll -mx-1 px-1">
         {skills.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/40 px-3 py-6 text-center text-[11px] text-muted-foreground">
             No skills yet.
@@ -593,7 +676,7 @@ function SkillCard({ skill, onToggle }: { skill: Skill; onToggle: () => void }) 
     <div className="flex items-start gap-2 rounded-md border border-border/40 bg-muted/20 p-2 transition-colors hover:bg-muted/30">
       <div
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/60 text-base",
+          "flex size-8 shrink-0 items-center justify-center rounded-md bg-fuchsia-500/10 text-base",
           skill.color,
         )}
       >
@@ -788,7 +871,6 @@ function BackendsTab() {
 }
 
 function Globe({ className }: { className?: string }) {
-  // Local copy so we don't need an extra lucide import in the top bar list.
   return <Cloud className={cn("size-3", className)} />;
 }
 
@@ -857,10 +939,20 @@ function DesignTab() {
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        One design.md for the whole canvas. Autumn reads it before building any UI
-        — web, mobile or video — and conforms to it.
-      </p>
+      {/* Design system card */}
+      <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-2.5">
+        <div className="mb-1 flex items-center gap-1.5">
+          <Palette className="size-3 text-sky-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-300/90">
+            Design system
+          </span>
+        </div>
+        <p className="text-[10.5px] leading-relaxed text-muted-foreground">
+          One design.md for the whole canvas. Autumn reads it before building any
+          UI — web, mobile or video — and conforms to it. Edit it here or upload a
+          new version; it guides every build.
+        </p>
+      </div>
 
       {designMd.trim().length === 0 ? (
         <div className="rounded-md border border-dashed border-border/50 bg-muted/10 p-4 text-center">
@@ -892,7 +984,7 @@ function DesignTab() {
   );
 }
 
-// ---- Conversations sub-panel ------------------------------------------------
+// ---- Tab 5: Chat (inter-agent conversations) --------------------------------
 
 interface ConversationGroup {
   edgeId: string;
@@ -902,12 +994,11 @@ interface ConversationGroup {
   last: BusPulse;
 }
 
-function ConversationsPanel() {
+function ChatTab() {
   const busHistory = useAutumnStore((s) => s.busHistory);
   const nodes = useAutumnStore((s) => s.nodes);
   const clearBusHistory = useAutumnStore((s) => s.clearBusHistory);
 
-  const [open, setOpen] = useState(true);
   const [expandedEdge, setExpandedEdge] = useState<string | null>(null);
   const [hiddenEdges, setHiddenEdges] = useState<Set<string>>(new Set());
 
@@ -934,7 +1025,6 @@ function ConversationsPanel() {
         });
       }
     }
-    // Sort by most recent
     return Array.from(map.values()).sort((a, b) => b.last.ts - a.last.ts);
   }, [busHistory, hiddenEdges]);
 
@@ -946,7 +1036,6 @@ function ConversationsPanel() {
       setHiddenEdges(new Set());
       toast("Conversations cleared");
     } else {
-      // Fallback: hide all locally
       const all = new Set<string>();
       for (const p of busHistory) all.add(p.edgeId);
       setHiddenEdges(all);
@@ -954,79 +1043,55 @@ function ConversationsPanel() {
     }
   };
 
-  return (
-    <div className="border-t border-border/40 bg-sidebar/30">
-      {/* Header */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left transition-colors hover:bg-accent/30"
-      >
-        {open ? (
-          <ChevronDown className="size-3 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-3 text-muted-foreground" />
-        )}
-        <Cable className="size-3 text-amber-400" />
-        <span className="text-[11px] font-medium">Conversations</span>
-        {totalShown > 0 && (
-          <Badge
-            variant="outline"
-            className="ml-auto h-4 px-1 text-[9px] border-amber-500/40 text-amber-300"
-          >
-            {totalShown}
-          </Badge>
-        )}
-      </button>
+  // Empty state — mirrors October's "No conversations yet" centered card
+  if (groups.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full border border-border/40 bg-muted/30">
+          <MessageSquare className="size-7 text-violet-400/70" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-semibold text-foreground">
+            No conversations yet
+          </span>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Connect two agents (chat or terminal) with a line, and what they say
+            to each other shows up here.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-2">
-              {groups.length === 0 ? (
-                <p className="rounded-md border border-dashed border-border/40 bg-muted/10 px-3 py-3 text-[10px] leading-relaxed text-muted-foreground">
-                  No conversations yet. Connect two agents (chat or terminal) with
-                  a line, and what they say to each other shows up here.
-                </p>
-              ) : (
-                <>
-                  <div className="mb-1 flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearAll}
-                      className="h-5 gap-1 px-1.5 text-[9px] text-muted-foreground hover:text-rose-400"
-                    >
-                      <Trash2 className="size-2.5" />
-                      Clear all
-                    </Button>
-                  </div>
-                  <div className="flex max-h-64 flex-col gap-1 overflow-y-auto autumn-scroll">
-                    {groups.map((g) => (
-                      <ConversationRow
-                        key={g.edgeId}
-                        group={g}
-                        nodeName={nodeName}
-                        expanded={expandedEdge === g.edgeId}
-                        onToggle={() =>
-                          setExpandedEdge((cur) =>
-                            cur === g.edgeId ? null : g.edgeId,
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+  return (
+    <div className="flex flex-col gap-2 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {totalShown} message{totalShown === 1 ? "" : "s"}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClearAll}
+          className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-rose-400"
+        >
+          <Trash2 className="size-2.5" />
+          Clear all
+        </Button>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {groups.map((g) => (
+          <ConversationRow
+            key={g.edgeId}
+            group={g}
+            nodeName={nodeName}
+            expanded={expandedEdge === g.edgeId}
+            onToggle={() =>
+              setExpandedEdge((cur) => (cur === g.edgeId ? null : g.edgeId))
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -1060,14 +1125,14 @@ function ConversationRow({
         ) : (
           <ChevronRight className="size-2.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="truncate text-[10px] font-medium text-amber-300/90">
+        <span className="truncate text-[10px] font-medium text-violet-300/90">
           {fromName}
         </span>
         <ArrowRight className="size-2.5 shrink-0 text-muted-foreground" />
-        <span className="truncate text-[10px] font-medium text-amber-300/90">
+        <span className="truncate text-[10px] font-medium text-violet-300/90">
           {toName}
         </span>
-        <span className="ml-auto shrink-0 rounded-full bg-amber-500/15 px-1 text-[9px] text-amber-300">
+        <span className="ml-auto shrink-0 rounded-full bg-violet-500/15 px-1 text-[9px] text-violet-300">
           {group.messages.length}
         </span>
       </button>
@@ -1102,5 +1167,130 @@ function ConversationRow({
   );
 }
 
-// ---- Tiny presentational bits ----------------------------------------------
+// ---- Tab 6: Notifications ---------------------------------------------------
 
+const NOTIF_ICON: Record<
+  AppNotification["kind"],
+  React.ComponentType<{ className?: string }>
+> = {
+  info: Info,
+  success: CheckCircle2,
+  warning: AlertTriangle,
+  agent: Bot,
+};
+
+const NOTIF_COLOR: Record<AppNotification["kind"], string> = {
+  info: "text-sky-400",
+  success: "text-emerald-400",
+  warning: "text-amber-400",
+  agent: "text-violet-400",
+};
+
+const NOTIF_BG: Record<AppNotification["kind"], string> = {
+  info: "bg-sky-500/10 border-sky-500/30",
+  success: "bg-emerald-500/10 border-emerald-500/30",
+  warning: "bg-amber-500/10 border-amber-500/30",
+  agent: "bg-violet-500/10 border-violet-500/30",
+};
+
+function NotificationsTab() {
+  const notifications = useAutumnStore((s) => s.notifications);
+  const markNotificationRead = useAutumnStore((s) => s.markNotificationRead);
+  const markAllNotificationsRead = useAutumnStore((s) => s.markAllNotificationsRead);
+  const clearNotifications = useAutumnStore((s) => s.clearNotifications);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  if (notifications.length === 0) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full border border-border/40 bg-muted/30">
+          <BellRing className="size-7 text-rose-400/70" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-semibold text-foreground">
+            You&apos;re all caught up
+          </span>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Agent activity, build completions and skill updates will appear here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {unreadCount > 0 ? `${unreadCount} unread` : "All read"}
+        </span>
+        <div className="flex items-center gap-1">
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={markAllNotificationsRead}
+              className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              <CheckCheck className="size-2.5" />
+              Mark all
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearNotifications}
+            className="h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-rose-400"
+          >
+            <Trash2 className="size-2.5" />
+            Clear
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        {notifications.map((n) => {
+          const Icon = NOTIF_ICON[n.kind];
+          return (
+            <button
+              key={n.id}
+              onClick={() => markNotificationRead(n.id)}
+              className={cn(
+                "flex items-start gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted/30",
+                n.read
+                  ? "border-border/30 bg-muted/10 opacity-70"
+                  : cn("border-border/40", NOTIF_BG[n.kind]),
+              )}
+            >
+              <div
+                className={cn(
+                  "flex size-6 shrink-0 items-center justify-center rounded-full",
+                  n.read ? "bg-muted/40" : "bg-muted/30",
+                )}
+              >
+                <Icon className={cn("size-3.5", NOTIF_COLOR[n.kind])} />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-[11px] font-medium">
+                    {n.title}
+                  </span>
+                  {!n.read && (
+                    <span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
+                  )}
+                </div>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  {n.body}
+                </p>
+                <span className="text-[9px] text-muted-foreground/70">
+                  {timeAgo(n.createdAt)}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
