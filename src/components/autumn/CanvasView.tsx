@@ -22,6 +22,7 @@ import "@xyflow/react/dist/style.css";
 
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { NodeKind } from "@/lib/autumn/types";
+import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import { ChatNode } from "./nodes/ChatNode";
 import {
   TerminalNode,
@@ -67,6 +68,37 @@ const MINIMAP_COLORS: Record<NodeKind, string> = {
   youtube: "#8b5cf6",
   remotion: "#0b84f3",
 };
+
+// Sticky notes store a named color ("amber"/"rose"/"emerald"/"violet"/"cyan")
+// that maps to a tailwind class on the canvas. Mirror those exact hues here so
+// the minimap square matches the sticky note's actual color.
+const STICKY_HEX: Record<string, string> = {
+  amber: "#fbbf24", // bg-amber-400
+  rose: "#fb7185", // bg-rose-400
+  emerald: "#34d399", // bg-emerald-400
+  violet: "#fbbf24", // bg-amber-400 (STICKY_COLORS.violet reuses amber — kept in sync)
+  cyan: "#22d3ee", // bg-cyan-400
+};
+
+// Resolve the on-canvas color of a node for the minimap.
+// - chat (agents): use the persona's hex color (Atlas=emerald, Apollo=rose, …)
+//   so each named agent shows up in the minimap with the same color it wears
+//   on the canvas.
+// - sticky: use the per-note color field (amber/rose/emerald/violet/cyan).
+// - others: fall back to the kind-level default.
+function minimapNodeColor(n: { type?: string; data?: unknown }): string {
+  const kind = (n.type ?? "") as NodeKind;
+  if (kind === "chat") {
+    const data = n.data as { personaId?: string } | undefined;
+    const persona = data?.personaId ? PERSONA_BY_ID[data.personaId] : undefined;
+    return persona?.color ?? MINIMAP_COLORS.chat;
+  }
+  if (kind === "sticky") {
+    const data = n.data as { color?: string } | undefined;
+    return STICKY_HEX[data?.color ?? "amber"] ?? STICKY_HEX.amber;
+  }
+  return MINIMAP_COLORS[kind] ?? "#888";
+}
 
 function CanvasInner() {
   const nodes = useAutumnStore((s) => s.nodes);
@@ -403,9 +435,7 @@ function CanvasInner() {
           <MiniMap
             className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
             style={{ bottom: "92px", width: "150px", height: "110px" }}
-            nodeColor={(n) =>
-              MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
-            }
+            nodeColor={minimapNodeColor}
             maskColor="oklch(0.005 0.002 55 / 0.7)"
             pannable
             zoomable
