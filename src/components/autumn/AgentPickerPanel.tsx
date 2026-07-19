@@ -129,7 +129,7 @@ export function AgentPickerPanel({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.97 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 w-[520px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-[#1c1f26]/95 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden"
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[520px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-100px)] overflow-y-auto autumn-scroll rounded-2xl border border-white/10 bg-[#1c1f26]/95 backdrop-blur-2xl shadow-2xl shadow-black/50"
         >
           {/* ---- CODING AGENTS section ---- */}
           <div className="px-5 pt-4 pb-2">
