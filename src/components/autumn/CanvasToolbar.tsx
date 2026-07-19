@@ -5,7 +5,6 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,20 +19,21 @@ import {
   Maximize2,
   Trash2,
   Bot,
-  MonitorSmartphone,
+  SquareTerminal,
+  Monitor,
   StickyNote,
+  Compass,
+  Clapperboard,
   Search,
   Copy,
   CheckSquare,
   ChevronDown,
-  TerminalSquare,
-  Globe,
-  Clapperboard,
 } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
 import type { NodeKind } from "@/lib/autumn/types";
-import { QuickSpawnMenu } from "./QuickSpawnMenu";
 import { BackgroundPicker } from "./BackgroundPicker";
+import { AgentPickerPanel } from "./AgentPickerPanel";
+import { cn } from "@/lib/utils";
 
 export function CanvasToolbar() {
   const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
@@ -44,82 +44,65 @@ export function CanvasToolbar() {
   const clearSelection = useAutumnStore((s) => s.clearSelection);
   const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
   const selectAllNodes = useAutumnStore((s) => s.selectAllNodes);
+  const agentPickerOpen = useAutumnStore((s) => s.agentPickerOpen);
+  const setAgentPickerOpen = useAutumnStore((s) => s.setAgentPickerOpen);
   const { fitView } = useReactFlow();
-
-  // QuickSpawnMenu open state
-  const [spawnMenuOpen, setSpawnMenuOpen] = useState(false);
-  const spawnRef = useRef<HTMLDivElement>(null);
-
-  // Close spawn menu on outside click
-  useEffect(() => {
-    if (!spawnMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (spawnRef.current && !spawnRef.current.contains(e.target as Node)) {
-        setSpawnMenuOpen(false);
-      }
-    };
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSpawnMenuOpen(false);
-    };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onEsc);
-    return () => {
-      window.removeEventListener("mousedown", onDown);
-      window.removeEventListener("keydown", onEsc);
-    };
-  }, [spawnMenuOpen]);
 
   const hasMulti = selectedNodeIds.length > 0;
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-1.5 shadow-2xl" style={{ boxShadow: "0 8px 32px -8px oklch(0.78 0.18 55 / 0.1), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)" }}>
-        {/* Quick add — agent button triggers QuickSpawnMenu */}
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border/40" ref={spawnRef}>
-          <div className="relative">
-            <ToolbarButton
-              label="Add agent"
-              onClick={() => setSpawnMenuOpen((v) => !v)}
-              icon={Bot}
-              color="text-fuchsia-400"
-              extraElement={
-                <ChevronDown className="size-2.5 text-fuchsia-400/70" />
-              }
-            />
-            <QuickSpawnMenu
-              open={spawnMenuOpen}
-              onClose={() => setSpawnMenuOpen(false)}
-            />
-          </div>
-          <ToolbarButton
+        {/* Quick add — colorful app-tile icons (macOS/October dock style) */}
+        <div className="flex items-center gap-1.5 pr-2 border-r border-border/40">
+          <AppTile
+            label="Add agent"
+            onClick={() => setAgentPickerOpen(!agentPickerOpen)}
+            icon={Bot}
+            tile="from-fuchsia-500 to-purple-600"
+            glow="rgba(217,70,239,0.45)"
+            badge={
+              <ChevronDown className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-card border border-border/60 text-fuchsia-300" />
+            }
+          />
+          <AgentPickerPanel
+            open={agentPickerOpen}
+            onClose={() => setAgentPickerOpen(false)}
+          />
+          <AppTile
+            label="Add terminal"
+            onClick={() => addNode({ kind: "terminal" })}
+            icon={SquareTerminal}
+            tile="from-slate-700 to-slate-900"
+            glow="rgba(16,185,129,0.40)"
+          />
+          <AppTile
+            label="Add browser"
+            onClick={() => addNode({ kind: "youtube" })}
+            icon={Compass}
+            tile="from-cyan-400 to-blue-500"
+            glow="rgba(34,211,238,0.45)"
+          />
+          <AppTile
             label="Add screen"
             onClick={() => addNode({ kind: "screen" })}
-            icon={MonitorSmartphone}
-            color="text-sky-400"
+            icon={Monitor}
+            tile="from-sky-400 to-blue-600"
+            glow="rgba(56,189,248,0.45)"
           />
-          <ToolbarButton
+          <AppTile
             label="Add note"
             onClick={() => addNode({ kind: "sticky" })}
             icon={StickyNote}
-            color="text-amber-400"
+            tile="from-amber-300 to-yellow-500"
+            glow="rgba(251,191,36,0.45)"
           />
-          <ToolbarButton
-            label="Add terminal"
-            onClick={() => addNode({ kind: "terminal" })}
-            icon={TerminalSquare}
-            color="text-emerald-400"
-          />
-          <ToolbarButton
-            label="Add browser"
-            onClick={() => addNode({ kind: "youtube" })}
-            icon={Globe}
-            color="text-amber-400"
-          />
-          <ToolbarButton
+          <AppTile
             label="Add video"
             onClick={() => addNode({ kind: "remotion" })}
             icon={Clapperboard}
-            color="text-blue-400"
+            tile="from-violet-500 to-fuchsia-600"
+            glow="rgba(139,92,246,0.45)"
           />
         </div>
 
@@ -256,3 +239,54 @@ function ToolbarButton({
 
 // Re-export for type usage
 export type { NodeKind };
+
+// AppTile — colorful gradient app-icon tile for the bottom dock's quick-add
+// group (macOS/October dock aesthetic). Bold white icon on a per-tool gradient
+// with a glossy top highlight and soft colored glow on hover.
+function AppTile({
+  label,
+  onClick,
+  icon: Icon,
+  tile,
+  glow,
+  badge,
+}: {
+  label: string;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  tile: string;
+  glow: string;
+  badge?: React.ReactNode;
+}) {
+  return (
+    <Tooltip side="top">
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={label}
+          className={cn(
+            "dock-app-tile group relative flex size-9 items-center justify-center rounded-xl",
+            "bg-gradient-to-br shadow-md shadow-black/30",
+            "ring-1 ring-inset ring-white/15",
+            "transition-all duration-200",
+            "hover:scale-110 hover:shadow-lg hover:brightness-110",
+            "active:scale-95",
+            tile,
+          )}
+          style={{ ["--tile-glow" as string]: glow } as React.CSSProperties}
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-xl bg-gradient-to-b from-white/25 to-transparent"
+          />
+          <Icon className="relative size-4 text-white drop-shadow-sm" />
+          {badge}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
