@@ -98,3 +98,6 @@ Caddyfile
 # Root-level scratch images (unused by the app)
 /architecture.png
 /sea.png
+tipcard-sticky-verify.png
+sticky-verify.png
+sticky-fresh.png
