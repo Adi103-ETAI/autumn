@@ -282,7 +282,7 @@ const STICKY_COLORS: Record<string, {
   iconBg: string;
 }> = {
   amber: {
-    bg: "bg-amber-100",
+    bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
     border: "border-amber-200/80",
     headerBg: "bg-amber-200/60",
