@@ -2,8 +2,10 @@
 // Bottom-center pill with 7 colorful app-tiles, mirroring the reference design:
 //   mic · agents(app-grid) · browser(compass) · video-editor · mobile-preview · terminal · sticky-note
 // Each tile is a gradient rounded square with a white glyph + colored glow.
-// Utility actions (search/arrange/fit/clear/stats) were removed per the plan —
-// fit-view already lives in the MinimapPanel below the minimap.
+// The app-grid (agents) tile opens the AgentPickerPanel — an October-style grid
+// popup with CODING AGENTS + APPS sections. Utility actions (search/arrange/fit/
+// clear/stats) were removed per the plan — fit-view already lives in the
+// MinimapPanel below the minimap.
 
 "use client";
 
@@ -25,7 +27,7 @@ import {
   StickyNote,
   ChevronDown,
 } from "lucide-react";
-import { QuickSpawnMenu } from "./QuickSpawnMenu";
+import { AgentPickerPanel } from "./AgentPickerPanel";
 import { cn } from "@/lib/utils";
 
 // ── Tile definitions ────────────────────────────────────────────────────────
@@ -103,31 +105,35 @@ export function CanvasToolbar() {
   const setVoiceSetupOpen = useAutumnStore((s) => s.setVoiceSetupOpen);
   const isListening = useAutumnStore((s) => s.isListening);
   const setListening = useAutumnStore((s) => s.setListening);
-  const setPendingCommand = useAutumnStore((s) => s.setPendingCommand);
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
 
-  // QuickSpawnMenu open state (triggered by the agents tile).
-  const [spawnMenuOpen, setSpawnMenuOpen] = useState(false);
-  const spawnRef = useRef<HTMLDivElement>(null);
+  // AgentPickerPanel open state (triggered by the app-grid agents tile).
+  // Opens the October-style grid popup with CODING AGENTS + APPS sections.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
-  // Close spawn menu on outside click / Esc.
+  // Close picker on outside click / Esc.
   useEffect(() => {
-    if (!spawnMenuOpen) return;
+    if (!pickerOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (spawnRef.current && !spawnRef.current.contains(e.target as Node)) {
-        setSpawnMenuOpen(false);
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
       }
     };
     const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSpawnMenuOpen(false);
+      if (e.key === "Escape") setPickerOpen(false);
     };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onEsc);
+    // Defer by a tick so the opening click doesn't immediately close it.
+    const t = setTimeout(() => {
+      window.addEventListener("mousedown", onDown);
+      window.addEventListener("keydown", onEsc);
+    }, 0);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onEsc);
     };
-  }, [spawnMenuOpen]);
+  }, [pickerOpen]);
 
   // ── Tile click handlers ──────────────────────────────────────────────────
   const handleMicClick = () => {
@@ -147,7 +153,7 @@ export function CanvasToolbar() {
     }
   };
 
-  const handleAgentsClick = () => setSpawnMenuOpen((v) => !v);
+  const handleAgentsClick = () => setPickerOpen((v) => !v);
   const handleBrowserClick = () => addNode({ kind: "youtube" });
   const handleVideoClick = () => addNode({ kind: "remotion" });
   const handleMobileClick = () =>
@@ -178,7 +184,7 @@ export function CanvasToolbar() {
           const Icon = tile.icon;
           const isAgents = tile.key === "agents";
           const isVoice = tile.key === "voice";
-          const active = (isVoice && isListening) || (isAgents && spawnMenuOpen);
+          const active = (isVoice && isListening) || (isAgents && pickerOpen);
 
           const tileEl = (
             <button
@@ -231,11 +237,12 @@ export function CanvasToolbar() {
           );
         })}
 
-        {/* QuickSpawnMenu — anchored to the agents tile */}
-        <div ref={spawnRef} className="relative">
-          <QuickSpawnMenu
-            open={spawnMenuOpen}
-            onClose={() => setSpawnMenuOpen(false)}
+        {/* AgentPickerPanel — October-style grid popup anchored to the
+            app-grid agents tile. Shows CODING AGENTS + APPS in a 4-col grid. */}
+        <div ref={pickerRef} className="relative">
+          <AgentPickerPanel
+            open={pickerOpen}
+            onClose={() => setPickerOpen(false)}
           />
         </div>
       </div>
