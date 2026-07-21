@@ -1,6 +1,7 @@
 // Autumn — TipCard.
-// A small yellow onboarding tip card overlay, matching October Desktop's
-// "Three ways to start" tooltip that appears on the left edge of the canvas.
+// The "Three ways to start" onboarding card overlay. Redesigned to match the
+// reference image: warm cream/ivory card + real maple-leaf brand mark +
+// golden-yellow circular icon badges + dark-brown text + footer action links.
 // Dismissible (persists dismissal in localStorage).
 
 "use client";
@@ -9,6 +10,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mic, MessageSquare, MousePointerClick } from "lucide-react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 
 const STORAGE_KEY = "autumn-tip-card-dismissed";
 
@@ -63,62 +65,72 @@ export function TipCard() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: -24, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute top-4 left-4 z-30 w-64 rounded-xl border border-amber-300/50 bg-amber-50/95 backdrop-blur-sm shadow-2xl shadow-amber-900/20 p-3.5"
+          // Warm cream/ivory card matching the reference image (#FFFDF5).
+          className="absolute top-4 left-4 z-30 w-72 rounded-2xl border border-amber-200/70 bg-[#FFFDF5] backdrop-blur-sm p-4"
           role="complementary"
           aria-label="Getting started tips"
+          style={{
+            boxShadow:
+              "0 12px 32px -8px rgb(120 80 30 / 0.22), 0 2px 8px -2px rgb(120 80 30 / 0.10), inset 0 1px 0 0 rgb(255 255 255 / 0.7)",
+          }}
         >
-          {/* Close button */}
+          {/* Close button — muted gray, top-right */}
           <button
             type="button"
             onClick={dismiss}
-            className="absolute top-2 right-2 size-5 rounded-md flex items-center justify-center text-amber-900/50 hover:text-amber-900 hover:bg-amber-200/60 transition-colors"
+            className="absolute top-3 right-3 size-6 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-amber-100/80 transition-colors"
             aria-label="Dismiss tips"
           >
-            <X className="size-3.5" />
+            <X className="size-4" />
           </button>
 
-          {/* Header */}
-          <div className="flex items-center gap-1.5 mb-2.5 pr-5">
-            <span className="text-base">🍂</span>
-            <h3 className="text-[12px] font-bold text-amber-900 tracking-tight">
+          {/* Header — maple-leaf brand mark + title */}
+          <div className="flex items-center gap-2 mb-3 pr-6">
+            <AutumnLogo size={20} priority />
+            <h3 className="text-[13px] font-bold text-stone-800 tracking-tight">
               Three ways to start
             </h3>
           </div>
 
-          {/* Tips list */}
-          <ul className="space-y-2">
+          {/* Tips list — each with a golden-yellow circular icon badge */}
+          <ul className="space-y-2.5">
             {TIPS.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="shrink-0 mt-0.5 size-5 rounded-md bg-amber-200/80 flex items-center justify-center">
-                  <tip.icon className="size-3 text-amber-800" />
+              <li key={i} className="flex items-start gap-2.5">
+                <span
+                  className="shrink-0 mt-0.5 size-6 rounded-full flex items-center justify-center bg-amber-300 shadow-sm shadow-amber-500/30"
+                  style={{
+                    boxShadow:
+                      "0 1px 3px rgb(180 130 30 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.4)",
+                  }}
+                >
+                  <tip.icon className="size-3.5 text-amber-900" />
                 </span>
-                <span className="text-[11px] leading-relaxed text-amber-900/90">
+                <span className="text-[11.5px] leading-relaxed text-stone-700">
                   {tip.text}
                 </span>
               </li>
             ))}
           </ul>
 
-          {/* Footer actions */}
-          <div className="mt-3 pt-2.5 border-t border-amber-300/40 flex items-center gap-2">
+          {/* Footer — divider + two action links */}
+          <div className="mt-3.5 pt-3 border-t border-amber-200/70 flex items-center gap-3">
             <button
               type="button"
               onClick={() => {
                 setVoiceSetupOpen(true);
                 dismiss();
               }}
-              className="text-[10px] font-semibold text-amber-900 hover:text-amber-700 underline-offset-2 hover:underline transition-colors"
+              className="text-[10.5px] font-semibold text-stone-500 hover:text-stone-800 transition-colors"
             >
               Set up voice →
             </button>
-            <span className="text-amber-400/60">·</span>
             <button
               type="button"
               onClick={() => {
                 setRightPanelTab("commander");
                 dismiss();
               }}
-              className="text-[10px] font-semibold text-amber-900 hover:text-amber-700 underline-offset-2 hover:underline transition-colors"
+              className="text-[10.5px] font-semibold text-stone-500 hover:text-stone-800 transition-colors"
             >
               Go Home → Open
             </button>

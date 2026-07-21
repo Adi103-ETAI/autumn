@@ -72,12 +72,14 @@ const MINIMAP_COLORS: Record<NodeKind, string> = {
 // Sticky notes store a named color ("amber"/"rose"/"emerald"/"violet"/"cyan")
 // that maps to a tailwind class on the canvas. Mirror those exact hues here so
 // the minimap square matches the sticky note's actual color.
+// Updated to the new warm cream palette (matching the "Three ways to start"
+// reference card aesthetic).
 const STICKY_HEX: Record<string, string> = {
-  amber: "#fef3c7", // bg-amber-100 (sticky note card bg)
-  rose: "#ffe4e6", // bg-rose-100
-  emerald: "#d1fae5", // bg-emerald-100
-  violet: "#ede9fe", // bg-violet-100
-  cyan: "#cffafe", // bg-cyan-100
+  amber: "#FFFDF5", // warm cream/ivory (default — matches reference card)
+  rose: "#FFF5F6", // blush cream
+  emerald: "#F4FBF5", // mint cream
+  violet: "#F7F4FE", // lavender cream
+  cyan: "#F2FBFD", // sky cream
 };
 
 // Resolve the on-canvas color of a node for the minimap.
