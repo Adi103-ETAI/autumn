@@ -20,7 +20,6 @@ import {
   Monitor,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 
 const HANDLE_STYLE = { background: "oklch(0.6 0.19 285)" };
 
@@ -271,63 +270,51 @@ interface StickyData {
   text: string;
   color?: string;
 }
-// Sticky note color palette — redesigned to match the reference "Three ways to
-// start" card aesthetic: a warm cream/ivory base (#FFFDF5) with a maple-leaf
-// brand mark in the header and a golden-yellow circular icon badge.
-//
-// The default "amber" color now renders as the cream card from the reference
-// image (with amber accents on the leaf glow + icon badge). Other colors
-// (rose/emerald/violet/cyan) keep their own tinted cream backgrounds so users
-// can still color-code notes, but every sticky shares the same leaf + badge
-// + clean rounded-card structure.
+// Sticky note color palette — the original proper mapping where each color key
+// maps to its own bg + text + border (the October redesign had accidentally
+// aliased amber→violet and violet→amber). Each note keeps the clean rounded
+// card + header bar + 🍂 leaf badge from Task 22.
 const STICKY_COLORS: Record<string, {
   bg: string;
   text: string;
   border: string;
   headerBg: string;
   iconBg: string;
-  divider: string;
 }> = {
-  // Default — matches the reference screenshot exactly (cream/ivory + amber).
   amber: {
-    bg: "bg-[#FFFDF5]",
-    text: "text-stone-800",
-    border: "border-amber-200/70",
-    headerBg: "bg-amber-50/60",
-    iconBg: "bg-amber-300",
-    divider: "border-amber-200/70",
+    bg: "bg-amber-100",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
   },
   rose: {
-    bg: "bg-[#FFF5F6]",
-    text: "text-stone-800",
-    border: "border-rose-200/70",
-    headerBg: "bg-rose-50/60",
-    iconBg: "bg-rose-300",
-    divider: "border-rose-200/70",
+    bg: "bg-rose-100",
+    text: "text-rose-950",
+    border: "border-rose-200/80",
+    headerBg: "bg-rose-200/60",
+    iconBg: "bg-rose-300/70",
   },
   emerald: {
-    bg: "bg-[#F4FBF5]",
-    text: "text-stone-800",
-    border: "border-emerald-200/70",
-    headerBg: "bg-emerald-50/60",
-    iconBg: "bg-emerald-300",
-    divider: "border-emerald-200/70",
+    bg: "bg-emerald-100",
+    text: "text-emerald-950",
+    border: "border-emerald-200/80",
+    headerBg: "bg-emerald-200/60",
+    iconBg: "bg-emerald-300/70",
   },
   violet: {
-    bg: "bg-[#F7F4FE]",
-    text: "text-stone-800",
-    border: "border-violet-200/70",
-    headerBg: "bg-violet-50/60",
-    iconBg: "bg-violet-300",
-    divider: "border-violet-200/70",
+    bg: "bg-violet-100",
+    text: "text-violet-950",
+    border: "border-violet-200/80",
+    headerBg: "bg-violet-200/60",
+    iconBg: "bg-violet-300/70",
   },
   cyan: {
-    bg: "bg-[#F2FBFD]",
-    text: "text-stone-800",
-    border: "border-cyan-200/70",
-    headerBg: "bg-cyan-50/60",
-    iconBg: "bg-cyan-300",
-    divider: "border-cyan-200/70",
+    bg: "bg-cyan-100",
+    text: "text-cyan-950",
+    border: "border-cyan-200/80",
+    headerBg: "bg-cyan-200/60",
+    iconBg: "bg-cyan-300/70",
   },
 };
 
@@ -355,7 +342,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "w-[240px] rounded-2xl border shadow-lg transition-all hover:scale-[1.02]",
+        "w-[220px] rounded-2xl border shadow-lg transition-all hover:scale-[1.02]",
         palette.bg,
         palette.text,
         palette.border,
@@ -363,38 +350,34 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       )}
       style={{
         boxShadow:
-          "0 12px 32px -8px rgb(120 80 30 / 0.22), 0 2px 8px -2px rgb(120 80 30 / 0.10), inset 0 1px 0 0 rgb(255 255 255 / 0.7)",
+          "0 8px 28px -6px rgb(0 0 0 / 0.18), 0 2px 8px -2px rgb(0 0 0 / 0.08), inset 0 1px 0 0 rgb(255 255 255 / 0.5)",
       }}
     >
       <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
       <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
 
-      {/* Header bar — maple-leaf brand mark + "Note" label + close, matching
-          the reference "Three ways to start" card layout. */}
+      {/* Header bar — 🍂 leaf badge + "Note" label + close */}
       <div
         className={cn(
-          "flex items-center gap-2 rounded-t-2xl px-3 py-2.5",
+          "flex items-center gap-2 rounded-t-2xl px-3 py-2",
           palette.headerBg,
         )}
       >
         <span
           className={cn(
-            "flex size-7 items-center justify-center rounded-full shrink-0",
+            "flex size-6 items-center justify-center rounded-full text-[13px] leading-none",
             palette.iconBg,
           )}
-          style={{
-            boxShadow:
-              "0 1px 3px rgb(180 130 30 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.4)",
-          }}
+          aria-hidden
         >
-          <AutumnLogo size={16} />
+          🍂
         </span>
-        <span className="text-[11px] font-bold tracking-tight opacity-80">
+        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
           Note
         </span>
         <button
           onClick={() => removeNode(id)}
-          className="ml-auto rounded-lg p-1 text-stone-400 hover:text-stone-700 hover:bg-black/5 transition-colors"
+          className="ml-auto rounded-full p-0.5 opacity-50 transition-opacity hover:opacity-100"
           aria-label="Remove note"
         >
           <X className="size-3.5" />
@@ -402,7 +385,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       </div>
 
       {/* Body — markdown content or editing textarea */}
-      <div className="px-3.5 py-3">
+      <div className="px-3 py-2.5">
         {editing ? (
           <textarea
             ref={taRef}
@@ -419,7 +402,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
                 setEditing(false);
               }
             }}
-            className="w-full bg-white/60 border border-amber-200/80 rounded-lg p-2 text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-amber-400/40 min-h-[70px] text-stone-800"
+            className="w-full bg-white/50 border border-black/15 rounded-lg p-2 text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20 min-h-[70px]"
           />
         ) : (
           <div
@@ -427,32 +410,32 @@ export function StickyNode({ id, data, selected }: NodeProps) {
               setDraft(d.text);
               setEditing(true);
             }}
-            className="text-xs leading-relaxed cursor-text sticky-markdown text-stone-700"
+            className="text-xs leading-relaxed cursor-text sticky-markdown"
             title="Double-click to edit · supports **bold**, *italic*, `code`, # headings"
           >
             <ReactMarkdown
               components={{
                 p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                strong: ({ children }) => <strong className="font-bold text-stone-900">{children}</strong>,
+                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
                 em: ({ children }) => <em className="italic">{children}</em>,
                 code: ({ children }) => (
-                  <code className="font-mono text-[10px] bg-amber-100/80 text-amber-900 px-1 py-0.5 rounded">
+                  <code className="font-mono text-[10px] bg-black/15 px-1 py-0.5 rounded">
                     {children}
                   </code>
                 ),
-                h1: ({ children }) => <h3 className="font-bold text-sm mb-1 text-stone-900">{children}</h3>,
-                h2: ({ children }) => <h4 className="font-bold text-xs mb-1 text-stone-900">{children}</h4>,
-                h3: ({ children }) => <h5 className="font-semibold text-xs mb-0.5 text-stone-900">{children}</h5>,
+                h1: ({ children }) => <h3 className="font-bold text-sm mb-1">{children}</h3>,
+                h2: ({ children }) => <h4 className="font-bold text-xs mb-1">{children}</h4>,
+                h3: ({ children }) => <h5 className="font-semibold text-xs mb-0.5">{children}</h5>,
                 ul: ({ children }) => <ul className="list-disc pl-3 mb-1">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal pl-3 mb-1">{children}</ol>,
                 li: ({ children }) => <li className="mb-0.5">{children}</li>,
                 a: ({ children, href }) => (
-                  <a href={href} className="underline font-medium text-amber-800" target="_blank" rel="noreferrer">
+                  <a href={href} className="underline font-medium" target="_blank" rel="noreferrer">
                     {children}
                   </a>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-amber-300/60 pl-2 italic opacity-80">
+                  <blockquote className="border-l-2 border-black/25 pl-2 italic opacity-80">
                     {children}
                   </blockquote>
                 ),
