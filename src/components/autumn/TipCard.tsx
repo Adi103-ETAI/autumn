@@ -63,7 +63,7 @@ export function TipCard() {
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: -24, scale: 0.95 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="absolute top-4 left-4 z-30 w-64 rounded-xl border border-amber-300/50 bg-amber-50/95 backdrop-blur-sm shadow-2xl shadow-amber-900/20 p-3.5"
+          className="absolute top-4 left-4 z-30 w-64 rounded-xl border border-amber-300/50 bg-[#FFF9E6]/95 backdrop-blur-sm shadow-2xl shadow-amber-900/20 p-3.5"
           role="complementary"
           aria-label="Getting started tips"
         >
