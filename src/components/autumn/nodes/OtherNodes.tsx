@@ -271,17 +271,56 @@ interface StickyData {
   text: string;
   color?: string;
 }
-const STICKY_COLORS: Record<string, string> = {
-  amber: "bg-amber-400/90 text-violet-950 border-amber-300",
-  rose: "bg-rose-400/90 text-rose-950 border-rose-300",
-  emerald: "bg-emerald-400/90 text-emerald-950 border-emerald-300",
-  violet: "bg-amber-400/90 text-violet-950 border-amber-300",
-  cyan: "bg-cyan-400/90 text-cyan-950 border-cyan-300",
+// Sticky note color palette — restored to the original proper mapping where each
+// color key maps to its own bg + text + border (the October redesign had
+// accidentally aliased amber→violet and violet→amber).
+const STICKY_COLORS: Record<string, {
+  bg: string;
+  text: string;
+  border: string;
+  headerBg: string;
+  iconBg: string;
+}> = {
+  amber: {
+    bg: "bg-amber-100",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
+  },
+  rose: {
+    bg: "bg-rose-100",
+    text: "text-rose-950",
+    border: "border-rose-200/80",
+    headerBg: "bg-rose-200/60",
+    iconBg: "bg-rose-300/70",
+  },
+  emerald: {
+    bg: "bg-emerald-100",
+    text: "text-emerald-950",
+    border: "border-emerald-200/80",
+    headerBg: "bg-emerald-200/60",
+    iconBg: "bg-emerald-300/70",
+  },
+  violet: {
+    bg: "bg-violet-100",
+    text: "text-violet-950",
+    border: "border-violet-200/80",
+    headerBg: "bg-violet-200/60",
+    iconBg: "bg-violet-300/70",
+  },
+  cyan: {
+    bg: "bg-cyan-100",
+    text: "text-cyan-950",
+    border: "border-cyan-200/80",
+    headerBg: "bg-cyan-200/60",
+    iconBg: "bg-cyan-300/70",
+  },
 };
-const STICKY_ROTATIONS = ["-2deg", "1deg", "-1deg", "2deg", "0deg"];
+
 export function StickyNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StickyData;
-  const colorClass = STICKY_COLORS[d.color ?? "amber"] ?? STICKY_COLORS.amber;
+  const palette = STICKY_COLORS[d.color ?? "amber"] ?? STICKY_COLORS.amber;
   const removeNode = useAutumnStore((s) => s.removeNode);
   const updateNodeData = useAutumnStore((s) => s.updateNodeData);
   const [editing, setEditing] = useState(false);
@@ -295,13 +334,6 @@ export function StickyNode({ id, data, selected }: NodeProps) {
     }
   }, [editing]);
 
-  // Stable rotation per node id.
-  const rotation =
-    STICKY_ROTATIONS[
-      id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) %
-        STICKY_ROTATIONS.length
-    ];
-
   const commit = () => {
     updateNodeData(id, { text: draft.trim() || "New note" });
     setEditing(false);
@@ -310,28 +342,49 @@ export function StickyNode({ id, data, selected }: NodeProps) {
   return (
     <div
       className={cn(
-        "w-[200px] rounded-sm border shadow-md transition-all hover:rotate-0 hover:scale-[1.02]",
-        colorClass,
-        selected && "ring-2 ring-amber-500/40",
+        "w-[220px] rounded-2xl border shadow-lg transition-all hover:scale-[1.02]",
+        palette.bg,
+        palette.text,
+        palette.border,
+        selected && "ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent",
       )}
-      style={{ transform: `rotate(${rotation})` }}
+      style={{
+        boxShadow:
+          "0 8px 28px -6px rgb(0 0 0 / 0.18), 0 2px 8px -2px rgb(0 0 0 / 0.08), inset 0 1px 0 0 rgb(255 255 255 / 0.5)",
+      }}
     >
       <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
       <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
-      <div className="p-3">
-        <div className="flex items-center gap-1.5 mb-1.5 opacity-70">
-          <StickyNote className="size-3" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold">
-            Note
-          </span>
-          <button
-            onClick={() => removeNode(id)}
-            className="ml-auto opacity-60 hover:opacity-100"
-            aria-label="Remove note"
-          >
-            <X className="size-3" />
-          </button>
-        </div>
+
+      {/* Header bar — icon + label + close, matching the reference card style */}
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-t-2xl px-3 py-2",
+          palette.headerBg,
+        )}
+      >
+        <span
+          className={cn(
+            "flex size-6 items-center justify-center rounded-full",
+            palette.iconBg,
+          )}
+        >
+          <StickyNote className="size-3.5" />
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+          Note
+        </span>
+        <button
+          onClick={() => removeNode(id)}
+          className="ml-auto rounded-full p-0.5 opacity-50 transition-opacity hover:opacity-100"
+          aria-label="Remove note"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      {/* Body — markdown content or editing textarea */}
+      <div className="px-3 py-2.5">
         {editing ? (
           <textarea
             ref={taRef}
@@ -348,7 +401,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
                 setEditing(false);
               }
             }}
-            className="w-full bg-white/40 border border-black/20 rounded-sm p-1 text-xs leading-relaxed resize-none focus:outline-none focus:ring-1 focus:ring-black/40 min-h-[60px]"
+            className="w-full bg-white/50 border border-black/15 rounded-lg p-2 text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20 min-h-[70px]"
           />
         ) : (
           <div
@@ -365,7 +418,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
                 strong: ({ children }) => <strong className="font-bold">{children}</strong>,
                 em: ({ children }) => <em className="italic">{children}</em>,
                 code: ({ children }) => (
-                  <code className="font-mono text-[10px] bg-black/20 px-0.5 py-0.5 rounded">
+                  <code className="font-mono text-[10px] bg-black/15 px-1 py-0.5 rounded">
                     {children}
                   </code>
                 ),
@@ -381,7 +434,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
                   </a>
                 ),
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-black/30 pl-1.5 italic opacity-80">
+                  <blockquote className="border-l-2 border-black/25 pl-2 italic opacity-80">
                     {children}
                   </blockquote>
                 ),
