@@ -114,6 +114,7 @@ function CanvasInner() {
   const searchMatchIds = useAutumnStore((s) => s.searchMatchIds);
   const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
   const showMinimap = useAutumnStore((s) => s.showMinimap);
+  const showGrid = useAutumnStore((s) => s.showGrid);
   const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
@@ -425,16 +426,20 @@ function CanvasInner() {
         multiSelectionKeyCode={["Shift"]}
         selectNodesOnDrag={false}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="oklch(0.4 0.02 55 / 0.25)"
-        />
+        {/* Dotted canvas background — toggleable via the MinimapPanel grid button */}
+        {showGrid && (
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="oklch(0.4 0.02 55 / 0.25)"
+          />
+        )}
         {showMinimap && (
           <MiniMap
-            className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
-            style={{ bottom: "92px", width: "150px", height: "110px" }}
+            className="!bg-zinc-900/85 !border-border/50 !rounded-lg !shadow-lg backdrop-blur-xl"
+            // Sit above the control bar (control bar ~32px + gap 6px + bottom-4 = ~70px from bottom).
+            style={{ bottom: "70px", width: "180px", height: "110px" }}
             nodeColor={minimapNodeColor}
             maskColor="oklch(0.005 0.002 55 / 0.7)"
             pannable
