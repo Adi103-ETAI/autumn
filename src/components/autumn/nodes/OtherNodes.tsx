@@ -270,10 +270,10 @@ interface StickyData {
   text: string;
   color?: string;
 }
-// Sticky note color palette — the original proper mapping where each color key
-// maps to its own bg + text + border (the October redesign had accidentally
-// aliased amber→violet and violet→amber). Each note keeps the clean rounded
-// card + header bar + 🍂 leaf badge from Task 22.
+// Sticky note color palette — UNIFIED to a single soft cream (#FFF9E6) that
+// matches the TipCard. All color keys resolve to the same palette so every
+// sticky note wears the same monochrome cream look. The keys are kept so
+// existing notes (seeded with color:"amber"/"rose"/…​) still resolve.
 const STICKY_COLORS: Record<string, {
   bg: string;
   text: string;
@@ -289,32 +289,32 @@ const STICKY_COLORS: Record<string, {
     iconBg: "bg-amber-300/70",
   },
   rose: {
-    bg: "bg-rose-100",
-    text: "text-rose-950",
-    border: "border-rose-200/80",
-    headerBg: "bg-rose-200/60",
-    iconBg: "bg-rose-300/70",
+    bg: "bg-[#FFF9E6]",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
   },
   emerald: {
-    bg: "bg-emerald-100",
-    text: "text-emerald-950",
-    border: "border-emerald-200/80",
-    headerBg: "bg-emerald-200/60",
-    iconBg: "bg-emerald-300/70",
+    bg: "bg-[#FFF9E6]",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
   },
   violet: {
-    bg: "bg-violet-100",
-    text: "text-violet-950",
-    border: "border-violet-200/80",
-    headerBg: "bg-violet-200/60",
-    iconBg: "bg-violet-300/70",
+    bg: "bg-[#FFF9E6]",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
   },
   cyan: {
-    bg: "bg-cyan-100",
-    text: "text-cyan-950",
-    border: "border-cyan-200/80",
-    headerBg: "bg-cyan-200/60",
-    iconBg: "bg-cyan-300/70",
+    bg: "bg-[#FFF9E6]",
+    text: "text-amber-950",
+    border: "border-amber-200/80",
+    headerBg: "bg-amber-200/60",
+    iconBg: "bg-amber-300/70",
   },
 };
 

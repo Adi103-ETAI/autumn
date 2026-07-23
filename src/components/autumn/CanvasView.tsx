@@ -70,14 +70,14 @@ const MINIMAP_COLORS: Record<NodeKind, string> = {
 };
 
 // Sticky notes store a named color ("amber"/"rose"/"emerald"/"violet"/"cyan")
-// that maps to a tailwind class on the canvas. Mirror those exact hues here so
-// the minimap square matches the sticky note's actual color.
+// but all notes now share a single unified cream (#FFF9E6) that matches the
+// TipCard. Every key resolves to the same hex so the minimap stays in sync.
 const STICKY_HEX: Record<string, string> = {
-  amber: "#FFF9E6", // soft cream (matches the reference image bg)
-  rose: "#ffe4e6", // bg-rose-100
-  emerald: "#d1fae5", // bg-emerald-100
-  violet: "#ede9fe", // bg-violet-100
-  cyan: "#cffafe", // bg-cyan-100
+  amber: "#FFF9E6",
+  rose: "#FFF9E6",
+  emerald: "#FFF9E6",
+  violet: "#FFF9E6",
+  cyan: "#FFF9E6",
 };
 
 // Resolve the on-canvas color of a node for the minimap.
