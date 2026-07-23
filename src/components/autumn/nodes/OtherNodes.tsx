@@ -279,42 +279,48 @@ const STICKY_COLORS: Record<string, {
   text: string;
   border: string;
   headerBg: string;
+  headerBorder: string;
   iconBg: string;
 }> = {
   amber: {
     bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
-    border: "border-amber-200/80",
-    headerBg: "bg-amber-200/60",
-    iconBg: "bg-amber-300/70",
+    border: "border-amber-300/50",
+    headerBg: "bg-transparent",
+    headerBorder: "border-b border-amber-300/40",
+    iconBg: "bg-amber-200/80",
   },
   rose: {
     bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
-    border: "border-amber-200/80",
-    headerBg: "bg-amber-200/60",
-    iconBg: "bg-amber-300/70",
+    border: "border-amber-300/50",
+    headerBg: "bg-transparent",
+    headerBorder: "border-b border-amber-300/40",
+    iconBg: "bg-amber-200/80",
   },
   emerald: {
     bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
-    border: "border-amber-200/80",
-    headerBg: "bg-amber-200/60",
-    iconBg: "bg-amber-300/70",
+    border: "border-amber-300/50",
+    headerBg: "bg-transparent",
+    headerBorder: "border-b border-amber-300/40",
+    iconBg: "bg-amber-200/80",
   },
   violet: {
     bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
-    border: "border-amber-200/80",
-    headerBg: "bg-amber-200/60",
-    iconBg: "bg-amber-300/70",
+    border: "border-amber-300/50",
+    headerBg: "bg-transparent",
+    headerBorder: "border-b border-amber-300/40",
+    iconBg: "bg-amber-200/80",
   },
   cyan: {
     bg: "bg-[#FFF9E6]",
     text: "text-amber-950",
-    border: "border-amber-200/80",
-    headerBg: "bg-amber-200/60",
-    iconBg: "bg-amber-300/70",
+    border: "border-amber-300/50",
+    headerBg: "bg-transparent",
+    headerBorder: "border-b border-amber-300/40",
+    iconBg: "bg-amber-200/80",
   },
 };
 
@@ -356,28 +362,31 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
       <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
 
-      {/* Header bar — 🍂 leaf badge + "Note" label + close */}
+      {/* Header bar — sits directly on the cream body (transparent bg), like
+          the TipCard header. Only a subtle amber divider separates it from
+          the body content; no darker header strip. */}
       <div
         className={cn(
           "flex items-center gap-2 rounded-t-2xl px-3 py-2",
           palette.headerBg,
+          palette.headerBorder,
         )}
       >
         <span
           className={cn(
-            "flex size-6 items-center justify-center rounded-full text-[13px] leading-none",
+            "flex size-5 items-center justify-center rounded-md text-[11px] leading-none",
             palette.iconBg,
           )}
           aria-hidden
         >
           🍂
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80">
           Note
         </span>
         <button
           onClick={() => removeNode(id)}
-          className="ml-auto rounded-full p-0.5 opacity-50 transition-opacity hover:opacity-100"
+          className="ml-auto rounded-md p-0.5 text-amber-900/50 transition-colors hover:bg-amber-200/60 hover:text-amber-900"
           aria-label="Remove note"
         >
           <X className="size-3.5" />
