@@ -364,6 +364,7 @@ export interface AutumnStore {
 
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
+  showGrid: boolean; // dotted canvas background on/off (toggled from MinimapPanel)
 
   // Floating "Project chat" panel above the dock (October-style).
   projectChatOpen: boolean;
@@ -437,6 +438,7 @@ export interface AutumnStore {
 
   // minimap + edge labels (Task 4-c)
   setShowMinimap: (v: boolean) => void;
+  setShowGrid: (v: boolean) => void;
 
   // Floating "Project chat" panel above the dock.
   setProjectChatOpen: (v: boolean) => void;
@@ -630,6 +632,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
+  showGrid: true,
 
   // Floating "Project chat" panel above the dock (closed by default).
   projectChatOpen: false,
@@ -1148,6 +1151,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   setShowMinimap: (v) => set({ showMinimap: v }),
+  setShowGrid: (v) => set({ showGrid: v }),
 
   // Floating "Project chat" panel above the dock.
   setProjectChatOpen: (v) => set({ projectChatOpen: v, projectChatMinimized: false }),

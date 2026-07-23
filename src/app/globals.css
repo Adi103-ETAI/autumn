@@ -1713,6 +1713,61 @@ textarea:focus-visible {
   background-clip: content-box;
 }
 
+/* ---- Autumn zoom slider (MinimapPanel) ---- */
+/* A slim horizontal range input with a warm-amber thumb. The track is muted;
+   the thumb is a small amber pill that scales on hover for better grab UX. */
+.autumn-zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.autumn-zoom-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: oklch(0.4 0.02 55 / 0.3);
+}
+.autumn-zoom-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: oklch(0.4 0.02 55 / 0.3);
+}
+.autumn-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 9999px;
+  background: oklch(0.78 0.18 55);
+  border: 1.5px solid oklch(0.95 0.06 55);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  transition: transform 120ms ease;
+}
+.autumn-zoom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.autumn-zoom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: oklch(0.78 0.18 55);
+  border: 1.5px solid oklch(0.95 0.06 55);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  transition: transform 120ms ease;
+}
+.autumn-zoom-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+.autumn-zoom-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid oklch(0.78 0.18 55);
+  outline-offset: 2px;
+}
+.autumn-zoom-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid oklch(0.78 0.18 55);
+  outline-offset: 2px;
+}
+
 /* ---- Theme switcher swatch ---- */
 .theme-swatch {
   width: 18px;
