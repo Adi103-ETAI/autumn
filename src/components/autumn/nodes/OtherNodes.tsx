@@ -288,7 +288,7 @@ const STICKY_COLORS: Record<string, {
     border: "border-amber-300/50",
     headerBg: "bg-transparent",
     headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-amber-200/80",
+    iconBg: "bg-transparent",
   },
   rose: {
     bg: "bg-[#FFF9E6]",
@@ -296,7 +296,7 @@ const STICKY_COLORS: Record<string, {
     border: "border-amber-300/50",
     headerBg: "bg-transparent",
     headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-amber-200/80",
+    iconBg: "bg-transparent",
   },
   emerald: {
     bg: "bg-[#FFF9E6]",
@@ -304,7 +304,7 @@ const STICKY_COLORS: Record<string, {
     border: "border-amber-300/50",
     headerBg: "bg-transparent",
     headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-amber-200/80",
+    iconBg: "bg-transparent",
   },
   violet: {
     bg: "bg-[#FFF9E6]",
@@ -312,7 +312,7 @@ const STICKY_COLORS: Record<string, {
     border: "border-amber-300/50",
     headerBg: "bg-transparent",
     headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-amber-200/80",
+    iconBg: "bg-transparent",
   },
   cyan: {
     bg: "bg-[#FFF9E6]",
@@ -320,7 +320,7 @@ const STICKY_COLORS: Record<string, {
     border: "border-amber-300/50",
     headerBg: "bg-transparent",
     headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-amber-200/80",
+    iconBg: "bg-transparent",
   },
 };
 
@@ -374,7 +374,7 @@ export function StickyNode({ id, data, selected }: NodeProps) {
       >
         <span
           className={cn(
-            "flex size-5 items-center justify-center rounded-md text-[11px] leading-none",
+            "flex items-center justify-center text-base leading-none",
             palette.iconBg,
           )}
           aria-hidden
