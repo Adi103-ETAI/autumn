@@ -70,6 +70,7 @@ server.log
 
 # Local SQLite database + db runtime files
 /db/
+prisma/db/
 
 # Downloads (QA screenshots, fetched assets)
 /download/
