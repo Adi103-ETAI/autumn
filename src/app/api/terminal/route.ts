@@ -19,6 +19,7 @@ import {
   resizePty,
   killPty,
 } from "@/lib/autumn/pty";
+import { harnessBinary, resolveAgentCommand } from "@/lib/autumn/spawner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,8 +32,31 @@ export async function GET(req: NextRequest) {
   }
   const dir = url.searchParams.get("dir") ?? undefined;
 
+  // Agent CLI mode: ?harness=claude-code (server resolves the binary from PATH
+  // and injects AUTUMN_BUS_* env) spawns the REAL interactive coding-agent TUI
+  // into the PTY. This is what makes each running agent look like its own live
+  // CLI window. Otherwise we open a plain shell.
+  const harness = url.searchParams.get("harness") ?? undefined;
+  const task = url.searchParams.get("task") ?? undefined;
+  const canvasId = url.searchParams.get("canvas") ?? "default";
+
+  let agentOpts: { command: string; args: string[]; env: NodeJS.ProcessEnv } | null = null;
+  if (harness) {
+    const resolved = await resolveAgentCommand(harness, task, {
+      canvasId,
+      nodeId,
+    });
+    if (resolved) agentOpts = resolved;
+  }
+
   // Create the PTY on first connection.
-  const ok = createPty({ nodeId, dir });
+  const ok = createPty({
+    nodeId,
+    dir,
+    ...(agentOpts
+      ? { command: agentOpts.command, args: agentOpts.args, env: agentOpts.env }
+      : {}),
+  });
   if (!ok) {
     return new NextResponse("failed to spawn pty", { status: 500 });
   }

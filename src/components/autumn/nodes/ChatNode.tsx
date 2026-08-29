@@ -114,6 +114,7 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   const setAgentHistoryFor = useAutumnStore((s) => s.setAgentHistoryFor);
   const setAgentHistoryOpen = useAutumnStore((s) => s.setAgentHistoryOpen);
   const isRunning = useAutumnStore((s) => s.isAgentRunning[id] ?? false);
+  const spawnAgentTerminal = useAutumnStore((s) => s.spawnAgentTerminal);
   const connectMode = useAutumnStore((s) => s.connectMode);
   const isConnectSource = connectMode?.from === id;
   const isConnectTargetCandidate =
@@ -152,7 +153,14 @@ export function ChatNode({ id, data, selected }: NodeProps) {
   };
 
   const handleRun = () => {
-    void runAgentForNode(id);
+    // Prefer a LIVE CLI terminal: spawn the agent's real interactive CLI
+    // (claude/codex/...) into a PTY so its actual TUI shows in a terminal
+    // window, exactly like October. Falls back to the chat-based (simulated
+    // or one-shot) runner if no real CLI is available.
+    const termId = spawnAgentTerminal(id);
+    if (!termId) {
+      void runAgentForNode(id);
+    }
   };
 
   const handleStartConnect = (e: React.MouseEvent) => {
