@@ -72,6 +72,12 @@ server.log
 /db/
 prisma/db/
 
+# Electron build output (deb/AppImage/asar)
+/dist/
+/electron/dist/
+*.appimage
+/release/
+
 # Downloads (QA screenshots, fetched assets)
 /download/
 
