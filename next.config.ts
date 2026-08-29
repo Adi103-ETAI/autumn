@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Native modules must NOT be bundled into the server build — keep them
+  // external so node-pty / @prisma/client load at runtime inside Electron.
+  serverExternalPackages: ["node-pty", "@prisma/client", "prisma"],
 };
 
 export default nextConfig;

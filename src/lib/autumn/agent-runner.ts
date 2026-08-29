@@ -139,6 +139,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
           personaId: persona.id,
           harness: data.harness,
           task: finalTask,
+          canvasId: store.canvasId,
           peerContext,
           connectedPeers,
           history: data.messages.slice(-6),
