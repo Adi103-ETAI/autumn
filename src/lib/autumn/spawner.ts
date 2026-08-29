@@ -35,7 +35,7 @@ export interface SpawnAgentInput {
 }
 
 // harness id -> CLI binary name on PATH.
-const HARNESS_BIN: Record<string, string> = {
+export const HARNESS_BIN: Record<string, string> = {
   "claude-code": "claude",
   codex: "codex",
   opencode: "opencode",
@@ -47,12 +47,14 @@ const HARNESS_BIN: Record<string, string> = {
   cline: "cline",
 };
 
-// How to hand the task to each CLI. Most accept the task as a positional arg or
-// via a `--prompt` flag; we keep it simple and pass the task as the prompt.
+export function harnessBinary(harness: string): string {
+  return HARNESS_BIN[harness] ?? HARNESS_BIN["claude-code"];
+}
+
+// Build the args for a NON-interactive one-shot run (used by /api/agent/run).
 function buildArgs(harness: string, task: string, model?: string): string[] {
   switch (harness) {
     case "codex":
-      // codex takes a prompt arg; --no-project-doc to avoid doc noise.
       return ["exec", task];
     case "gemini":
       return ["--prompt", task];
@@ -60,9 +62,60 @@ function buildArgs(harness: string, task: string, model?: string): string[] {
       return ["-m", task];
     case "claude-code":
     default:
-      // Claude Code: `--print` for non-interactive one-shot; model optional.
       return model ? ["--print", "--model", model, task] : ["--print", task];
   }
+}
+
+// Resolve a harness into a runnable command for an INTERACTIVE PTY terminal.
+// Returns null if the CLI binary isn't installed (caller falls back to shell).
+// `task`, if given, is handed to the CLI as its initial prompt; the agent then
+// runs interactively (its real TUI) so you can type into it live.
+export async function resolveAgentCommand(
+  harness: string,
+  task?: string,
+  ctx?: { canvasId?: string; nodeId?: string },
+): Promise<{ command: string; args: string[]; env: NodeJS.ProcessEnv } | null> {
+  const bin = harnessBinary(harness);
+  let resolved: string | null = null;
+  try {
+    resolved = await which(bin);
+  } catch {
+    return null;
+  }
+  if (!resolved) return null;
+
+  // Interactive launch: no --print. Some CLIs accept an initial task flag.
+  let args: string[] = [];
+  if (task) {
+    switch (harness) {
+      case "codex":
+        args = ["exec", task];
+        break;
+      case "gemini":
+        args = ["--prompt", task];
+        break;
+      case "opencode":
+        args = ["-m", task];
+        break;
+      case "claude-code":
+      default:
+        // Claude Code: `-p` is one-shot; interactive REPL takes the task as a
+        // positional prompt and stays attached to the PTY.
+        args = [task];
+        break;
+    }
+  }
+
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    AUTUMN_BUS_PORT: process.env.AUTUMN_BUS_PORT ?? "3000",
+    AUTUMN_BUS_CANVAS: ctx?.canvasId ?? "default",
+    AUTUMN_BUS_NODE: ctx?.nodeId ?? "unknown",
+    AUTUMN_BUS_TOKEN: process.env.AUTUMN_BUS_TOKEN ?? "autumn-dev-token",
+    TERM: "xterm-256color",
+  };
+
+  return { command: resolved, args, env };
 }
 
 function buildEnv(input: SpawnAgentInput): NodeJS.ProcessEnv {

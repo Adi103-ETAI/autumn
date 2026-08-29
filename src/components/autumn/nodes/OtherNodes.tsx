@@ -69,11 +69,11 @@ interface TerminalData {
   lines: { text: string; kind?: string; ts: number }[];
 }
 
-// Canned responses for the simulated shell. The real terminal (user-machine
-// PTY) is deferred to the final phase — this keeps the node feeling alive.
+// Canned responses for the simulated shell, used ONLY as a fallback when the
+// real node-pty backend is unavailable (e.g. web mode without node-pty).
 function simulateCommand(cmd: string, dir: string): { text: string; kind?: string }[] {
   const c = cmd.trim().toLowerCase();
-  if (c === "" ) return [];
+  if (c === "") return [];
   if (c === "clear" || c === "cls") return [{ text: "__clear__", kind: "system" }];
   if (c === "help") return [
     { text: "Available commands:", kind: "info" },
@@ -111,41 +111,119 @@ function simulateCommand(cmd: string, dir: string): { text: string; kind?: strin
 }
 
 export function TerminalNode({ id, data, selected }: NodeProps) {
-  const d = data as unknown as TerminalData;
+  const d = data as unknown as TerminalData & { harness?: string; boundChatId?: string };
   const updateNodeData = useAutumnStore((s) => s.updateNodeData);
+  const canvasId = useAutumnStore((s) => s.canvasId);
   const [input, setInput] = useState("");
+  const [lines, setLines] = useState<{ text: string; kind?: string }[]>(d.lines ?? []);
+  const [live, setLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const esRef = useRef<EventSource | null>(null);
+
+  const dir = d.dir || "~/project";
+  const prompt = `${dir}$`;
+  const isAgentTerm = !!d.harness;
 
   // Auto-scroll to bottom when lines change.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [d.lines.length]);
+  }, [lines.length]);
 
-  const dir = d.dir || "~/project";
-  const prompt = `${dir}$`;
+  // Keep local lines in sync if the store's seed changes (e.g. on load).
+  useEffect(() => {
+    if (!live) setLines(d.lines ?? []);
+  }, [d.lines, live]);
+
+  // Open a live PTY stream from the real backend (/api/terminal, node-pty).
+  // If this terminal is bound to an agent (has a harness), we spawn that
+  // agent's REAL interactive CLI; otherwise a plain shell. Falls back to the
+  // simulated shell if the backend isn't reachable.
+  const connectLive = () => {
+    if (live) return;
+    try {
+      const qs = new URLSearchParams({ node: id, dir });
+      if (isAgentTerm) {
+        qs.set("harness", d.harness!);
+        qs.set("canvas", canvasId);
+      }
+      const es = new EventSource(`/api/terminal?${qs.toString()}`);
+      esRef.current = es;
+      es.onmessage = (ev) => {
+        try {
+          const payload = JSON.parse(ev.data);
+          if (payload.type === "ready") {
+            setLive(true);
+            return;
+          }
+          // Raw PTY output chunk — append verbatim.
+          setLines((prev) => [...prev, { text: String(payload), kind: "stdout" }].slice(-200));
+        } catch {
+          // Non-JSON SSE comment/heartbeat — ignore.
+        }
+      };
+      es.onerror = () => {
+        // Backend unavailable (e.g. web mode without node-pty): stay simulated.
+        setLive(false);
+        es.close();
+        esRef.current = null;
+      };
+    } catch {
+      setLive(false);
+    }
+  };
+
+  // Connect on mount if a real backend is expected (Electron / VM).
+  useEffect(() => {
+    connectLive();
+    return () => {
+      esRef.current?.close();
+      esRef.current = null;
+      // Best-effort: kill the PTY when the node unmounts.
+      fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ node: id, action: "kill" }),
+      }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runCommand = () => {
     const cmd = input;
     setInput("");
+    if (live) {
+      // Send to the real PTY; echo locally for immediate feedback.
+      setLines((prev) => [...prev, { text: `${prompt} ${cmd}`, kind: "command" }]);
+      fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          node: id,
+          action: "input",
+          data: cmd + "\n",
+        }),
+      }).catch(() => {});
+      return;
+    }
+    // Fallback: simulated shell.
     const out = simulateCommand(cmd, dir);
-    const newLines = [...d.lines];
-    // echo the command
+    const newLines = [...lines];
     if (cmd.trim()) {
-      newLines.push({ text: `${prompt} ${cmd}`, kind: "command", ts: Date.now() });
+      newLines.push({ text: `${prompt} ${cmd}`, kind: "command" });
     }
     if (out.length && out[0].text === "__clear__") {
-      updateNodeData(id, { lines: [] });
+      setLines([]);
       return;
     }
     for (const line of out) {
-      newLines.push({ text: line.text, kind: line.kind, ts: Date.now() });
+      newLines.push({ text: line.text, kind: line.kind });
     }
-    updateNodeData(id, { lines: newLines.slice(-50) });
+    setLines(newLines.slice(-200));
   };
 
-  const isEmpty = d.lines.length === 0;
+  const isEmpty = lines.length === 0;
 
   return (
     <NodeShell id={id} selected={selected} color="#22c55e" width="w-[320px]">
@@ -157,8 +235,27 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           <span className="size-2.5 rounded-full bg-emerald-500/80" />
         </div>
         <span className="text-[11px] font-medium text-zinc-300 ml-1 truncate">
-          {d.agent ? `${d.agent} — bash` : "bash — plain shell"}
+          {isAgentTerm
+            ? `${d.agent ?? "Agent"} — ${d.harness}`
+            : d.agent
+              ? `${d.agent} — bash`
+              : "bash — plain shell"}
         </span>
+        <Badge
+          variant="outline"
+          className={cn(
+            "ml-1 text-[9px] h-4 px-1 border-transparent",
+            isAgentTerm
+              ? live
+                ? "text-emerald-300 border-emerald-500/40"
+                : "text-amber-300 border-amber-500/40"
+              : live
+                ? "text-emerald-300 border-emerald-500/40"
+                : "text-zinc-500",
+          )}
+        >
+          {isAgentTerm ? (live ? "cli live" : "cli") : live ? "live" : "sim"}
+        </Badge>
         {d.port && (
           <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1 border-emerald-500/40 text-emerald-300">
             :{d.port}
@@ -172,10 +269,11 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       >
         {isEmpty && (
           <div className="text-zinc-500 italic">
-            <span className="text-emerald-400">~$</span> click for a plain shell
+            <span className="text-emerald-400">~$</span>{" "}
+            {live ? "connecting live shell…" : "click for a plain shell"}
           </div>
         )}
-        {d.lines.slice(-20).map((l, i) => (
+        {lines.slice(-20).map((l, i) => (
           <div
             key={i}
             className={cn(

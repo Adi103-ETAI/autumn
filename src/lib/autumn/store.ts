@@ -541,6 +541,7 @@ export interface AutumnStore {
   renameNode: (id: string, name: string) => void;
 
   connectNodes: (from: string, to: string, kind?: "bus" | "navigation") => void;
+  spawnAgentTerminal: (chatNodeId: string) => string | null;
   disconnectNodes: (from: string, to: string) => void;
 
   addTask: (description: string, afterIds?: number[]) => string;
@@ -1627,6 +1628,56 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     if (kind === "bus") {
       toast(`Bus edge: ${fromName} → ${toName}`, { duration: 2500 });
     }
+  },
+
+  // Spawn a LIVE terminal node bound to a chat (agent) node. The terminal opens
+  // an interactive PTY running that agent's real CLI (claude/codex/...), so two
+  // agents show up as two independent live CLI windows — exactly like October.
+  // Returns the new terminal node id (or null if one is already bound).
+  spawnAgentTerminal: (chatNodeId: string) => {
+    const chat = get().nodes.find((n) => n.id === chatNodeId);
+    if (!chat || chat.kind !== "chat") return null;
+    const d = chat.data as { harness?: string; personaId?: string };
+    const harness = d.harness ?? "claude-code";
+    const persona = PERSONA_BY_ID[d.personaId ?? ""];
+    const name = persona?.name ?? chat.name ?? "Agent";
+
+    // Avoid duplicates: if a terminal is already bound, return it.
+    const existing = get().nodes.find(
+      (n) => n.kind === "terminal" && (n.data as { boundChatId?: string }).boundChatId === chatNodeId,
+    );
+    if (existing) {
+      get().setSelectedNode(existing.id);
+      return existing.id;
+    }
+
+    const termId = `node-${nanoid(8)}`;
+    const term: AutumnNode = {
+      id: termId,
+      kind: "terminal",
+      name: `${name} · CLI`,
+      position: {
+        x: (chat.position?.x ?? 0) + 340,
+        y: chat.position?.y ?? 0,
+      },
+      createdAt: Date.now(),
+      data: {
+        agent: name,
+        harness,
+        boundChatId: chatNodeId,
+        status: "working",
+        lines: [],
+      } as unknown as Record<string, unknown>,
+    };
+    set((s) => ({ nodes: [...s.nodes, term] }));
+    get().connectNodes(chatNodeId, termId, "bus");
+    get().setSelectedNode(termId);
+    get().pushActivity({
+      kind: "node_added",
+      text: `Spawned live CLI terminal for ${name}.`,
+      nodeId: termId,
+    });
+    return termId;
   },
 
   disconnectNodes: (from, to) =>
