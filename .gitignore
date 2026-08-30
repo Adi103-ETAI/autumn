@@ -99,8 +99,7 @@ worklog.md
 # Sandbox gateway config
 Caddyfile
 
-# z-ai config example (sandbox-specific)
-.z-ai-config.example
+# z-ai config example (sandbox-specific) - removed with z-ai-web-dev-sdk
 
 # Root-level scratch images (unused by the app)
 /architecture.png

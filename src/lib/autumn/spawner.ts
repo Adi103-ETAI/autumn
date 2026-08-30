@@ -13,8 +13,7 @@
 // /api/bus — so real agents coordinate with ZERO client changes.
 //
 // When AUTUMN_SIMULATE=1 OR the target CLI binary is not installed, we fall
-// back to the original z-ai LLM proxy (see runAgentSimulated) so the app still
-// works in CI / web-only deployments.
+// back to a local deterministic simulation so the app still works in CI / web-only deployments.
 
 import { spawn } from "node:child_process";
 import { which } from "./which";
@@ -232,52 +231,20 @@ export async function runAgent(input: SpawnAgentInput): Promise<SpawnResult> {
   });
 }
 
-// Fallback path — the original z-ai LLM proxy — kept verbatim in spirit.
+// Fallback path — deterministic local simulation (no external LLM).
 async function runAgentSimulated(
   input: SpawnAgentInput,
   missingCli: boolean,
 ): Promise<SpawnResult> {
-  try {
-    const ZAI = (await import("z-ai-web-dev-sdk")).default;
-    const { PERSONA_BY_ID } = await import("./personas");
-    const persona = input.personaName
-      ? PERSONA_BY_ID[Object.keys(PERSONA_BY_ID).find(
-          (k) => PERSONA_BY_ID[k].name === input.personaName,
-        ) ?? ""]
-      : undefined;
-
-    const systemPrompt = `You are ${input.personaName ?? "an AI coding agent"} on the Autumn canvas.
-Harness: ${input.harness}
-${missingCli ? "(The real CLI for this harness is not installed, so this is a simulated response.)\n" : ""}
-You are connected to peers: ${(input.connectedPeers ?? []).join(", ") || "none"}.
-When done, end with: [autumn-bus] message_peer → <peerName>: <handoff>
-${input.peerContext ? `# PEER CONTEXT\n${input.peerContext}\n` : ""}
-Keep it under 220 words.`;
-
-    const messages = [
-      { role: "assistant" as const, content: systemPrompt },
-      ...(input.history ?? []).slice(-6).map((m) => ({
-        role: m.role,
-        content: m.text,
-      })),
-      { role: "user" as const, content: input.task },
-    ];
-
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages,
-      thinking: { type: "disabled" },
-      temperature: 0.7,
-      max_tokens: 900,
-    });
-    const text = completion.choices[0]?.message?.content ?? "";
-    return { text, simulated: true, fellBack: missingCli };
-  } catch (err) {
-    return {
-      text: `**${input.personaName ?? "Agent"}** picked up: "${input.task.slice(0, 120)}"\n\n(simulated — real CLI unavailable)`,
-      simulated: true,
-      fellBack: true,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+  const peerNote =
+    input.connectedPeers && input.connectedPeers.length > 0
+      ? ` Connected peers: ${input.connectedPeers.join(", ")}.`
+      : "";
+  const cliNote = missingCli ? " (real CLI not installed)" : "";
+  const contextNote = input.peerContext ? `\n\nPeer context:\n${input.peerContext.slice(0, 500)}` : "";
+  return {
+    text: `**${input.personaName ?? "Agent"}** [${input.harness}]${cliNote} picked up: "${input.task.slice(0, 200)}"${peerNote}${contextNote}\n\n(simulated — no external LLM)`,
+    simulated: true,
+    fellBack: missingCli,
+  };
 }
