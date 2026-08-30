@@ -11,7 +11,7 @@
 // with ZERO client changes.
 //
 // Fallback: if AUTUMN_SIMULATE=1 OR the CLI binary isn't installed, the spawner
-// transparently falls back to the original z-ai LLM simulation.
+// transparently falls back to a deterministic local simulation.
 
 import { NextRequest, NextResponse } from "next/server";
 import { runAgent } from "@/lib/autumn/spawner";

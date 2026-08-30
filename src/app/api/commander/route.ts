@@ -4,7 +4,6 @@
 // Returns: CommanderResult ({kind:"steps",...} | {kind:"ask",...})
 
 import { NextRequest, NextResponse } from "next/server";
-import ZAI from "z-ai-web-dev-sdk";
 import {
   COMMANDER_SYSTEM_PROMPT,
   buildCompilerUserPrompt,
@@ -122,34 +121,12 @@ export async function POST(req: NextRequest) {
     recentActions,
   );
 
-  try {
-    const zai = await ZAI.create();
-    const completion = await zai.chat.completions.create({
-      messages: [
-        { role: "assistant", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      thinking: { type: "disabled" },
-      temperature: 0.2,
-      max_tokens: 1024,
-    });
-
-    const raw = completion.choices[0]?.message?.content ?? "";
-    const parsed = safeParseCommanderResult(raw);
-    if (parsed) return NextResponse.json(parsed);
-
-    // LLM returned non-JSON; fall back.
-    const fallback = fallbackPlan(command, canvas);
-    return NextResponse.json({ ...fallback, _raw: raw, _fallback: true });
-  } catch (err) {
-    console.error("[commander] LLM error:", err);
-    const fallback = fallbackPlan(command, canvas);
-    return NextResponse.json({
-      ...fallback,
-      _error: err instanceof Error ? err.message : "unknown",
-      _fallback: true,
-    });
-  }
+  // Z-AI removed — deterministic fallback planner only.
+  // Previously this called ZAI.create().chat.completions.create with systemPrompt/userPrompt.
+  void systemPrompt;
+  void userPrompt;
+  const fallback = fallbackPlan(command, canvas);
+  return NextResponse.json({ ...fallback, _fallback: true });
 }
 
 function safeParseCommanderResult(raw: string): CommanderResult | null {
