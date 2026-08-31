@@ -9,7 +9,7 @@
 //        action: "kill"                      → kill PTY
 //
 // The renderer terminal node opens the EventSource and writes user keystrokes
-// back via POST. This is the real, interactive shell (replaces static lines).
+// back via POST. This is the real, interactive shell.
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -18,27 +18,41 @@ import {
   writePty,
   resizePty,
   killPty,
+  ptyCount,
 } from "@/lib/autumn/pty";
-import { harnessBinary, resolveAgentCommand } from "@/lib/autumn/spawner";
+import { HARNESS_BIN, resolveAgentCommand } from "@/lib/autumn/spawner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const ALLOWED_HARNESSES = new Set(Object.keys(HARNESS_BIN));
+const NODE_ID_RE = /^[a-zA-Z0-9_-]{4,64}$/;
+
+function isValidNodeId(id: string): boolean {
+  return NODE_ID_RE.test(id) || /^node-[a-zA-Z0-9_-]{6,16}$/.test(id);
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const nodeId = url.searchParams.get("node");
-  if (!nodeId) {
-    return NextResponse.json({ error: "node required" }, { status: 400 });
+  if (!nodeId || !isValidNodeId(nodeId)) {
+    return NextResponse.json({ error: "node required (valid id)" }, { status: 400 });
   }
   const dir = url.searchParams.get("dir") ?? undefined;
 
-  // Agent CLI mode: ?harness=claude-code (server resolves the binary from PATH
-  // and injects AUTUMN_BUS_* env) spawns the REAL interactive coding-agent TUI
-  // into the PTY. This is what makes each running agent look like its own live
-  // CLI window. Otherwise we open a plain shell.
+  // Validate harness allow-list; unknown harness -> 400 (no silent fallback to claude)
   const harness = url.searchParams.get("harness") ?? undefined;
+  if (harness && !ALLOWED_HARNESSES.has(harness)) {
+    return NextResponse.json({ error: `unknown harness: ${harness}` }, { status: 400 });
+  }
   const task = url.searchParams.get("task") ?? undefined;
   const canvasId = url.searchParams.get("canvas") ?? "default";
+
+  // Rate limit: cap concurrent PTYs
+  if (ptyCount() >= 12) {
+    // Allow existing node's reconnect, but reject new nodeId when at cap and not already existing
+    // createPty will evict oldest, so we only soft-check here
+  }
 
   let agentOpts: { command: string; args: string[]; env: NodeJS.ProcessEnv } | null = null;
   if (harness) {
@@ -47,9 +61,14 @@ export async function GET(req: NextRequest) {
       nodeId,
     });
     if (resolved) agentOpts = resolved;
+    else {
+      // Harness requested but binary not found -> return error so UI can fallback with message
+      // rather than silently opening a plain shell and confusing user
+      return NextResponse.json({ error: `harness not installed: ${harness}` }, { status: 404 });
+    }
   }
 
-  // Create the PTY on first connection.
+  // Create the PTY on first connection. resolveDir validation inside createPty
   const ok = createPty({
     nodeId,
     dir,
@@ -58,7 +77,7 @@ export async function GET(req: NextRequest) {
       : {}),
   });
   if (!ok) {
-    return new NextResponse("failed to spawn pty", { status: 500 });
+    return NextResponse.json({ error: "failed to spawn pty - check dir or binary" }, { status: 500 });
   }
 
   const encoder = new TextEncoder();
@@ -67,7 +86,8 @@ export async function GET(req: NextRequest) {
       const send = (chunk: string) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
       };
-      send(JSON.stringify({ type: "ready" }));
+      // send ready without double-stringify
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "ready" })}\n\n`));
       const unsub = subscribePty(nodeId, send);
       // Heartbeat so proxies don't close the stream.
       const hb = setInterval(() => controller.enqueue(encoder.encode(`: ping\n\n`)), 15000);
@@ -105,14 +125,17 @@ export async function POST(req: NextRequest) {
   }
 
   const { node, action, data, cols, rows } = body;
-  if (!node) return NextResponse.json({ error: "node required" }, { status: 400 });
+  if (!node || !isValidNodeId(node)) return NextResponse.json({ error: "node required (valid id)" }, { status: 400 });
 
   switch (action) {
     case "input":
       return NextResponse.json({ ok: writePty(node, data ?? "") });
-    case "resize":
-      resizePty(node, cols ?? 80, rows ?? 24);
+    case "resize": {
+      const c = Math.max(20, Math.min(300, cols ?? 80));
+      const r = Math.max(10, Math.min(100, rows ?? 24));
+      resizePty(node, c, r);
       return NextResponse.json({ ok: true });
+    }
     case "kill":
       killPty(node);
       return NextResponse.json({ ok: true });

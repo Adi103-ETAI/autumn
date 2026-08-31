@@ -13,6 +13,9 @@
 // running claude/codex).
 
 import type { IPty } from "node-pty";
+import { homedir } from "node:os";
+import path from "node:path";
+import fs from "node:fs";
 
 // Lazily require node-pty so the app still boots where the native build is
 // unavailable (it just won't serve live terminals).
@@ -30,9 +33,79 @@ interface TerminalSession {
   subscribers: Set<(chunk: string) => void>;
   kind: "shell" | "agent";
   command: string;
+  createdAt: number;
 }
 
 const sessions = new Map<string, TerminalSession>();
+const MAX_SESSIONS = 12;
+
+// Resolve and validate a requested dir against an allow-list.
+// Throws on violation so caller can return 400.
+export function resolveDir(raw?: string): string {
+  const expanded = raw ? raw.replace(/^~(?=\/|$)/, homedir()) : process.cwd();
+  const resolved = path.resolve(expanded);
+  // Allow: project cwd, homedir/autumn, homedir, /tmp, and any temp worktree under homedir
+  const allowedRoots = [
+    path.resolve(process.cwd()),
+    path.resolve(homedir()),
+    path.resolve(path.join(homedir(), "autumn")),
+    path.resolve("/tmp"),
+  ];
+  const isAllowed = allowedRoots.some(
+    (root) => resolved === root || resolved.startsWith(root + path.sep),
+  );
+  if (!isAllowed) {
+    // Fallback: also allow any existing directory that is inside allowed roots strictly
+    // If not allowed, throw - caller returns 400
+    throw new Error(`cwd not allowed: ${resolved}`);
+  }
+  try {
+    const st = fs.statSync(resolved);
+    if (!st.isDirectory()) throw new Error(`not a directory: ${resolved}`);
+  } catch {
+    // Auto-create allowed dirs that don't exist (e.g. ~/autumn)
+    try {
+      fs.mkdirSync(resolved, { recursive: true });
+    } catch {
+      throw new Error(`cwd does not exist: ${resolved}`);
+    }
+  }
+  return resolved;
+}
+
+function defaultShell(): string {
+  if (process.platform === "win32") return process.env.COMSPEC ?? "powershell.exe";
+  return process.env.SHELL ?? "bash";
+}
+
+function defaultEnv(): NodeJS.ProcessEnv {
+  // Allow-list env instead of spreading entire process.env blindly
+  const allow = new Set([
+    "PATH",
+    "HOME",
+    "USER",
+    "SHELL",
+    "TERM",
+    "LANG",
+    "LC_ALL",
+    "TMPDIR",
+    "NODE_ENV",
+    "AUTUMN_BUS_PORT",
+    "AUTUMN_BUS_CANVAS",
+    "AUTUMN_BUS_NODE",
+    "AUTUMN_BUS_TOKEN",
+    "AUTUMN_BUS_PEERS",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+  ]);
+  const out: NodeJS.ProcessEnv = {};
+  for (const k of allow) {
+    if (process.env[k] !== undefined) out[k] = process.env[k];
+  }
+  // Always ensure TERM
+  out.TERM = "xterm-256color";
+  return out;
+}
 
 export interface CreatePtyOptions {
   nodeId: string;
@@ -50,29 +123,45 @@ export interface CreatePtyOptions {
 export function createPty(opts: CreatePtyOptions): boolean {
   if (sessions.has(opts.nodeId)) return true; // already running
 
+  // Evict oldest if at capacity
+  if (sessions.size >= MAX_SESSIONS) {
+    const oldestKey = sessions.keys().next().value as string | undefined;
+    if (oldestKey) killPty(oldestKey);
+  }
+
   const isAgent = !!opts.command;
+  let cwd: string;
   try {
+    cwd = resolveDir(opts.dir);
+  } catch (err) {
+    console.error("[pty] cwd rejected:", err);
+    return false;
+  }
+
+  try {
+    const shell = opts.shell ?? defaultShell();
     const pty = isAgent
       ? loadPty().spawn(opts.command!, opts.args ?? [], {
           name: "xterm-color",
           cols: opts.cols ?? 80,
           rows: opts.rows ?? 24,
-          cwd: opts.dir ?? process.cwd(),
-          env: { ...process.env, TERM: "xterm-256color", ...(opts.env ?? {}) },
+          cwd,
+          env: { ...defaultEnv(), ...(opts.env ?? {}) },
         })
-      : loadPty().spawn(opts.shell ?? process.env.SHELL ?? "bash", [], {
+      : loadPty().spawn(shell, [], {
           name: "xterm-color",
           cols: opts.cols ?? 80,
           rows: opts.rows ?? 24,
-          cwd: opts.dir ?? process.cwd(),
-          env: { ...process.env, TERM: "xterm-256color" },
+          cwd,
+          env: { ...defaultEnv() },
         });
 
     const session: TerminalSession = {
       pty,
       subscribers: new Set(),
       kind: isAgent ? "agent" : "shell",
-      command: opts.command ?? opts.shell ?? "bash",
+      command: opts.command ?? shell,
+      createdAt: Date.now(),
     };
     pty.onData((data) => {
       for (const sub of session.subscribers) sub(data);
@@ -126,4 +215,8 @@ export function ptyExists(nodeId: string): boolean {
 
 export function ptyKind(nodeId: string): "shell" | "agent" | undefined {
   return sessions.get(nodeId)?.kind;
+}
+
+export function ptyCount(): number {
+  return sessions.size;
 }

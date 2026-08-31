@@ -365,6 +365,8 @@ export interface AutumnStore {
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
   showGrid: boolean; // dotted canvas background on/off (toggled from MinimapPanel)
+  snapToGrid: boolean; // snap nodes to 20x20 grid on drag
+  minimapCollapsed: boolean; // whether the minimap preview box is collapsed
 
   // Floating "Project chat" panel above the dock (October-style).
   projectChatOpen: boolean;
@@ -439,6 +441,8 @@ export interface AutumnStore {
   // minimap + edge labels (Task 4-c)
   setShowMinimap: (v: boolean) => void;
   setShowGrid: (v: boolean) => void;
+  setSnapToGrid: (v: boolean) => void;
+  setMinimapCollapsed: (v: boolean) => void;
 
   // Floating "Project chat" panel above the dock.
   setProjectChatOpen: (v: boolean) => void;
@@ -634,6 +638,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
   showGrid: true,
+  snapToGrid: false,
+  minimapCollapsed: false,
 
   // Floating "Project chat" panel above the dock (closed by default).
   projectChatOpen: false,
@@ -1153,6 +1159,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   setShowMinimap: (v) => set({ showMinimap: v }),
   setShowGrid: (v) => set({ showGrid: v }),
+  setSnapToGrid: (v) => set({ snapToGrid: v }),
+  setMinimapCollapsed: (v) => set({ minimapCollapsed: v }),
 
   // Floating "Project chat" panel above the dock.
   setProjectChatOpen: (v) => set({ projectChatOpen: v, projectChatMinimized: false }),
@@ -1236,6 +1244,15 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   removeNodes: (ids) => {
     const idSet = new Set(ids);
     const removed = get().nodes.filter((n) => idSet.has(n.id));
+    for (const r of removed) {
+      if (r.kind === "terminal") {
+        fetch("/api/terminal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ node: r.id, action: "kill" }),
+        }).catch(() => {});
+      }
+    }
     set((s) => ({
       nodes: s.nodes.filter((n) => !idSet.has(n.id)),
       edges: s.edges.filter((e) => !idSet.has(e.source) && !idSet.has(e.target)),
@@ -1536,12 +1553,26 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   addNode: (partial) => {
     const id = partial.id ?? `node-${nanoid(8)}`;
+    let data = partial.data ?? defaultDataForKind(partial.kind);
+    // If opening a terminal, use the current workspace folder as cwd, not a hardcoded default.
+    if (partial.kind === "terminal") {
+      const ws = get().workspaces.find((w) => w.id === get().canvasId);
+      const wsDir = ws?.kind === "folder" && ws.source ? ws.source : undefined;
+      const hasExplicitDir = !!(partial.data as Record<string, unknown> | undefined)?.dir;
+      if (!hasExplicitDir) {
+        // Override legacy default "~/autumn" with workspace folder or leave undefined (server -> process.cwd())
+        const d = { ...(data as Record<string, unknown>) } as Record<string, unknown>;
+        if (wsDir) d.dir = wsDir;
+        else delete d.dir;
+        data = d as typeof data;
+      }
+    }
     const node: AutumnNode = {
       id,
       kind: partial.kind,
       name: partial.name ?? defaultNameForKind(partial.kind),
       position: partial.position ?? randomPosition(),
-      data: partial.data ?? defaultDataForKind(partial.kind),
+      data,
       createdAt: Date.now(),
     };
     set((s) => ({ nodes: [...s.nodes, node] }));
@@ -1569,11 +1600,18 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       ),
     })),
 
-  removeNode: (id) =>
-    set((s) => {
-      const node = s.nodes.find((n) => n.id === id);
+  removeNode: (id) => {
+    const node = get().nodes.find((n) => n.id === id);
+    if (node?.kind === "terminal") {
+      // Kill the live PTY on the server (fire-and-forget)
+      fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ node: id, action: "kill" }),
+      }).catch(() => {});
+    }
+    return set((s) => {
       if (node) {
-        // Defer the activity log to after the state set.
         queueMicrotask(() =>
           get().pushActivity({
             kind: "node_removed",
@@ -1587,7 +1625,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         edges: s.edges.filter((e) => e.source !== id && e.target !== id),
         selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
       };
-    }),
+    });
+  },
 
   moveNode: (id, x, y) =>
     set((s) => ({
@@ -1637,7 +1676,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   spawnAgentTerminal: (chatNodeId: string) => {
     const chat = get().nodes.find((n) => n.id === chatNodeId);
     if (!chat || chat.kind !== "chat") return null;
-    const d = chat.data as { harness?: string; personaId?: string };
+    const d = chat.data as { harness?: string; personaId?: string; worktreePath?: string };
     const harness = d.harness ?? "claude-code";
     const persona = PERSONA_BY_ID[d.personaId ?? ""];
     const name = persona?.name ?? chat.name ?? "Agent";
@@ -1652,6 +1691,9 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     }
 
     const termId = `node-${nanoid(8)}`;
+    const ws = get().workspaces.find((w) => w.id === get().canvasId);
+    const wsDir = ws?.kind === "folder" && ws.source ? ws.source : undefined;
+    const dir = (d.worktreePath as string | undefined) ?? wsDir ?? get().nodes.find((n) => n.kind === "terminal")?.data.dir ?? undefined;
     const term: AutumnNode = {
       id: termId,
       kind: "terminal",
@@ -1666,6 +1708,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         harness,
         boundChatId: chatNodeId,
         status: "working",
+        dir,
         lines: [],
       } as unknown as Record<string, unknown>,
     };
@@ -1941,7 +1984,7 @@ function defaultDataForKind(kind: NodeKind): unknown {
     case "terminal":
       return {
         status: "idle",
-        dir: "~/autumn",
+        // dir left undefined here - addNode() will fill it from current workspace folder (or server falls back to process.cwd())
         port: undefined,
         lines: [
           { text: "$ autumn shell ready", kind: "info" as const, ts: now },

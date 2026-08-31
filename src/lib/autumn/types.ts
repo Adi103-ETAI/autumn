@@ -58,6 +58,7 @@ export interface ChatNodeData {
   worktreePath?: string;
   branch?: string;
   busyTaskId?: string | null;
+  autoReply?: boolean;
   messages: AgentMessage[];
 }
 
@@ -67,6 +68,13 @@ export interface TerminalNodeData {
   status: AgentStatus;
   port?: number;
   lines: TerminalLine[];
+  // Real PTY fields
+  harness?: string; // agent harness id if this terminal runs an agent CLI
+  boundChatId?: string; // chat node id this terminal is bound to
+  shell?: string; // explicit shell binary
+  cols?: number;
+  rows?: number;
+  live?: boolean;
 }
 
 export interface ScreenNodeData {
@@ -112,6 +120,8 @@ export interface AutumnNode {
   name: string;
   data: NodeData;
   position: { x: number; y: number };
+  width?: number;
+  height?: number;
   createdAt: number;
 }
 

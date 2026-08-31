@@ -1,10 +1,10 @@
-// Autumn — simpler node components (terminal, screen, sticky, analytics, browser, remotion).
-// Each is a compact card on the react-flow canvas.
+// Autumn — Node components (Terminal/Apollo, Screen, Sticky, Analytics, Browser, Remotion).
+// Fully styled according to October UI architecture (october_ui_analysis.md).
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Handle, Position, type NodeProps, NodeResizer } from "@xyflow/react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -18,45 +18,122 @@ import {
   X,
   Smartphone,
   Monitor,
+  Folder,
+  Terminal,
+  Search,
+  RotateCcw,
+  Home,
+  Maximize2,
+  FolderPlus,
+  Play,
+  CheckSquare,
+  Square,
+  Sliders,
+  ZoomIn,
+  ZoomOut,
+  ChevronRight,
+  Minus,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
-const HANDLE_STYLE = { background: "oklch(0.6 0.19 285)" };
-
-function NodeShell({
+function CommonNodeFrame({
   id,
   selected,
-  color,
+  title,
+  subtitle,
+  icon,
   children,
-  width = "w-[240px]",
+  width = "w-[320px]",
+  onExpand,
 }: {
   id: string;
   selected?: boolean;
-  color: string;
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   width?: string;
+  onExpand?: () => void;
 }) {
   const removeNode = useAutumnStore((s) => s.removeNode);
+
   return (
-    <div
-      className={cn(
-        `${width} rounded-xl border bg-card/95 backdrop-blur shadow-lg transition-all`,
-        selected
-          ? "border-amber-500/60 ring-2 ring-amber-500/30"
-          : "border-border/60 hover:border-border",
-      )}
-      style={{ boxShadow: `0 6px 16px -8px ${color}40` }}
-    >
-      <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
-      <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
-      <div className="relative">{children}</div>
-      <button
-        onClick={() => removeNode(id)}
-        className="absolute top-1.5 right-1.5 size-5 rounded-md text-muted-foreground/50 hover:text-rose-400 hover:bg-rose-500/10 flex items-center justify-center transition-colors"
-        aria-label="Remove node"
+    <div className="relative group">
+      {/* Free-resize handles - visible when selected */}
+      <NodeResizer
+        isVisible={!!selected}
+        minWidth={260}
+        minHeight={180}
+        handleClassName="!size-3 !bg-blue-500 !border-white !rounded-sm shadow"
+        lineClassName="!border-blue-500/40"
+      />
+      {/* 4 Cardinal Connection Anchors */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        className="autumn-handle !top-0 !left-1/2 -translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        className="autumn-handle !left-0 !top-1/2 -translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="autumn-handle !right-0 !top-1/2 translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="autumn-handle !bottom-0 !left-1/2 -translate-x-1/2 translate-y-1/2"
+      />
+
+      <div
+        className={cn(
+          `${width} autumn-window-frame overflow-hidden flex flex-col transition-all`,
+          selected && "autumn-node-selected",
+        )}
       >
-        <X className="size-3" />
-      </button>
+        {/* Windows-style Header - controls on right */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[#27272a] bg-[#18181b]/80 select-none">
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 mr-2">
+            {icon}
+            <span className="text-xs font-semibold text-zinc-200 truncate">{title}</span>
+            {subtitle && <span className="text-[10px] text-zinc-500 truncate">· {subtitle}</span>}
+          </div>
+
+          <div className="flex items-center gap-0.5 ml-2">
+            <button
+              onClick={onExpand}
+              className="size-7 flex items-center justify-center hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              title="Minimize"
+            >
+              <Minus className="size-3" />
+            </button>
+            <button
+              onClick={onExpand}
+              className="size-7 flex items-center justify-center hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              title="Maximize"
+            >
+              <Square className="size-3" />
+            </button>
+            <button
+              onClick={() => removeNode(id)}
+              className="size-7 flex items-center justify-center hover:bg-red-600 text-zinc-400 hover:text-white transition-colors"
+              title="Close"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex-1 flex flex-col min-h-0">{children}</div>
+      </div>
     </div>
   );
 }
@@ -69,79 +146,54 @@ interface TerminalData {
   lines: { text: string; kind?: string; ts: number }[];
 }
 
-// Canned responses for the simulated shell, used ONLY as a fallback when the
-// real node-pty backend is unavailable (e.g. web mode without node-pty).
-function simulateCommand(cmd: string, dir: string): { text: string; kind?: string }[] {
-  const c = cmd.trim().toLowerCase();
-  if (c === "") return [];
-  if (c === "clear" || c === "cls") return [{ text: "__clear__", kind: "system" }];
-  if (c === "help") return [
-    { text: "Available commands:", kind: "info" },
-    { text: "  ls         list files", kind: "stdout" },
-    { text: "  pwd        print working directory", kind: "stdout" },
-    { text: "  npm <cmd>  run an npm script", kind: "stdout" },
-    { text: "  git <cmd>  run a git command", kind: "stdout" },
-    { text: "  echo <x>   print text", kind: "stdout" },
-    { text: "  clear      clear the terminal", kind: "stdout" },
-  ];
-  if (c === "ls") return [
-    { text: "README.md  package.json  src/  public/  prisma/  next.config.ts", kind: "stdout" },
-  ];
-  if (c === "pwd") return [{ text: dir || "/home/user/project", kind: "stdout" }];
-  if (c === "npm run dev") return [
-    { text: "> autumn@0.1.0 dev", kind: "info" },
-    { text: "> next dev", kind: "info" },
-    { text: "  ▲ Next.js 16.0.0", kind: "stdout" },
-    { text: "  - Local:   http://localhost:3000", kind: "stdout" },
-    { text: "  ✓ Ready in 1.2s", kind: "stdout" },
-  ];
-  if (c.startsWith("npm install") || c.startsWith("npm i")) return [
-    { text: "added 312 packages in 4s", kind: "stdout" },
-    { text: "✓ done", kind: "stdout" },
-  ];
-  if (c.startsWith("git status")) return [
-    { text: "On branch main", kind: "stdout" },
-    { text: "nothing to commit, working tree clean", kind: "stdout" },
-  ];
-  if (c.startsWith("git ")) return [{ text: "ok", kind: "stdout" }];
-  if (c.startsWith("echo ")) return [{ text: cmd.slice(5), kind: "stdout" }];
-  if (c === "whoami") return [{ text: "autumn-user", kind: "stdout" }];
-  if (c === "date") return [{ text: new Date().toString(), kind: "stdout" }];
-  return [{ text: `command not found: ${cmd.split(" ")[0]}`, kind: "stderr" }];
-}
-
+// -----------------------------------------------------------------------------
+// TerminalNode (Real PTY via xterm.js + SSE)
+// -----------------------------------------------------------------------------
 export function TerminalNode({ id, data, selected }: NodeProps) {
-  const d = data as unknown as TerminalData & { harness?: string; boundChatId?: string };
-  const updateNodeData = useAutumnStore((s) => s.updateNodeData);
+  const d = data as unknown as TerminalData & {
+    harness?: string;
+    boundChatId?: string;
+    shell?: string;
+  };
   const canvasId = useAutumnStore((s) => s.canvasId);
-  const [input, setInput] = useState("");
-  const [lines, setLines] = useState<{ text: string; kind?: string }[]>(d.lines ?? []);
+  const workspaces = useAutumnStore((s) => s.workspaces);
+  const currentWs = workspaces.find((w) => w.id === canvasId);
+  const wsDir = currentWs?.kind === "folder" && currentWs.source ? currentWs.source : undefined;
+  const updateNodeData = useAutumnStore((s) => s.updateNodeData);
+  const [viewMode, setViewMode] = useState<"launcher" | "terminal">(
+    (d.lines && d.lines.length > 0) || !!d.harness ? "terminal" : "launcher",
+  );
   const [live, setLive] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dontAskAgain, setDontAskAgain] = useState(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const termRef = useRef<import("xterm").Terminal | null>(null);
+  const fitAddonRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
   const esRef = useRef<EventSource | null>(null);
-
-  const dir = d.dir || "~/project";
-  const prompt = `${dir}$`;
+  const dir = d.dir || wsDir || "";
   const isAgentTerm = !!d.harness;
+  const nodeTitle = d.agent || (isAgentTerm ? "Apollo" : "Apollo · Terminal");
 
-  // Auto-scroll to bottom when lines change.
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [lines.length]);
+  const sendResize = useCallback(async () => {
+    const term = termRef.current;
+    if (!term) return;
+    try {
+      const fit = fitAddonRef.current;
+      if (fit) fit.fit();
+      const cols = term.cols;
+      const rows = term.rows;
+      await fetch("/api/terminal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ node: id, action: "resize", cols, rows }),
+      });
+    } catch {}
+  }, [id]);
 
-  // Keep local lines in sync if the store's seed changes (e.g. on load).
-  useEffect(() => {
-    if (!live) setLines(d.lines ?? []);
-  }, [d.lines, live]);
-
-  // Open a live PTY stream from the real backend (/api/terminal, node-pty).
-  // If this terminal is bound to an agent (has a harness), we spawn that
-  // agent's REAL interactive CLI; otherwise a plain shell. Falls back to the
-  // simulated shell if the backend isn't reachable.
-  const connectLive = () => {
-    if (live) return;
+  const connectLive = useCallback(() => {
+    if (esRef.current) return;
+    setError(null);
     try {
       const qs = new URLSearchParams({ node: id, dir });
       if (isAgentTerm) {
@@ -152,279 +204,403 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       esRef.current = es;
       es.onmessage = (ev) => {
         try {
-          const payload = JSON.parse(ev.data);
-          if (payload.type === "ready") {
+          let payload: unknown = JSON.parse(ev.data);
+          // handle double-encoded ready (legacy)
+          if (typeof payload === "string") {
+            try {
+              const inner = JSON.parse(payload as string);
+              if (inner && typeof inner === "object") payload = inner;
+            } catch {}
+          }
+          if (payload && typeof payload === "object" && (payload as { type?: string }).type === "ready") {
             setLive(true);
             return;
           }
-          // Raw PTY output chunk — append verbatim.
-          setLines((prev) => [...prev, { text: String(payload), kind: "stdout" }].slice(-200));
+          // Regular PTY chunk (string)
+          const text = String(payload as string);
+          termRef.current?.write(text);
         } catch {
-          // Non-JSON SSE comment/heartbeat — ignore.
+          termRef.current?.write(ev.data);
         }
       };
-      es.onerror = () => {
-        // Backend unavailable (e.g. web mode without node-pty): stay simulated.
+      es.onerror = async () => {
+        // Try to read error via fetch for harness-not-installed case
         setLive(false);
         es.close();
         esRef.current = null;
+        if (!isAgentTerm) {
+          try {
+            const r = await fetch(`/api/terminal?node=${encodeURIComponent(id)}&dir=${encodeURIComponent(dir)}`);
+            if (!r.ok) {
+              const j = await r.json().catch(() => null);
+              if (j?.error) setError(j.error);
+            }
+          } catch {}
+        }
       };
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed to connect");
       setLive(false);
     }
-  };
+  }, [id, dir, isAgentTerm, d.harness, canvasId]);
 
-  // Connect on mount if a real backend is expected (Electron / VM).
+  // xterm init
   useEffect(() => {
-    connectLive();
+    if (viewMode !== "terminal") return;
+    if (!containerRef.current) return;
+    let disposed = false;
+    let term: import("xterm").Terminal | null = null;
+    let fitAddon: import("@xterm/addon-fit").FitAddon | null = null;
+
+    const init = async () => {
+      const [{ Terminal }, { FitAddon }, { WebLinksAddon }] = await Promise.all([
+        import("xterm"),
+        import("@xterm/addon-fit"),
+        import("@xterm/addon-web-links"),
+      ]);
+      // CSS is imported via dynamic side-effect in xterm package; ensure loaded
+      try {
+        await import("xterm/css/xterm.css");
+      } catch {}
+
+      if (disposed || !containerRef.current) return;
+      term = new Terminal({
+        cursorBlink: true,
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: 11,
+        theme: { background: "#0a0a0c", foreground: "#e4e4e7", cursor: "#22c55e" },
+        convertEol: true,
+        scrollback: 2000,
+      });
+      fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.loadAddon(new WebLinksAddon());
+
+      term.open(containerRef.current!);
+      fitAddon.fit();
+
+      // Per-key input -> POST to PTY
+      term.onData((data) => {
+        fetch("/api/terminal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ node: id, action: "input", data }),
+        }).catch(() => {});
+      });
+
+      termRef.current = term;
+      fitAddonRef.current = fitAddon;
+
+      // Handle resize
+      const ro = new ResizeObserver(() => {
+        try {
+          fitAddon?.fit();
+          const cols = term!.cols;
+          const rows = term!.rows;
+          fetch("/api/terminal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node: id, action: "resize", cols, rows }),
+          }).catch(() => {});
+        } catch {}
+      });
+      ro.observe(containerRef.current!);
+
+      // Store cleanup
+      (term as unknown as { _ro?: ResizeObserver })._ro = ro;
+
+      // Connect SSE after terminal ready
+      connectLive();
+    };
+
+    init();
+
     return () => {
+      disposed = true;
+      try {
+        const ro = (termRef.current as unknown as { _ro?: ResizeObserver })?._ro;
+        ro?.disconnect();
+      } catch {}
+      try {
+        term?.dispose();
+      } catch {}
+      termRef.current = null;
+      fitAddonRef.current = null;
       esRef.current?.close();
       esRef.current = null;
-      // Best-effort: kill the PTY when the node unmounts.
       fetch("/api/terminal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ node: id, action: "kill" }),
       }).catch(() => {});
+      setLive(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [viewMode]);
 
-  const runCommand = () => {
-    const cmd = input;
-    setInput("");
-    if (live) {
-      // Send to the real PTY; echo locally for immediate feedback.
-      setLines((prev) => [...prev, { text: `${prompt} ${cmd}`, kind: "command" }]);
-      fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          node: id,
-          action: "input",
-          data: cmd + "\n",
-        }),
-      }).catch(() => {});
-      return;
+  // Reconnect if dir/harness changes while in terminal mode
+  useEffect(() => {
+    if (viewMode === "terminal" && !live && !error) {
+      const t = setTimeout(() => connectLive(), 300);
+      return () => clearTimeout(t);
     }
-    // Fallback: simulated shell.
-    const out = simulateCommand(cmd, dir);
-    const newLines = [...lines];
-    if (cmd.trim()) {
-      newLines.push({ text: `${prompt} ${cmd}`, kind: "command" });
-    }
-    if (out.length && out[0].text === "__clear__") {
-      setLines([]);
-      return;
-    }
-    for (const line of out) {
-      newLines.push({ text: line.text, kind: line.kind });
-    }
-    setLines(newLines.slice(-200));
+  }, [viewMode, live, error, connectLive]);
+
+  const handleChooseFolder = async () => {
+    try {
+      const w = window as unknown as { autumn?: { openFileDialog: (opts: unknown) => Promise<string[] | null> } };
+      if (w.autumn?.openFileDialog) {
+        const picked = await w.autumn.openFileDialog({ title: "Choose workspace folder", directory: true });
+        if (picked && picked[0]) {
+          updateNodeData(id, { dir: picked[0] });
+          // Kill old PTY so next connect uses new cwd
+          await fetch("/api/terminal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node: id, action: "kill" }),
+          }).catch(() => {});
+          esRef.current?.close();
+          esRef.current = null;
+          setLive(false);
+          setViewMode("terminal");
+          termRef.current?.writeln(`\r\n\x1b[33m> workspace: ${picked[0]}\x1b[0m`);
+          if (dontAskAgain && typeof window !== "undefined") {
+            try {
+              localStorage.setItem("autumn-terminal-dontAsk", "1");
+            } catch {}
+          }
+          setTimeout(() => connectLive(), 200);
+          return;
+        }
+      } else {
+        // Fallback: no electron bridge -> prompt for path
+        const path = window.prompt("Enter workspace path (e.g. /tmp or ~/autumn)", dir);
+        if (path) {
+          updateNodeData(id, { dir: path });
+          esRef.current?.close();
+          esRef.current = null;
+          setLive(false);
+          setTimeout(() => connectLive(), 200);
+        }
+      }
+    } catch {}
   };
 
-  const isEmpty = lines.length === 0;
+  const handleLaunchIn = (_target: string) => {
+    if (dontAskAgain && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("autumn-terminal-dontAsk", "1");
+      } catch {}
+    }
+    setViewMode("terminal");
+  };
+
+  const clearTerminal = () => {
+    termRef.current?.clear();
+  };
 
   return (
-    <NodeShell id={id} selected={selected} color="#22c55e" width="w-[320px]">
-      {/* Terminal title bar — macOS-style traffic lights + title */}
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40 rounded-t-xl bg-zinc-900/80">
-        <div className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-rose-500/80" />
-          <span className="size-2.5 rounded-full bg-amber-400/80" />
-          <span className="size-2.5 rounded-full bg-emerald-500/80" />
-        </div>
-        <span className="text-[11px] font-medium text-zinc-300 ml-1 truncate">
-          {isAgentTerm
-            ? `${d.agent ?? "Agent"} — ${d.harness}`
-            : d.agent
-              ? `${d.agent} — bash`
-              : "bash — plain shell"}
-        </span>
-        <Badge
-          variant="outline"
-          className={cn(
-            "ml-1 text-[9px] h-4 px-1 border-transparent",
-            isAgentTerm
-              ? live
-                ? "text-emerald-300 border-emerald-500/40"
-                : "text-amber-300 border-amber-500/40"
-              : live
-                ? "text-emerald-300 border-emerald-500/40"
-                : "text-zinc-500",
-          )}
-        >
-          {isAgentTerm ? (live ? "cli live" : "cli") : live ? "live" : "sim"}
-        </Badge>
-        {d.port && (
-          <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1 border-emerald-500/40 text-emerald-300">
-            :{d.port}
-          </Badge>
-        )}
-      </div>
-      {/* Terminal body — near-black, monospace */}
-      <div
-        ref={scrollRef}
-        className="px-3 py-2 font-mono text-[10.5px] leading-relaxed space-y-0.5 max-h-40 overflow-y-auto autumn-scroll bg-zinc-950/95"
-      >
-        {isEmpty && (
-          <div className="text-zinc-500 italic">
-            <span className="text-emerald-400">~$</span>{" "}
-            {live ? "connecting live shell…" : "click for a plain shell"}
+    <CommonNodeFrame
+      id={id}
+      selected={selected}
+      title={nodeTitle}
+      subtitle={isAgentTerm ? d.harness : "workspace"}
+      icon={<TerminalSquare className="size-3 text-emerald-400" />}
+      width="w-[480px]"
+    >
+      {viewMode === "launcher" ? (
+        <div className="p-4 space-y-3 bg-[#121214] text-zinc-200">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold text-zinc-300">Open terminal in...</div>
+            <div className="flex items-center gap-1">
+              <span className={cn("size-2 rounded-full", live ? "bg-emerald-500" : "bg-zinc-600")} />
+              <span className="text-[10px] text-zinc-500">{live ? "live" : "idle"}</span>
+            </div>
           </div>
-        )}
-        {lines.slice(-20).map((l, i) => (
-          <div
-            key={i}
-            className={cn(
-              "whitespace-pre-wrap break-words",
-              l.kind === "stderr" && "text-rose-400",
-              l.kind === "command" && "text-amber-200",
-              l.kind === "info" && "text-sky-300",
-              l.kind === "system" && "text-zinc-500",
-              (!l.kind || l.kind === "stdout") && "text-emerald-200/85",
-            )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleLaunchIn("Website (Next.js)")}
+              className="p-2.5 rounded-lg border border-[#27272a] bg-[#18181b] hover:bg-[#202025] hover:border-blue-500/50 transition-all text-left group"
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <Folder className="size-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-zinc-100">Website</span>
+              </div>
+              <div className="text-[10px] text-zinc-500">Next.js</div>
+            </button>
+
+            <button
+              onClick={() => handleLaunchIn("untitled-workspace")}
+              className="p-2.5 rounded-lg border border-[#27272a] bg-[#18181b] hover:bg-[#202025] hover:border-blue-500/50 transition-all text-left group"
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <Folder className="size-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-zinc-100">This workspace</span>
+              </div>
+              <div className="text-[10px] text-zinc-500 truncate">{dir}</div>
+            </button>
+          </div>
+
+          <button
+            onClick={handleChooseFolder}
+            className="w-full py-1.5 px-3 rounded-lg border border-blue-900/60 bg-blue-950/40 hover:bg-blue-900/50 text-blue-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-[0_0_12px_rgba(30,58,138,0.2)]"
           >
-            {l.text}
+            <FolderPlus className="size-3.5" />
+            <span>+ Choose folder...</span>
+          </button>
+
+          <div className="flex items-center gap-2 py-0.5">
+            <div className="flex-1 h-px bg-[#27272a]" />
+            <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">or</span>
+            <div className="flex-1 h-px bg-[#27272a]" />
           </div>
-        ))}
-        {/* Live prompt + input */}
-        <div className="flex items-center gap-1.5 pt-0.5">
-          <span className="text-emerald-400 shrink-0">{prompt}</span>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                runCommand();
-              }
-            }}
-            spellCheck={false}
-            autoComplete="off"
-            className="flex-1 bg-transparent outline-none border-none text-emerald-100 caret-emerald-400 placeholder:text-zinc-600"
-            placeholder={isEmpty ? "type a command…" : ""}
-            aria-label="Terminal input"
-          />
-          <span className="text-amber-300 animate-pulse">▌</span>
+
+          <button
+            onClick={() => handleLaunchIn("Normal Terminal")}
+            className="w-full py-2 px-3 rounded-lg bg-[#27272a] hover:bg-[#323238] text-zinc-100 text-xs font-medium flex items-center justify-center gap-2 transition-colors shadow"
+          >
+            <Terminal className="size-3.5 text-emerald-400" />
+            <span>&gt;_ Open a normal terminal</span>
+          </button>
+
+          <div className="space-y-1.5 pt-1 text-[11px] text-zinc-400">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={dontAskAgain}
+                onChange={(e) => setDontAskAgain(e.target.checked)}
+                className="rounded border-zinc-700 bg-zinc-900 text-blue-600 size-3.5"
+              />
+              <span>Don&apos;t ask again — open new terminals instantly</span>
+            </label>
+          </div>
         </div>
-      </div>
-      {d.dir && (
-        <div className="px-3 py-1 border-t border-border/40 text-[9px] text-muted-foreground/70 truncate font-mono">
-          {d.dir}
+      ) : (
+        <div className="bg-[#0a0a0c] flex flex-col">
+          {error && (
+            <div className="px-3 py-1.5 text-[11px] text-rose-300 bg-rose-950/30 border-b border-rose-900/50">
+              {error}
+            </div>
+          )}
+          <div
+            ref={containerRef}
+            className="flex-1 min-h-[280px] h-[280px] w-full overflow-hidden nodrag nopan"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{ touchAction: "none" }}
+          />
         </div>
       )}
-    </NodeShell>
+
+      {/* Attached Control Dock (Bottom Toolbar) */}
+      <div className="flex items-center justify-between px-2.5 py-1.5 bg-[#141418] border-t border-[#27272a] text-[10px] text-zinc-400 select-none">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setViewMode(viewMode === "launcher" ? "terminal" : "launcher")}
+            className="px-1.5 py-0.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors flex items-center gap-1"
+          >
+            <Sliders className="size-2.5" />
+            <span>{viewMode === "launcher" ? "Terminal" : "Launcher"}</span>
+          </button>
+          <button
+            onClick={handleChooseFolder}
+            className="px-1.5 py-0.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors flex items-center gap-1"
+          >
+            <Home className="size-2.5" />
+            <span>Folder</span>
+          </button>
+          <button
+            onClick={sendResize}
+            className="px-1.5 py-0.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors flex items-center gap-1"
+          >
+            <Search className="size-2.5" />
+            <span>Fit</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={clearTerminal}
+            className="px-1.5 py-0.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            onClick={() => {
+              esRef.current?.close();
+              esRef.current = null;
+              setLive(false);
+              fetch("/api/terminal", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ node: id, action: "kill" }),
+              }).catch(() => {});
+              termRef.current?.writeln("\r\n\x1b[33m[restarted]\x1b[0m");
+              setTimeout(() => connectLive(), 300);
+            }}
+            className="px-1.5 py-0.5 rounded hover:bg-zinc-800 hover:text-zinc-200 transition-colors flex items-center gap-1"
+            title="Restart terminal session"
+          >
+            <RotateCcw className="size-2.5" />
+            <span>Restart</span>
+          </button>
+        </div>
+      </div>
+    </CommonNodeFrame>
   );
 }
 
+// -----------------------------------------------------------------------------
+// ScreenNode (Desktop / Mobile Preview)
+// -----------------------------------------------------------------------------
 interface ScreenData {
   screenKind: "desktop" | "phone";
   name: string;
   route?: string;
   url?: string;
 }
+
 export function ScreenNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ScreenData;
   const isPhone = d.screenKind === "phone";
+
   return (
-    <NodeShell
+    <CommonNodeFrame
       id={id}
       selected={selected}
-      color="#3b82f6"
-      width={isPhone ? "w-[180px]" : "w-[260px]"}
+      title={d.name || "Preview"}
+      subtitle={d.route || "live route"}
+      icon={isPhone ? <Smartphone className="size-3 text-blue-400" /> : <Monitor className="size-3 text-blue-400" />}
+      width={isPhone ? "w-[220px]" : "w-[300px]"}
     >
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-sky-500/5">
-        {isPhone ? (
-          <Smartphone className="size-3.5 text-sky-400" />
-        ) : (
-          <Monitor className="size-3.5 text-sky-400" />
-        )}
-        <span className="text-xs font-medium truncate">{d.name}</span>
-        {d.route && (
-          <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1">
-            {d.route}
-          </Badge>
-        )}
-      </div>
       <div
         className={cn(
-          "bg-gradient-to-br from-sky-500/10 to-indigo-500/5 flex items-center justify-center",
-          isPhone ? "h-44" : "h-32",
+          "bg-gradient-to-br from-blue-500/10 to-indigo-500/5 flex flex-col items-center justify-center p-4 border-b border-[#27272a]",
+          isPhone ? "h-52" : "h-40",
         )}
       >
-        <div className="text-center">
-          <MonitorSmartphone className="size-8 text-sky-400/40 mx-auto" />
-          <div className="text-[10px] text-muted-foreground mt-1">
-            preview surface
-          </div>
+        <MonitorSmartphone className="size-8 text-blue-400/40 mb-2 animate-pulse" />
+        <div className="text-xs font-semibold text-zinc-300">{d.name}</div>
+        <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">{d.route || "/"}</div>
+        <div className="mt-3 px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[9px] border border-blue-500/30">
+          Live Surface
         </div>
       </div>
-    </NodeShell>
+    </CommonNodeFrame>
   );
 }
 
+// -----------------------------------------------------------------------------
+// StickyNode (Note)
+// -----------------------------------------------------------------------------
 interface StickyData {
   text: string;
   color?: string;
 }
-// Sticky note color palette — UNIFIED to a single soft cream (#FFF9E6) that
-// matches the TipCard. All color keys resolve to the same palette so every
-// sticky note wears the same monochrome cream look. The keys are kept so
-// existing notes (seeded with color:"amber"/"rose"/…​) still resolve.
-const STICKY_COLORS: Record<string, {
-  bg: string;
-  text: string;
-  border: string;
-  headerBg: string;
-  headerBorder: string;
-  iconBg: string;
-}> = {
-  amber: {
-    bg: "bg-[#FFF9E6]",
-    text: "text-amber-950",
-    border: "border-amber-300/50",
-    headerBg: "bg-transparent",
-    headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-transparent",
-  },
-  rose: {
-    bg: "bg-[#FFF9E6]",
-    text: "text-amber-950",
-    border: "border-amber-300/50",
-    headerBg: "bg-transparent",
-    headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-transparent",
-  },
-  emerald: {
-    bg: "bg-[#FFF9E6]",
-    text: "text-amber-950",
-    border: "border-amber-300/50",
-    headerBg: "bg-transparent",
-    headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-transparent",
-  },
-  violet: {
-    bg: "bg-[#FFF9E6]",
-    text: "text-amber-950",
-    border: "border-amber-300/50",
-    headerBg: "bg-transparent",
-    headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-transparent",
-  },
-  cyan: {
-    bg: "bg-[#FFF9E6]",
-    text: "text-amber-950",
-    border: "border-amber-300/50",
-    headerBg: "bg-transparent",
-    headerBorder: "border-b border-amber-300/40",
-    iconBg: "bg-transparent",
-  },
-};
 
 export function StickyNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StickyData;
-  const palette = STICKY_COLORS[d.color ?? "amber"] ?? STICKY_COLORS.amber;
   const removeNode = useAutumnStore((s) => s.removeNode);
   const updateNodeData = useAutumnStore((s) => s.updateNodeData);
   const [editing, setEditing] = useState(false);
@@ -444,208 +620,187 @@ export function StickyNode({ id, data, selected }: NodeProps) {
   };
 
   return (
-    <div
-      className={cn(
-        "w-[220px] rounded-2xl border shadow-lg transition-all hover:scale-[1.02]",
-        palette.bg,
-        palette.text,
-        palette.border,
-        selected && "ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent",
-      )}
-      style={{
-        boxShadow:
-          "0 8px 28px -6px rgb(0 0 0 / 0.18), 0 2px 8px -2px rgb(0 0 0 / 0.08), inset 0 1px 0 0 rgb(255 255 255 / 0.5)",
-      }}
-    >
-      <Handle type="target" position={Position.Left} style={HANDLE_STYLE} />
-      <Handle type="source" position={Position.Right} style={HANDLE_STYLE} />
+    <div className="relative group">
+      <NodeResizer
+        isVisible={!!selected}
+        minWidth={200}
+        minHeight={120}
+        handleClassName="!size-3 !bg-blue-500 !border-white !rounded-sm shadow"
+        lineClassName="!border-blue-500/40"
+      />
+      {/* 4 Cardinal Handles */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        className="autumn-handle !top-0 !left-1/2 -translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        className="autumn-handle !left-0 !top-1/2 -translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="autumn-handle !right-0 !top-1/2 translate-x-1/2 -translate-y-1/2"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="autumn-handle !bottom-0 !left-1/2 -translate-x-1/2 translate-y-1/2"
+      />
 
-      {/* Header bar — sits directly on the cream body (transparent bg), like
-          the TipCard header. Only a subtle amber divider separates it from
-          the body content; no darker header strip. */}
       <div
         className={cn(
-          "flex items-center gap-2 rounded-t-2xl px-3 py-2",
-          palette.headerBg,
-          palette.headerBorder,
+          "w-[240px] min-w-[200px] min-h-[100px] rounded-2xl border border-amber-300/40 bg-[#FFF9E6] text-amber-950 shadow-xl transition-all resize overflow-hidden",
+          selected && "ring-2 ring-blue-500 ring-offset-2 ring-offset-black",
         )}
       >
-        <span
-          className={cn(
-            "flex items-center justify-center text-base leading-none",
-            palette.iconBg,
-          )}
-          aria-hidden
-        >
-          🍂
-        </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80">
-          Note
-        </span>
-        <button
-          onClick={() => removeNode(id)}
-          className="ml-auto rounded-md p-0.5 text-amber-900/50 transition-colors hover:bg-amber-200/60 hover:text-amber-900"
-          aria-label="Remove note"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-
-      {/* Body — markdown content or editing textarea */}
-      <div className="px-3 py-2.5">
-        {editing ? (
-          <textarea
-            ref={taRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                commit();
-              }
-              if (e.key === "Escape") {
-                setDraft(d.text);
-                setEditing(false);
-              }
-            }}
-            className="w-full bg-white/50 border border-black/15 rounded-lg p-2 text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20 min-h-[70px]"
-          />
-        ) : (
-          <div
-            onDoubleClick={() => {
-              setDraft(d.text);
-              setEditing(true);
-            }}
-            className="text-xs leading-relaxed cursor-text sticky-markdown"
-            title="Double-click to edit · supports **bold**, *italic*, `code`, # headings"
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-300/40 select-none">
+          <span className="text-sm">🍂</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80">Note</span>
+          <button
+            onClick={() => removeNode(id)}
+            className="ml-auto rounded-md p-0.5 text-amber-900/50 hover:bg-amber-200/60 hover:text-amber-900"
           >
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                em: ({ children }) => <em className="italic">{children}</em>,
-                code: ({ children }) => (
-                  <code className="font-mono text-[10px] bg-black/15 px-1 py-0.5 rounded">
-                    {children}
-                  </code>
-                ),
-                h1: ({ children }) => <h3 className="font-bold text-sm mb-1">{children}</h3>,
-                h2: ({ children }) => <h4 className="font-bold text-xs mb-1">{children}</h4>,
-                h3: ({ children }) => <h5 className="font-semibold text-xs mb-0.5">{children}</h5>,
-                ul: ({ children }) => <ul className="list-disc pl-3 mb-1">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal pl-3 mb-1">{children}</ol>,
-                li: ({ children }) => <li className="mb-0.5">{children}</li>,
-                a: ({ children, href }) => (
-                  <a href={href} className="underline font-medium" target="_blank" rel="noreferrer">
-                    {children}
-                  </a>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-black/25 pl-2 italic opacity-80">
-                    {children}
-                  </blockquote>
-                ),
+            <X className="size-3" />
+          </button>
+        </div>
+
+        <div className="p-3">
+          {editing ? (
+            <textarea
+              ref={taRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  commit();
+                }
               }}
+              className="w-full bg-white/60 border border-black/15 rounded-lg p-2 text-xs leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20 min-h-[70px]"
+            />
+          ) : (
+            <div
+              onDoubleClick={() => {
+                setDraft(d.text);
+                setEditing(true);
+              }}
+              className="text-xs leading-relaxed cursor-text"
+              title="Double-click to edit note"
             >
-              {d.text}
-            </ReactMarkdown>
-          </div>
-        )}
+              <ReactMarkdown>{d.text}</ReactMarkdown>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+// -----------------------------------------------------------------------------
+// AnalyticsNode (Dashboard / Metrics)
+// -----------------------------------------------------------------------------
 interface AnalyticsData {
   title: string;
   metrics: { label: string; value: string; delta?: string }[];
 }
+
 export function AnalyticsNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as AnalyticsData;
   return (
-    <NodeShell id={id} selected={selected} color="#f59e0b" width="w-[260px]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-orange-500/5">
-        <BarChart3 className="size-3.5 text-orange-400" />
-        <span className="text-xs font-medium">{d.title || "Analytics"}</span>
-      </div>
-      <div className="p-3 grid grid-cols-2 gap-2">
+    <CommonNodeFrame
+      id={id}
+      selected={selected}
+      title={d.title || "Analytics"}
+      icon={<BarChart3 className="size-3 text-amber-400" />}
+      width="w-[280px]"
+    >
+      <div className="p-3 grid grid-cols-2 gap-2 bg-[#121214]">
         {d.metrics.map((m, i) => (
-          <div
-            key={i}
-            className="rounded-md bg-muted/30 border border-border/40 px-2 py-1.5"
-          >
-            <div className="text-[9px] text-muted-foreground uppercase tracking-wider">
-              {m.label}
-            </div>
-            <div className="text-sm font-semibold">{m.value}</div>
-            {m.delta && (
-              <div className="text-[9px] text-emerald-400">{m.delta}</div>
-            )}
+          <div key={i} className="rounded-lg bg-[#18181b] border border-[#27272a] p-2">
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">{m.label}</div>
+            <div className="text-base font-bold text-zinc-100 mt-0.5">{m.value}</div>
+            {m.delta && <div className="text-[10px] text-emerald-400 font-medium">{m.delta}</div>}
           </div>
         ))}
       </div>
-    </NodeShell>
+    </CommonNodeFrame>
   );
 }
 
+// -----------------------------------------------------------------------------
+// BrowserNode (Embedded Browser / Web Viewer)
+// -----------------------------------------------------------------------------
 interface BrowserData {
   url: string;
   name: string;
 }
+
 export function BrowserNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as BrowserData;
   return (
-    <NodeShell id={id} selected={selected} color="#8b5cf6" width="w-[260px]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-amber-500/5">
-        <Globe className="size-3.5 text-amber-400" />
-        <span className="text-xs font-medium truncate">{d.name || "Browser"}</span>
-      </div>
-      <div className="px-3 py-2 border-b border-border/40 flex items-center gap-1.5">
-        <div className="size-1.5 rounded-full bg-rose-400" />
-        <div className="size-1.5 rounded-full bg-violet-400" />
-        <div className="size-1.5 rounded-full bg-emerald-400" />
-        <div className="ml-2 flex-1 text-[9px] text-muted-foreground truncate bg-muted/30 rounded px-1.5 py-0.5">
-          {d.url}
+    <CommonNodeFrame
+      id={id}
+      selected={selected}
+      title={d.name || "Browser View"}
+      subtitle={d.url}
+      icon={<Globe className="size-3 text-violet-400" />}
+      width="w-[320px]"
+    >
+      <div className="px-3 py-1.5 border-b border-[#27272a] bg-[#141418] flex items-center gap-1.5">
+        <div className="flex-1 text-[10px] text-zinc-400 font-mono bg-[#1c1c22] rounded px-2 py-0.5 border border-[#27272a] truncate">
+          {d.url || "https://www.youtube.com/"}
         </div>
       </div>
-      <div className="h-28 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 flex items-center justify-center">
-        <Globe className="size-8 text-amber-400/40" />
+      <div className="h-36 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 flex flex-col items-center justify-center p-4">
+        <Globe className="size-8 text-violet-400/40 mb-2 animate-pulse" />
+        <span className="text-xs text-zinc-400 font-medium">Embedded Web Surface</span>
       </div>
-    </NodeShell>
+    </CommonNodeFrame>
   );
 }
 
+// -----------------------------------------------------------------------------
+// RemotionNode (Video Generation Crew)
+// -----------------------------------------------------------------------------
 interface RemotionData {
   name: string;
   crew: string[];
   status: string;
 }
+
 export function RemotionNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as RemotionData;
   return (
-    <NodeShell id={id} selected={selected} color="#0b84f3" width="w-[240px]">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 rounded-t-xl bg-blue-500/5">
-        <Clapperboard className="size-3.5 text-blue-400" />
-        <span className="text-xs font-medium">{d.name || "Remotion"}</span>
-        <Badge variant="outline" className="ml-auto text-[9px] h-4 px-1">
-          {d.status}
-        </Badge>
-      </div>
-      <div className="p-3 space-y-1.5">
-        <div className="aspect-video rounded-md bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-400/20 flex items-center justify-center">
-          <Clapperboard className="size-6 text-blue-400/40" />
+    <CommonNodeFrame
+      id={id}
+      selected={selected}
+      title={d.name || "Remotion Video"}
+      subtitle={d.status}
+      icon={<Clapperboard className="size-3 text-blue-400" />}
+      width="w-[280px]"
+    >
+      <div className="p-3 space-y-2 bg-[#121214]">
+        <div className="aspect-video rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-500/30 flex items-center justify-center">
+          <Clapperboard className="size-7 text-blue-400/60" />
         </div>
         {d.crew.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {d.crew.map((c, i) => (
-              <Badge key={i} variant="outline" className="text-[9px] h-4 px-1">
+              <Badge key={i} variant="outline" className="text-[9px] h-4 px-1.5 border-zinc-700 bg-zinc-800 text-zinc-300">
                 {c}
               </Badge>
             ))}
           </div>
         )}
       </div>
-    </NodeShell>
+    </CommonNodeFrame>
   );
 }

@@ -109,10 +109,10 @@ export function CanvasContextMenu({
     setPos({ x, y });
   }, [state.open, state.x, state.y, state.kind]);
 
-  // Close on outside click / Escape / scroll.
+  // Close on outside click / Escape / scroll / pane click.
   useEffect(() => {
     if (!state.open) return;
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: MouseEvent | PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
     const onEsc = (e: KeyboardEvent) => {
@@ -120,10 +120,14 @@ export function CanvasContextMenu({
     };
     const onScroll = () => onClose();
     window.addEventListener("mousedown", onDown);
+    window.addEventListener("click", onDown as unknown as EventListener);
+    window.addEventListener("pointerdown", onDown as unknown as EventListener);
     window.addEventListener("keydown", onEsc);
     window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("click", onDown as unknown as EventListener);
+      window.removeEventListener("pointerdown", onDown as unknown as EventListener);
       window.removeEventListener("keydown", onEsc);
       window.removeEventListener("scroll", onScroll, true);
     };
