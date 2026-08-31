@@ -13,6 +13,15 @@ const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
 
+// Disable GPU acceleration and hardware compositing for reliable Linux/WSLg rendering
+app.commandLine.appendSwitch("no-sandbox");
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("disable-software-rasterizer");
+app.commandLine.appendSwitch("disable-gpu-compositing");
+app.commandLine.appendSwitch("disable-gpu-rasterization");
+app.commandLine.appendSwitch("disable-gpu-sandbox");
+app.disableHardwareAcceleration();
+
 const PORT = process.env.AUTUMN_PORT || 3000;
 const PROTOCOL = "http";
 const BASE = `${PROTOCOL}://127.0.0.1:${PORT}`;
@@ -117,8 +126,32 @@ app.on("before-quit", (e) => {
   }, QUIT_GRACE_MS);
 });
 
+function checkPortActive(port) {
+  return new Promise((resolve) => {
+    const sock = net.connect(port, "127.0.0.1");
+    sock.setTimeout(400);
+    sock.once("connect", () => {
+      sock.destroy();
+      resolve(true);
+    });
+    sock.once("error", () => {
+      sock.destroy();
+      resolve(false);
+    });
+    sock.once("timeout", () => {
+      sock.destroy();
+      resolve(false);
+    });
+  });
+}
+
 app.whenReady().then(async () => {
-  startNextServer();
+  const isAlreadyRunning = await checkPortActive(PORT);
+  if (!isAlreadyRunning) {
+    startNextServer();
+  } else {
+    console.log(`[main] Reusing already running server on port ${PORT}`);
+  }
   try {
     await waitForServer();
   } catch (err) {

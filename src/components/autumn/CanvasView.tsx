@@ -10,7 +10,6 @@ import {
   ReactFlowProvider,
   Background,
   BackgroundVariant,
-  MiniMap,
   useReactFlow,
   type Node,
   type Edge,
@@ -21,8 +20,6 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useAutumnStore } from "@/lib/autumn/store";
-import type { NodeKind } from "@/lib/autumn/types";
-import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import { ChatNode } from "./nodes/ChatNode";
 import {
   TerminalNode,
@@ -59,47 +56,6 @@ const edgeTypes = {
   navigation: NavigationEdge,
 };
 
-const MINIMAP_COLORS: Record<NodeKind, string> = {
-  chat: "#a855f7",
-  terminal: "#22c55e",
-  screen: "#3b82f6",
-  sticky: "#fbbf24",
-  analytics: "#f59e0b",
-  youtube: "#8b5cf6",
-  remotion: "#0b84f3",
-};
-
-// Sticky notes store a named color ("amber"/"rose"/"emerald"/"violet"/"cyan")
-// but all notes now share a single unified cream (#FFF9E6) that matches the
-// TipCard. Every key resolves to the same hex so the minimap stays in sync.
-const STICKY_HEX: Record<string, string> = {
-  amber: "#FFF9E6",
-  rose: "#FFF9E6",
-  emerald: "#FFF9E6",
-  violet: "#FFF9E6",
-  cyan: "#FFF9E6",
-};
-
-// Resolve the on-canvas color of a node for the minimap.
-// - chat (agents): use the persona's hex color (Atlas=emerald, Apollo=rose, …)
-//   so each named agent shows up in the minimap with the same color it wears
-//   on the canvas.
-// - sticky: use the per-note color field (amber/rose/emerald/violet/cyan).
-// - others: fall back to the kind-level default.
-function minimapNodeColor(n: { type?: string; data?: unknown }): string {
-  const kind = (n.type ?? "") as NodeKind;
-  if (kind === "chat") {
-    const data = n.data as { personaId?: string } | undefined;
-    const persona = data?.personaId ? PERSONA_BY_ID[data.personaId] : undefined;
-    return persona?.color ?? MINIMAP_COLORS.chat;
-  }
-  if (kind === "sticky") {
-    const data = n.data as { color?: string } | undefined;
-    return STICKY_HEX[data?.color ?? "amber"] ?? STICKY_HEX.amber;
-  }
-  return MINIMAP_COLORS[kind] ?? "#888";
-}
-
 function CanvasInner() {
   const nodes = useAutumnStore((s) => s.nodes);
   const edges = useAutumnStore((s) => s.edges);
@@ -115,6 +71,7 @@ function CanvasInner() {
   const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
   const showMinimap = useAutumnStore((s) => s.showMinimap);
   const showGrid = useAutumnStore((s) => s.showGrid);
+  const snapToGrid = useAutumnStore((s) => s.snapToGrid);
   const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
@@ -197,6 +154,9 @@ function CanvasInner() {
         id: n.id,
         type: n.kind,
         position: n.position,
+        width: n.width,
+        height: n.height,
+        style: n.width || n.height ? { width: n.width, height: n.height } : undefined,
         data: {
           ...n.data,
           __searchMatch: showNodeSearch && searchMatchIds.includes(n.id),
@@ -234,8 +194,16 @@ function CanvasInner() {
           }
         }
       }
-      // Apply position changes back to the store.
+      // Apply position and dimension changes back to the store.
       for (const c of changes) {
+        if (c.type === "dimensions" && (c as unknown as { dimensions?: { width?: number; height?: number } }).dimensions) {
+          const dims = (c as unknown as { dimensions: { width?: number; height?: number } }).dimensions;
+          useAutumnStore.getState().updateNode(c.id, { width: dims.width, height: dims.height } as unknown as Partial<import("@/lib/autumn/types").AutumnNode>);
+          // Also trigger xterm fit after resize
+          if (dims.width && dims.height) {
+            setTimeout(() => window.dispatchEvent(new CustomEvent("autumn:terminal-resize", { detail: { id: c.id } })), 50);
+          }
+        }
         if (c.type === "position" && c.position) {
           moveNode(c.id, c.position.x, c.position.y);
         }
@@ -293,10 +261,11 @@ function CanvasInner() {
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
     clearSelection();
+    setCtxMenu((s) => ({ ...s, open: false }));
   }, [setSelectedNode, clearSelection]);
 
   const onPaneContextMenu = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
       const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       setCtxMenu({
@@ -313,7 +282,7 @@ function CanvasInner() {
   );
 
   const onNodeContextMenu = useCallback(
-    (e: React.MouseEvent, node: Node) => {
+    (e: React.MouseEvent | MouseEvent, node: Node) => {
       e.preventDefault();
       setCtxMenu({
         open: true,
@@ -421,6 +390,8 @@ function CanvasInner() {
         minZoom={0.2}
         maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
+        snapToGrid={snapToGrid}
+        snapGrid={[20, 20]}
         className="bg-transparent"
         defaultEdgeOptions={{ type: "bus" }}
         multiSelectionKeyCode={["Shift"]}
@@ -433,17 +404,6 @@ function CanvasInner() {
             gap={20}
             size={1}
             color="oklch(0.4 0.02 55 / 0.25)"
-          />
-        )}
-        {showMinimap && (
-          <MiniMap
-            className="!bg-zinc-900/85 !border-border/50 !rounded-lg !shadow-lg backdrop-blur-xl"
-            // Sit above the control bar (control bar ~32px + gap 6px + bottom-4 = ~70px from bottom).
-            style={{ bottom: "70px", width: "180px", height: "110px" }}
-            nodeColor={minimapNodeColor}
-            maskColor="oklch(0.005 0.002 55 / 0.7)"
-            pannable
-            zoomable
           />
         )}
         {showMinimap && <MinimapPanel />}
