@@ -19,7 +19,7 @@ import {
 } from "@/lib/autumn/store";
 import { getAgentBrand } from "./AgentLogos";
 import type { AgentHarness } from "@/lib/autumn/types";
-import { nextPersona } from "@/lib/autumn/personas";
+import { nextUnusedPersona } from "@/lib/autumn/personas";
 import { defaultModelFor } from "@/lib/autumn/harness-meta";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
@@ -79,7 +79,14 @@ export function AgentPickerPanel({
 
   const spawnAgent = (agentId: string, agentName: string) => {
     const harness = agentId as AgentHarness;
-    const persona = nextPersona();
+    const used = new Set(
+      useAutumnStore
+        .getState()
+        .nodes.filter((n) => n.kind === "chat")
+        .map((n) => (n.data as { personaId?: string }).personaId)
+        .filter(Boolean) as string[],
+    );
+    const persona = nextUnusedPersona(used);
     const model = defaultModelFor(harness);
     const id = addNode({
       kind: "chat",
@@ -96,12 +103,16 @@ export function AgentPickerPanel({
           {
             id: `m-${nanoid(6)}`,
             role: "system",
-            text: `${agentName} online · ${harness}/${model}`,
+            text: `${persona.name} · ${agentName} · ${persona.tagline}`,
             ts: Date.now(),
           },
         ],
       },
     });
+    // Auto-spawn real terminal for this agent's harness
+    try {
+      useAutumnStore.getState().spawnAgentTerminal(id);
+    } catch {}
     setSelectedNode(id);
     setRightPanelTab("commander");
     connectAgent(agentId);

@@ -47,7 +47,7 @@ export interface BusPulse {
 
 // Per-kind node data. Stored as JSON in Prisma `data`.
 export interface ChatNodeData {
-  harness: AgentHarness;
+  harness?: AgentHarness;
   personaId: string; // atlas | apollo | orion | juno | ...
   model?: string;
   effort?: "low" | "medium" | "high";

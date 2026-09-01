@@ -21,6 +21,7 @@ import type {
 import {
   PERSONA_BY_ID,
   nextPersona,
+  nextUnusedPersona,
   personaByName,
   resolvePersonaName,
 } from "./personas";
@@ -211,7 +212,7 @@ export const CANVAS_BACKGROUNDS: CanvasBackground[] = [
   },
 ];
 
-export const STARTER_SKILLS: Omit<Skill, "id" | "installedAt" | "installed">[] = [
+export const STARTER_SKILLS: Omit<Skill, "installed" | "installedAt">[] = [
   {
     id: "website-cloner",
     name: "Website Cloner",
@@ -513,7 +514,7 @@ export interface AutumnStore {
   toggleRightPanel: () => void;
   addProjectFile: (file: Omit<ProjectFile, "id" | "addedAt">) => void;
   removeProjectFile: (id: string) => void;
-  addSkill: (skill: Omit<Skill, "id" | "installedAt" | "installed">) => void;
+  addSkill: (skill: Omit<Skill, "installedAt" | "installed">) => void;
   removeSkill: (id: string) => void;
   toggleSkillInstall: (id: string) => void;
   addBackend: (category: "data" | "ai", name: string) => void;
@@ -1554,6 +1555,26 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   addNode: (partial) => {
     const id = partial.id ?? `node-${nanoid(8)}`;
     let data = partial.data ?? defaultDataForKind(partial.kind);
+    // Enforce unique persona for chat nodes - no duplicate Atlas/Apollo
+    if (partial.kind === "chat") {
+      const used = new Set(
+        get()
+          .nodes.filter((n) => n.kind === "chat")
+          .map((n) => (n.data as { personaId?: string }).personaId)
+          .filter(Boolean) as string[],
+      );
+      const requestedId = (partial.data as { personaId?: string } | undefined)?.personaId ?? (data as { personaId?: string }).personaId;
+      if (!requestedId || used.has(requestedId)) {
+        const p = nextUnusedPersona(used);
+        const d = { ...(data as Record<string, unknown>) } as Record<string, unknown>;
+        d.personaId = p.id;
+        // name from persona if not explicitly provided
+        const nameFromPartial = partial.name;
+        const dataWithPersona = d as { personaId: string };
+        data = dataWithPersona as typeof data;
+        // harness stays undefined (assigned via terminal)
+      }
+    }
     // If opening a terminal, use the current workspace folder as cwd, not a hardcoded default.
     if (partial.kind === "terminal") {
       const ws = get().workspaces.find((w) => w.id === get().canvasId);
@@ -1567,12 +1588,19 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         data = d as typeof data;
       }
     }
+    // Resolve final name - if chat and name not provided, use persona name
+    let finalName = partial.name ?? defaultNameForKind(partial.kind);
+    if (partial.kind === "chat" && !partial.name) {
+      const pid = (data as { personaId?: string }).personaId;
+      const persona = pid ? PERSONA_BY_ID[pid] : undefined;
+      if (persona) finalName = persona.name;
+    }
     const node: AutumnNode = {
       id,
       kind: partial.kind,
-      name: partial.name ?? defaultNameForKind(partial.kind),
+      name: finalName,
       position: partial.position ?? randomPosition(),
-      data,
+      data: data as import("./types").NodeData,
       createdAt: Date.now(),
     };
     set((s) => ({ nodes: [...s.nodes, node] }));
@@ -1693,7 +1721,11 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     const termId = `node-${nanoid(8)}`;
     const ws = get().workspaces.find((w) => w.id === get().canvasId);
     const wsDir = ws?.kind === "folder" && ws.source ? ws.source : undefined;
-    const dir = (d.worktreePath as string | undefined) ?? wsDir ?? get().nodes.find((n) => n.kind === "terminal")?.data.dir ?? undefined;
+    const dir =
+      (d.worktreePath as string | undefined) ??
+      wsDir ??
+      (get().nodes.find((n) => n.kind === "terminal")?.data as import("./types").TerminalNodeData | undefined)?.dir ??
+      undefined;
     const term: AutumnNode = {
       id: termId,
       kind: "terminal",
@@ -1710,7 +1742,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         status: "working",
         dir,
         lines: [],
-      } as unknown as Record<string, unknown>,
+      } as unknown as import("./types").TerminalNodeData,
     };
     set((s) => ({ nodes: [...s.nodes, term] }));
     get().connectNodes(chatNodeId, termId, "bus");
@@ -1830,7 +1862,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       nodes: s.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         if (n.kind !== "chat") return n;
-        const data = n.data as { messages: AgentMessage[] };
+        const data = n.data as import("./types").ChatNodeData;
         return { ...n, data: { ...data, messages: [...data.messages, msg] } };
       }),
     }));
@@ -1841,7 +1873,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     set((s) => ({
       nodes: s.nodes.map((n) => {
         if (n.id !== nodeId || n.kind !== "chat") return n;
-        const data = n.data as { messages: AgentMessage[] };
+        const data = n.data as import("./types").ChatNodeData;
         return {
           ...n,
           data: {
@@ -1864,7 +1896,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
           ? {
               ...n,
               data: {
-                ...(n.data as Record<string, unknown>),
+                ...(n.data as unknown as Record<string, unknown>),
                 status,
                 doing: doing ?? (n.data as { doing?: string }).doing,
               } as typeof n.data,
@@ -1935,7 +1967,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 function defaultNameForKind(kind: NodeKind): string {
   switch (kind) {
     case "chat":
-      return nextPersona().name;
+      return "Agent";
     case "terminal":
       return "Terminal";
     case "screen":
@@ -1963,10 +1995,12 @@ function defaultDataForKind(kind: NodeKind): unknown {
   switch (kind) {
     case "chat": {
       const p = nextPersona();
+      // harness is NOT tied to persona - assigned at spawn/terminal time
+      const defaultHarness = "claude-code" as const;
       return {
-        harness: p.harness,
+        harness: undefined,
         personaId: p.id,
-        model: defaultModelFor(p.harness),
+        model: defaultModelFor(defaultHarness),
         effort: "medium" as const,
         permission: "ask" as const,
         status: "idle",
@@ -1975,7 +2009,7 @@ function defaultDataForKind(kind: NodeKind): unknown {
           {
             id: `m-${nanoid(6)}`,
             role: "system" as const,
-            text: `${p.name} online · ${p.harness} · ${p.tagline}`,
+            text: `${p.name} online · ${p.tagline}`,
             ts: now,
           },
         ],
@@ -2028,14 +2062,15 @@ function executeStep(
       const persona = personaArg
         ? PERSONA_BY_ID[resolvePersonaName(personaArg) ?? personaArg] ?? nextPersona()
         : nextPersona();
-      const harness = harnessArg ?? persona.harness;
+      const harness = harnessArg as import("./types").AgentHarness | undefined;
+      const model = defaultModelFor((harness as import("./types").AgentHarness) ?? "claude-code");
       const id = store.addNode({
         kind: "chat",
         name: args.name as string | undefined ?? persona.name,
         data: {
-          harness,
+          ...(harness ? { harness } : {}),
           personaId: persona.id,
-          model: defaultModelFor(harness),
+          model,
           effort: "medium",
           permission: "ask",
           status: "idle",
@@ -2044,7 +2079,7 @@ function executeStep(
             {
               id: `m-${nanoid(6)}`,
               role: "system",
-              text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+              text: harness ? `${persona.name} online · ${harness} · ${persona.tagline}` : `${persona.name} online · ${persona.tagline}`,
               ts: Date.now(),
             },
           ],
@@ -2055,7 +2090,7 @@ function executeStep(
     }
     case "add_agents": {
       const count = Math.max(1, Number(args.count ?? 1));
-      const agent = args.agent as string | undefined;
+      const agentHarness = args.agent as string | undefined;
       const surface = (args.surface as string | undefined) ?? "chat";
       let lastId: string | null = null;
       for (let i = 0; i < count; i++) {
@@ -2063,14 +2098,15 @@ function executeStep(
           lastId = store.addNode({ kind: "terminal" });
         } else {
           const persona = nextPersona();
-          const harness = agent ?? persona.harness;
+          const harness = agentHarness as import("./types").AgentHarness | undefined;
+          const model = defaultModelFor((harness as import("./types").AgentHarness) ?? "claude-code");
           lastId = store.addNode({
             kind: "chat",
             name: persona.name,
             data: {
-              harness,
+              ...(harness ? { harness } : {}),
               personaId: persona.id,
-              model: defaultModelFor(harness),
+              model,
               effort: "medium",
               permission: "ask",
               status: "idle",
@@ -2079,7 +2115,7 @@ function executeStep(
                 {
                   id: `m-${nanoid(6)}`,
                   role: "system",
-                  text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+                  text: harness ? `${persona.name} online · ${harness} · ${persona.tagline}` : `${persona.name} online · ${persona.tagline}`,
                   ts: Date.now(),
                 },
               ],

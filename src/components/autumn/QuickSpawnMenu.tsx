@@ -8,7 +8,7 @@ import { useAutumnStore } from "@/lib/autumn/store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AgentHarness } from "@/lib/autumn/types";
-import { nextPersona } from "@/lib/autumn/personas";
+import { nextUnusedPersona } from "@/lib/autumn/personas";
 import { defaultModelFor } from "@/lib/autumn/harness-meta";
 import { nanoid } from "nanoid";
 import {
@@ -126,11 +126,17 @@ export function QuickSpawnMenu({
   if (!open) return null;
 
   const spawnPreset = (preset: AgentPreset) => {
-    // Get a persona from the rotation, then override harness/model/effort
-    const persona = nextPersona();
+    const used = new Set(
+      useAutumnStore
+        .getState()
+        .nodes.filter((n) => n.kind === "chat")
+        .map((n) => (n.data as { personaId?: string }).personaId)
+        .filter(Boolean) as string[],
+    );
+    const persona = nextUnusedPersona(used);
     const id = addNode({
       kind: "chat",
-      name: preset.name,
+      name: persona.name,
       data: {
         harness: preset.harness,
         personaId: persona.id,
@@ -143,7 +149,7 @@ export function QuickSpawnMenu({
           {
             id: `m-${nanoid(6)}`,
             role: "system",
-            text: `${preset.name} online · ${preset.harness}/${preset.model} · ${preset.description}`,
+            text: `${persona.name} · ${preset.name} · ${preset.harness}/${preset.model}`,
             ts: Date.now(),
           },
         ],
@@ -152,6 +158,9 @@ export function QuickSpawnMenu({
         ? { x: canvasPosition.x, y: canvasPosition.y }
         : undefined,
     });
+    try {
+      useAutumnStore.getState().spawnAgentTerminal(id);
+    } catch {}
     setSelectedNode(id);
     setRightPanelTab("commander");
     onClose();

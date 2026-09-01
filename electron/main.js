@@ -13,14 +13,8 @@ const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
 
-// Disable GPU acceleration and hardware compositing for reliable Linux/WSLg rendering
+// WSLg-friendly GPU handling - keep minimal; package.json already adds --no-sandbox --disable-gpu
 app.commandLine.appendSwitch("no-sandbox");
-app.commandLine.appendSwitch("disable-gpu");
-app.commandLine.appendSwitch("disable-software-rasterizer");
-app.commandLine.appendSwitch("disable-gpu-compositing");
-app.commandLine.appendSwitch("disable-gpu-rasterization");
-app.commandLine.appendSwitch("disable-gpu-sandbox");
-app.disableHardwareAcceleration();
 
 const PORT = process.env.AUTUMN_PORT || 3000;
 const PROTOCOL = "http";
