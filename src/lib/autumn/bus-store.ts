@@ -1,6 +1,6 @@
 // Autumn — persistent AutumnBus (server-side).
 //
-// In October Desktop this is a localhost HTTP MCP server (october-bus) that
+// In Autumn Desktop this is a localhost HTTP MCP server (autumn-bus) that
 // tracks agent sessions and routes `message_peer` between them. In Autumn (a
 // Next.js web app) we back the SAME contract with Prisma + SQLite so that:
 //   1. message_peer inboxes survive server reloads,
@@ -10,12 +10,12 @@
 //
 // The contract is intentionally HTTP-shaped to match /api/bus:
 //   message_peer (POST)  -> sendMessage()
-//   pre-prompt  (GET)    -> drainInbox()  (drain-on-read, like October)
+//   pre-prompt  (GET)    -> drainInbox()  (drain-on-read, like Autumn)
 //   session/stop         -> upsertPeer()
 //   list_peers           -> listPeers()
 //   get_node_status      -> getPeer()
 //
-// October used env vars OCTOBER_BUS_PORT/CANVAS/NODE/TOKEN/MCP_CAPABILITY.
+// Autumn used env vars AUTUMN_BUS_PORT/CANVAS/NODE/TOKEN/MCP_CAPABILITY.
 // The Autumn clone renames these AUTUMN_BUS_* — see spawner (Phase 2).
 
 import { db } from "@/lib/db";
@@ -105,7 +105,7 @@ export async function sendMessage(
   inboxes.set(k, list);
 
   // Persist to the Message table as role="peer" so the handoff survives a
-  // full restart and is queryable per-node (mirrors October's bus log).
+  // full restart and is queryable per-node (mirrors Autumn's bus log).
   try {
     await db.message.create({
       data: {
@@ -124,7 +124,7 @@ export async function sendMessage(
 }
 
 // Drain-on-read: returns the queued inbox formatted exactly as the client's
-// agent-runner expects (and as October injects before a model call), then
+// agent-runner expects (and as Autumn injects before a model call), then
 // clears it so a message is delivered once.
 export async function drainInbox(
   canvasId: string,

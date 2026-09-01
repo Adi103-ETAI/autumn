@@ -125,7 +125,7 @@ export function HelpDialog() {
 
         <DialogFooter>
           <Badge variant="outline" className="text-[10px] mr-auto">
-            open clone of October Desktop
+            open clone of Autumn Desktop
           </Badge>
           <Button onClick={() => setShow(false)} className="gap-1.5">
             <Leaf className="size-3.5" />

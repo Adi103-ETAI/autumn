@@ -1,5 +1,5 @@
 // Autumn — AutumnBus HTTP server (web adapter).
-// In October, this is a localhost HTTP server (october-bus) with /mcp + /hook/*
+// In Autumn, this is a localhost HTTP server (autumn-bus) with /mcp + /hook/*
 // routes backed by a LocalBusStore. In the web app we adapt the same contract
 // to Next.js API routes over Prisma, so message_peer inboxes survive reloads
 // and work across server instances. See 15-agent-interop.md / CONTEXT.md §5.

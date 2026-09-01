@@ -1,5 +1,5 @@
-// Autumn — TopBar component (October-style redesign).
-// Clean, minimal top header matching the October Desktop reference:
+// Autumn — TopBar component (Autumn-style redesign).
+// Clean, minimal top header matching the Autumn Desktop reference:
 //   Left:  Autumn logo + editable workspace name + framework badge
 //   Right: Live status, + Screens, Sync, Sessions, Sign in
 // The heavier actions (Save/Export/Activity/Help/Share/Canvases/Home) live in

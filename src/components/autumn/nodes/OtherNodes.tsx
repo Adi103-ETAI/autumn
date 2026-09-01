@@ -1,5 +1,5 @@
 // Autumn — Node components (Terminal/Apollo, Screen, Sticky, Analytics, Browser, Remotion).
-// Fully styled according to October UI architecture (october_ui_analysis.md).
+// Fully styled according to Autumn UI architecture (autumn_ui_analysis.md).
 
 "use client";
 

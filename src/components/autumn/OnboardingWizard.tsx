@@ -1,5 +1,5 @@
 // Autumn — Onboarding Wizard.
-// Full-screen 4-step onboarding flow. Layout mirrors October Desktop's wizard:
+// Full-screen 4-step onboarding flow. Layout mirrors Autumn Desktop's wizard:
 // edge-to-edge two-column split (45% left / 55% right), label-only option
 // buttons in a single row, "Skip for now" top-right of the left column, and a
 // thin progress bar pinned to the bottom of the left column. The right column

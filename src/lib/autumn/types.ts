@@ -1,5 +1,5 @@
 // Autumn — core domain types
-// Mirrors October Desktop's canvas data model (see 14-renderer-canvas.md §1).
+// Mirrors Autumn Desktop's canvas data model (see 14-renderer-canvas.md §1).
 
 export type NodeKind =
   | "chat" // AI coding agent (Claude Code, Codex, etc.)

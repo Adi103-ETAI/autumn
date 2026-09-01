@@ -1,6 +1,6 @@
 // Autumn — MenuBar.
 // A macOS-style global application menu bar, rendered above ALL app stages
-// (onboarding / home / workspace). Mirrors the October Desktop reference:
+// (onboarding / home / workspace). Mirrors the Autumn Desktop reference:
 //   [Autumn logo]  File  Edit  Selection  View  Go  Run  Terminal  Help
 //                                        …   [accent] [settings] [Sign in]
 //
@@ -551,7 +551,7 @@ export function MenuBar() {
 
       {/* ---- Right cluster: accent + settings + sign in ---- */}
       <div className="flex items-center gap-1">
-        {/* Accent status dot — echoes October's purple square */}
+        {/* Accent status dot — echoes Autumn's purple square */}
         <span
           aria-hidden
           className="size-2 rounded-[3px] bg-violet-500/80 shadow-[0_0_6px] shadow-violet-500/40"

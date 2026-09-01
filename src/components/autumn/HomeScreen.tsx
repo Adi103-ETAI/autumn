@@ -1,5 +1,5 @@
 // Autumn — Home / Workspace launcher screen.
-// Full-screen view shown when `appStage === "home"`. Clones October's home
+// Full-screen view shown when `appStage === "home"`. Clones Autumn's home
 // screen (NOTES.md §3, image 12): 4 entry-point cards + Recent grid.
 //
 // Visibility rule: renders ONLY when appStage === "home", returns null otherwise.

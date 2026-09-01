@@ -1,5 +1,5 @@
 // Autumn — Commander system prompt.
-// Ported from October Desktop's `compilerSystemPrompt()` (see 14-renderer-canvas.md §2).
+// Ported from Autumn Desktop's `compilerSystemPrompt()` (see 14-renderer-canvas.md §2).
 // The Commander translates ONE natural-language command into a DO_ACTIONS plan.
 // It DELEGATES; it never builds or writes code itself.
 
