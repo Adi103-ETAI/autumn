@@ -4,7 +4,7 @@
 //   1. Plain shell  — `bash`/`zsh` for terminal nodes.
 //   2. Agent CLI     — a real coding-agent CLI (claude/codex/opencode/gemini/...)
 //                      spawned INTERACTIVELY into a PTY, so its actual TUI scrolls
-//                      inside a terminal node. This is how October shows each
+//                      inside a terminal node. This is how Autumn shows each
 //                      running agent as its own live CLI window.
 //
 // Each session is keyed by nodeId. Output is published to per-node subscribers;

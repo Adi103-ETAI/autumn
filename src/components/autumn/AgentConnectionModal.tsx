@@ -1,6 +1,6 @@
 // Autumn — Agent Connection Modal.
 // Full-screen overlay shown after onboarding. Lets the user connect coding agents.
-// Clones October Desktop's "Set up October" agent picker: a vertical centered
+// Clones Autumn Desktop's "Set up Autumn" agent picker: a vertical centered
 // list of agent rows (logo + name + description + Sign in), with a
 // collapse/expand toggle ("See N more agents" ↔ "See fewer agents").
 // Amber/orange Autumn theme preserved.
@@ -20,7 +20,7 @@ import {
   type AgentConnectionStatus,
 } from "@/lib/autumn/store";
 
-// Number of agents shown in the collapsed state (matches October reference).
+// Number of agents shown in the collapsed state (matches Autumn reference).
 const COLLAPSED_COUNT = 3;
 
 export function AgentConnectionModal() {
@@ -66,7 +66,7 @@ export function AgentConnectionModal() {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/80" />
 
-          {/* Card — tall, centered, narrow (matches October's vertical list) */}
+          {/* Card — tall, centered, narrow (matches Autumn's vertical list) */}
           <motion.div
             role="dialog"
             aria-modal="true"

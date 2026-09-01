@@ -1,6 +1,6 @@
 // Autumn — Agent Picker Panel.
 // Popover that opens above the bottom dock when the Agent app-tile is clicked.
-// Mirrors October Desktop's agent + app picker layout:
+// Mirrors Autumn Desktop's agent + app picker layout:
 //   - "CODING AGENTS" grid (4-col) of brand-logo tiles
 //   - "APPS" grid (4-col) of integration-platform tiles (with EARLY ACCESS badges)
 //   - Bottom bar: "Agents" (manage) | "Set up voice"

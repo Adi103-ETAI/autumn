@@ -1,6 +1,6 @@
 // Autumn — REAL agent spawner (server-side).
 //
-// This is the real counterpart to October Desktop's runAgent(): it spawns the
+// This is the real counterpart to Autumn Desktop's runAgent(): it spawns the
 // ACTUAL coding-agent CLI (claude, codex, opencode, gemini, ...) as a child
 // process on the host that runs the Next server, injects AUTUMN_BUS_* env so
 // the agent can participate in the AutumnBus handoff protocol, and streams the
@@ -124,7 +124,7 @@ function buildEnv(input: SpawnAgentInput): NodeJS.ProcessEnv {
     AUTUMN_BUS_CANVAS: input.canvasId,
     AUTUMN_BUS_NODE: input.nodeId,
     AUTUMN_BUS_TOKEN: process.env.AUTUMN_BUS_TOKEN ?? "autumn-dev-token",
-    // Best-effort: tell agents about peers via env (mirrors October's hooks).
+    // Best-effort: tell agents about peers via env (mirrors Autumn's hooks).
     AUTUMN_BUS_PEERS: (input.connectedPeers ?? []).join(","),
   };
 }

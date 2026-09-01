@@ -1,6 +1,6 @@
 // Autumn — Zustand store (client).
 // Holds canvas state, task board, pulses, commander chat history, recent actions.
-// Mirrors October's `useAppStore` (see 09-renderer-deep-dive.md) but trimmed to
+// Mirrors Autumn's `useAppStore` (see 09-renderer-deep-dive.md) but trimmed to
 // the parts we actually need for the web demo.
 
 "use client";
@@ -150,7 +150,7 @@ export interface AppNotification {
   createdAt: number;
 }
 
-// October-style scenic photographic canvas backgrounds.
+// Autumn-style scenic photographic canvas backgrounds.
 // Each has an id, label, and a CSS background (gradient swatch + optional image url).
 export interface CanvasBackground {
   id: string;
@@ -369,7 +369,7 @@ export interface AutumnStore {
   snapToGrid: boolean; // snap nodes to 20x20 grid on drag
   minimapCollapsed: boolean; // whether the minimap preview box is collapsed
 
-  // Floating "Project chat" panel above the dock (October-style).
+  // Floating "Project chat" panel above the dock (Autumn-style).
   projectChatOpen: boolean;
   projectChatMinimized: boolean;
 
@@ -488,7 +488,7 @@ export interface AutumnStore {
   backends: Backends;
   // design.md — single source of truth for the canvas design system
   designMd: string;
-  // Canvas scenic photographic backgrounds (October uses Mediterranean villas/sea/gardens)
+  // Canvas scenic photographic backgrounds (Autumn uses Mediterranean villas/sea/gardens)
   canvasBackgroundId: string;
   // Voice input (mic → project chat)
   voiceSetupOpen: boolean;
@@ -802,9 +802,9 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
-  leftSidebarOpen: true,
-  // Right panel (Tasks / Bus / Stats) starts expanded.
-  rightPanelOpen: true,
+  leftSidebarOpen: false,
+  // Right panel collapsed by default - opens on demand.
+  rightPanelOpen: false,
   leftSidebarTab: "resources",
   projectFiles: [
     { id: "pf1", name: "README.md", category: "doc", size: 4200, source: "repo", addedAt: Date.now() - 86400000 },
@@ -1699,7 +1699,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // Spawn a LIVE terminal node bound to a chat (agent) node. The terminal opens
   // an interactive PTY running that agent's real CLI (claude/codex/...), so two
-  // agents show up as two independent live CLI windows — exactly like October.
+  // agents show up as two independent live CLI windows — exactly like Autumn.
   // Returns the new terminal node id (or null if one is already bound).
   spawnAgentTerminal: (chatNodeId: string) => {
     const chat = get().nodes.find((n) => n.id === chatNodeId);

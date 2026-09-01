@@ -1,4 +1,4 @@
-// Autumn — MinimapPanel (Pixel-perfect match to October Reference Screenshot).
+// Autumn — MinimapPanel (Pixel-perfect match to Autumn Reference Screenshot).
 // Custom high-fidelity spatial canvas minimap:
 // 1. Guaranteed visibility & accurate mirroring of every active canvas node.
 // 2. Real-time centered viewfinder frustum tracking live canvas viewport.
@@ -45,7 +45,7 @@ const NODE_DIMENSIONS: Record<NodeKind, { w: number; h: number }> = {
   remotion: { w: 320, h: 260 },
 };
 
-// Exact colors matching October reference screenshot
+// Exact colors matching Autumn reference screenshot
 const AUTUMN_NODE_COLORS: Record<NodeKind, string> = {
   chat: "#a855f7",     // Violet/purple for AI agents (Atlas, Orion)
   terminal: "#22c55e", // Bright neon green for Apollo / Terminal

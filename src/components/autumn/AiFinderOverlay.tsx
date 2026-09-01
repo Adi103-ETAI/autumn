@@ -1,5 +1,5 @@
 // Autumn — AiFinderOverlay.
-// A natural-language file finder overlay (October's "AI Finder"). Searches
+// A natural-language file finder overlay (Autumn's "AI Finder"). Searches
 // across project files, canvas nodes, skills, and tasks via the store's
 // `runAiFinder` action. Clicking a node result centers it on the canvas via
 // the `autumn:center-node` custom event; other kinds just close the overlay.

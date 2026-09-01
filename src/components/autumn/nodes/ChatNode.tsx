@@ -1,5 +1,5 @@
-// Autumn — ChatNode component (October UI Clone Specification).
-// Fully implemented according to october_ui_analysis.md:
+// Autumn — ChatNode component (Autumn UI Clone Specification).
+// Fully implemented according to autumn_ui_analysis.md:
 // - Common window container shell with macOS traffic lights, title & shortcut badge.
 // - 4 Cardinal connection anchors (top, bottom, left, right) in bright neon green (#22c55e).
 // - "Ready when you are" idle state view with workspace metadata.
@@ -82,7 +82,7 @@ const STATUS_STYLES: Record<string, { dot: string; label: string; text: string }
   offline: { dot: "bg-zinc-700", label: "Offline", text: "text-zinc-500" },
 };
 
-// Supported runtime backend engines (from October Registry Table 4.2)
+// Supported runtime backend engines (from Autumn Registry Table 4.2)
 const AGENT_ENGINES: { id: AgentHarness; label: string; desc: string; category: string }[] = [
   { id: "opencode", label: "opencode", desc: "Default lightweight open agent runner", category: "Open Spec" },
   { id: "claude-code", label: "claude code", desc: "Anthropic Claude code execution & refactoring", category: "LLM Engine" },

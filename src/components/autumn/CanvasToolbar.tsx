@@ -2,7 +2,7 @@
 // Bottom-center pill with 7 colorful app-tiles, mirroring the reference design:
 //   mic · agents(app-grid) · browser(compass) · video-editor · mobile-preview · terminal · sticky-note
 // Each tile is a gradient rounded square with a white glyph + colored glow.
-// The app-grid (agents) tile opens the AgentPickerPanel — an October-style grid
+// The app-grid (agents) tile opens the AgentPickerPanel — an Autumn-style grid
 // popup with CODING AGENTS + APPS sections. Utility actions (search/arrange/fit/
 // clear/stats) were removed per the plan — fit-view already lives in the
 // MinimapPanel below the minimap.
@@ -108,7 +108,7 @@ export function CanvasToolbar() {
   const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
 
   // AgentPickerPanel open state (triggered by the app-grid agents tile).
-  // Opens the October-style grid popup with CODING AGENTS + APPS sections.
+  // Opens the Autumn-style grid popup with CODING AGENTS + APPS sections.
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -237,7 +237,7 @@ export function CanvasToolbar() {
           );
         })}
 
-        {/* AgentPickerPanel — October-style grid popup anchored to the
+        {/* AgentPickerPanel — Autumn-style grid popup anchored to the
             app-grid agents tile. Shows CODING AGENTS + APPS in a 4-col grid. */}
         <div ref={pickerRef} className="relative">
           <AgentPickerPanel

@@ -1,5 +1,5 @@
 // Autumn — Agent runner (client-side driver).
-// Mirrors October's runAgent() dispatch: takes a chat node + task, calls the
+// Mirrors Autumn's runAgent() dispatch: takes a chat node + task, calls the
 // /api/agent/run endpoint, streams the response into the agent's messages,
 // and routes any [autumn-bus] message_peer handoffs to /api/bus + emits pulses.
 

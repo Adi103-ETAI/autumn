@@ -1,5 +1,5 @@
 // Autumn — Floating "Project chat" launcher + panel above the dock.
-// Mirrors the October Desktop layout: a pill button above the dock that
+// Mirrors the Autumn Desktop layout: a pill button above the dock that
 // opens a centered chat panel (header + message area + input bar).
 // Reuses the commander chat store + /api/commander send flow.
 

@@ -1,4 +1,4 @@
-// Autumn — Left Sidebar (mirrors October Desktop's left sidebar).
+// Autumn — Left Sidebar (mirrors Autumn Desktop's left sidebar).
 // Sits to the right of the existing left Dock. Layout:
 //   - 48px vertical icon rail (always visible) with 6 tabs + collapse toggle
 //   - 280px expandable content panel (Framer Motion width/opacity transition)
@@ -219,7 +219,7 @@ export function LeftSidebar() {
 
   const handleTabClick = (tabId: TabId) => {
     if (leftSidebarTab === tabId && leftSidebarOpen) {
-      // Same tab clicked while open → toggle closed (mirrors October behaviour)
+      // Same tab clicked while open → toggle closed (mirrors Autumn behaviour)
       toggleLeftSidebar();
     } else {
       setLeftSidebarTab(tabId);
@@ -1043,7 +1043,7 @@ function ChatTab() {
     }
   };
 
-  // Empty state — mirrors October's "No conversations yet" centered card
+  // Empty state — mirrors Autumn's "No conversations yet" centered card
   if (groups.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">

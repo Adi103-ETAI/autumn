@@ -1,5 +1,5 @@
 // Autumn — Prisma schema (SQLite)
-// Mirrors October's data model: desktop_canvases, bus_state, desktop_code_sync.
+// Mirrors Autumn's data model: desktop_canvases, bus_state, desktop_code_sync.
 // We add: Node, Edge, Task, Message, AgentLog for richer querying.
 
 generator client {
@@ -83,7 +83,7 @@ model Message {
   @@index([canvasId, nodeId])
 }
 
-// AutumnBus peer registry (mirrors October's bus session/stop/list_peers).
+// AutumnBus peer registry (mirrors Autumn's bus session/stop/list_peers).
 // Kept FK-free (plain canvasId) so bus ops never fail on a missing canvas row.
 model BusPeer {
   canvasId String

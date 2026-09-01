@@ -1,5 +1,5 @@
 // Autumn — agent personas.
-// Named agents are the heart of the October UX: Atlas, Apollo, Orion, Juno.
+// Named agents are the heart of the Autumn UX: Atlas, Apollo, Orion, Juno.
 // Each persona has a color, a leaf icon, and a one-line character.
 // Harness is NOT pre-defined — agents can run any harness (claude/codex/gemini/etc.)
 // on demand via the terminal. The Commander picks harness at spawn time.

@@ -1,7 +1,7 @@
 // Autumn — Apps Integration Modal.
 // Lets the user connect / disconnect third-party apps (Shopify, Lovable, Figma,
 // Shortcut, Post Bridge, Canvas) to their canvas.
-// Clones October Desktop's "Apps" integration picker (NOTES.md §6, Phase 4).
+// Clones Autumn Desktop's "Apps" integration picker (NOTES.md §6, Phase 4).
 
 "use client";
 

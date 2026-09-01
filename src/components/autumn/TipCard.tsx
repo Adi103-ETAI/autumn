@@ -1,5 +1,5 @@
 // Autumn — TipCard.
-// A small yellow onboarding tip card overlay, matching October Desktop's
+// A small yellow onboarding tip card overlay, matching Autumn Desktop's
 // "Three ways to start" tooltip that appears on the left edge of the canvas.
 // Dismissible (persists dismissal in localStorage).
 

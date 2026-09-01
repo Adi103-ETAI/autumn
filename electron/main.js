@@ -1,6 +1,6 @@
 // Autumn — Electron main process.
 //
-// Strategy (faithful to October Desktop, tractable to build):
+// Strategy (faithful to Autumn Desktop, tractable to build):
 //   The Next.js server ALREADY is the "real backend" — it runs on Node and
 //   serves /api/* (bus, agent/run spawner, terminals, commander, canvas, logs).
 //   Electron's only job is to (1) boot that server and (2) open a native

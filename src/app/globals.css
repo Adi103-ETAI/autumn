@@ -124,7 +124,7 @@
   }
   body {
     background-color: var(--background);
-    /* October-inspired: pure black, no warm ambient glows.
+    /* Autumn-inspired: pure black, no warm ambient glows.
        Single very faint cool vignette for depth only. */
     background-image:
       radial-gradient(at 50% 0%, oklch(0.78 0.18 55 / 0.02) 0px, transparent 55%);
@@ -761,7 +761,7 @@ textarea:focus-visible {
 
 /* Autumn — global macOS-style menu bar.
    Slim (h-8), translucent dark, sits above every app stage. Subtle bottom
-   hairline + inner top highlight to echo the October Desktop reference. */
+   hairline + inner top highlight to echo the Autumn Desktop reference. */
 .autumn-menubar {
   background: linear-gradient(
     180deg,
@@ -1853,7 +1853,7 @@ textarea:focus-visible {
   }
 }
 
-/* dock-app-tile — colorful app-icon tiles (macOS/October dock style). */
+/* dock-app-tile — colorful app-icon tiles (macOS/Autumn dock style). */
 .dock-app-tile {
   position: relative;
   isolation: isolate;
@@ -1882,10 +1882,10 @@ textarea:focus-visible {
 }
 
 /* ==========================================================================
-   October UI Architecture Styles (october_ui_analysis.md)
+   Autumn UI Architecture Styles (autumn_ui_analysis.md)
    ========================================================================== */
 
-/* October Node Frame */
+/* Autumn Node Frame */
 .autumn-window-frame {
   background: rgba(20, 20, 24, 0.95);
   backdrop-filter: blur(16px);
