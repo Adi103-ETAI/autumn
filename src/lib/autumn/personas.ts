@@ -1,22 +1,21 @@
 // Autumn — agent personas.
 // Named agents are the heart of the October UX: Atlas, Apollo, Orion, Juno.
-// Each persona has a color, a default harness, and a one-line character.
-// The Commander picks the next persona in rotation when spawning a new chat node.
-
-import type { AgentHarness } from "./types";
+// Each persona has a color, a leaf icon, and a one-line character.
+// Harness is NOT pre-defined — agents can run any harness (claude/codex/gemini/etc.)
+// on demand via the terminal. The Commander picks harness at spawn time.
 
 export interface Persona {
   id: string;
   name: string;
   color: string; // hex
   accent: string; // tailwind-ish class fragment, e.g. "emerald"
-  glyph: string; // single char or emoji used as avatar
-  harness: AgentHarness;
+  glyph: string; // single char fallback
+  icon: string; // leaf logo path e.g. /autumn-agents/atlas.png
   tagline: string; // one-line character
   specialty: string; // what they're good at
 }
 
-// 7 named personas — the original October crew + 3 more for variety.
+// 4 core personas — leaf icons in public/autumn-agents/*.png — add more later.
 export const PERSONAS: Persona[] = [
   {
     id: "atlas",
@@ -24,7 +23,7 @@ export const PERSONAS: Persona[] = [
     color: "#10b981", // emerald
     accent: "emerald",
     glyph: "A",
-    harness: "claude-code",
+    icon: "/autumn-agents/atlas.png",
     tagline: "Holds up the sky — full-stack architecture.",
     specialty: "Architecture, scaffolding, dev-server setup.",
   },
@@ -34,7 +33,7 @@ export const PERSONAS: Persona[] = [
     color: "#f43f5e", // rose
     accent: "rose",
     glyph: "Ω",
-    harness: "claude-code",
+    icon: "/autumn-agents/apollo.png",
     tagline: "God of light — pixel-perfect UI.",
     specialty: "Frontend, design systems, polish.",
   },
@@ -44,7 +43,7 @@ export const PERSONAS: Persona[] = [
     color: "#a855f7", // violet
     accent: "violet",
     glyph: "O",
-    harness: "codex",
+    icon: "/autumn-agents/orion.png",
     tagline: "The hunter — backend & data layers.",
     specialty: "Backend, APIs, databases, schema.",
   },
@@ -54,39 +53,9 @@ export const PERSONAS: Persona[] = [
     color: "#f59e0b", // amber
     accent: "amber",
     glyph: "J",
-    harness: "claude-code",
+    icon: "/autumn-agents/juno.png",
     tagline: "Queen of gods — tests, CI, quality.",
     specialty: "Testing, e2e, CI/CD, type-safety.",
-  },
-  {
-    id: "vega",
-    name: "Vega",
-    color: "#06b6d4", // cyan
-    accent: "cyan",
-    glyph: "V",
-    harness: "gemini",
-    tagline: "Falling star — research & docs.",
-    specialty: "Research, docs, migrations.",
-  },
-  {
-    id: "lyra",
-    name: "Lyra",
-    color: "#ec4899", // pink
-    accent: "pink",
-    glyph: "L",
-    harness: "cursor",
-    tagline: "Lyre of Orpheus — animations & motion.",
-    specialty: "Motion, transitions, micro-interactions.",
-  },
-  {
-    id: "nero",
-    name: "Nero",
-    color: "#6366f1", // indigo
-    accent: "indigo",
-    glyph: "N",
-    harness: "grok",
-    tagline: "Emperor of edge cases — security & infra.",
-    specialty: "Security, infra, edge cases.",
   },
 ];
 
@@ -99,6 +68,18 @@ export function nextPersona(): Persona {
   const p = PERSONAS[personaCursor % PERSONAS.length];
   personaCursor += 1;
   return p;
+}
+
+export function nextUnusedPersona(usedIds: Set<string> | string[]): Persona {
+  const used = usedIds instanceof Set ? usedIds : new Set(usedIds);
+  const unused = PERSONAS.find((p) => !used.has(p.id));
+  if (unused) {
+    // advance cursor to after the picked one for variety
+    personaCursor = PERSONAS.indexOf(unused) + 1;
+    return unused;
+  }
+  // all 4 used -> fallback to cycle (will duplicate, but we prefer distinct)
+  return nextPersona();
 }
 
 export function personaByName(name: string): Persona | undefined {

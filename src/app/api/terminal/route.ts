@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
   }
 
   let agentOpts: { command: string; args: string[]; env: NodeJS.ProcessEnv } | null = null;
+  let harnessWarning: string | null = null;
   if (harness) {
     const resolved = await resolveAgentCommand(harness, task, {
       canvasId,
@@ -62,9 +63,8 @@ export async function GET(req: NextRequest) {
     });
     if (resolved) agentOpts = resolved;
     else {
-      // Harness requested but binary not found -> return error so UI can fallback with message
-      // rather than silently opening a plain shell and confusing user
-      return NextResponse.json({ error: `harness not installed: ${harness}` }, { status: 404 });
+      // Harness not installed -> fallback to plain shell with visual cue, don't 404 (user sees empty terminal otherwise)
+      harnessWarning = `harness not installed: ${harness} — opened plain shell`;
     }
   }
 
@@ -86,8 +86,12 @@ export async function GET(req: NextRequest) {
       const send = (chunk: string) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
       };
-      // send ready without double-stringify
+      // send ready without double-stringify, plus warning if harness missing
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "ready" })}\n\n`));
+      if (harnessWarning) {
+        // send warning as first visible line (xterm will render it)
+        setTimeout(() => send(`\x1b[33m${harnessWarning}\x1b[0m\r\n`), 50);
+      }
       const unsub = subscribePty(nodeId, send);
       // Heartbeat so proxies don't close the stream.
       const hb = setInterval(() => controller.enqueue(encoder.encode(`: ping\n\n`)), 15000);

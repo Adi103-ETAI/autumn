@@ -86,6 +86,7 @@ function defaultEnv(): NodeJS.ProcessEnv {
     "USER",
     "SHELL",
     "TERM",
+    "COLORTERM",
     "LANG",
     "LC_ALL",
     "TMPDIR",
@@ -97,13 +98,17 @@ function defaultEnv(): NodeJS.ProcessEnv {
     "AUTUMN_BUS_PEERS",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
   ]);
   const out: NodeJS.ProcessEnv = {};
   for (const k of allow) {
     if (process.env[k] !== undefined) out[k] = process.env[k];
   }
-  // Always ensure TERM
+  // Ensure modern terminal caps for all CLIs (claude/codex/gemini/opencode)
   out.TERM = "xterm-256color";
+  out.COLORTERM = "truecolor";
+  out.TERM_PROGRAM = "Autumn";
   return out;
 }
 
@@ -142,16 +147,16 @@ export function createPty(opts: CreatePtyOptions): boolean {
     const shell = opts.shell ?? defaultShell();
     const pty = isAgent
       ? loadPty().spawn(opts.command!, opts.args ?? [], {
-          name: "xterm-color",
-          cols: opts.cols ?? 80,
-          rows: opts.rows ?? 24,
+          name: "xterm-256color",
+          cols: opts.cols ?? 100,
+          rows: opts.rows ?? 30,
           cwd,
           env: { ...defaultEnv(), ...(opts.env ?? {}) },
         })
       : loadPty().spawn(shell, [], {
-          name: "xterm-color",
-          cols: opts.cols ?? 80,
-          rows: opts.rows ?? 24,
+          name: "xterm-256color",
+          cols: opts.cols ?? 100,
+          rows: opts.rows ?? 30,
           cwd,
           env: { ...defaultEnv() },
         });
@@ -166,8 +171,37 @@ export function createPty(opts: CreatePtyOptions): boolean {
     pty.onData((data) => {
       for (const sub of session.subscribers) sub(data);
     });
-    pty.onExit(() => {
+    pty.onExit(({ exitCode, signal }) => {
+      const wasAgent = session.kind === "agent";
+      const exitInfo = exitCode ?? signal ?? 0;
+      const msg = wasAgent
+        ? `\r\n\x1b[33m[${session.command} exited (${exitInfo}) — fallback to shell]\x1b[0m\r\n`
+        : `\r\n\x1b[33m[shell exited (${exitInfo}) — press Restart or close window]\x1b[0m\r\n`;
+      for (const sub of session.subscribers) sub(msg);
+      const oldSubs = new Set(session.subscribers);
+      const savedDir = opts.dir;
+      const savedCols = opts.cols;
+      const savedRows = opts.rows;
       sessions.delete(opts.nodeId);
+      // Agent fallback: auto-open plain shell so terminal stays usable after /exit
+      if (wasAgent) {
+        setTimeout(() => {
+          if (sessions.has(opts.nodeId)) return;
+          try {
+            const ok = createPty({ nodeId: opts.nodeId, dir: savedDir, cols: savedCols, rows: savedRows });
+            if (ok) {
+              const newSess = sessions.get(opts.nodeId);
+              if (newSess) {
+                for (const sub of oldSubs) newSess.subscribers.add(sub);
+                // nudge shell to show prompt
+                setTimeout(() => {
+                  for (const sub of newSess.subscribers) sub("\r\n");
+                }, 100);
+              }
+            }
+          } catch {}
+        }, 300);
+      }
     });
 
     sessions.set(opts.nodeId, session);

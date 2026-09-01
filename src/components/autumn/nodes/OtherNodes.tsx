@@ -6,9 +6,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Handle, Position, type NodeProps, NodeResizer } from "@xyflow/react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import { PERSONA_BY_ID, PERSONAS } from "@/lib/autumn/personas";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+// @ts-ignore - xterm css has no types but Next handles it
+import "xterm/css/xterm.css";
 import {
   TerminalSquare,
   MonitorSmartphone,
@@ -173,7 +176,12 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
   const esRef = useRef<EventSource | null>(null);
   const dir = d.dir || wsDir || "";
   const isAgentTerm = !!d.harness;
-  const nodeTitle = d.agent || (isAgentTerm ? "Apollo" : "Apollo · Terminal");
+  const nodeTitle = d.agent ? `${d.agent} · Terminal` : isAgentTerm ? "Agent · CLI" : "Terminal";
+  const boundChat = useAutumnStore((s) => s.nodes.find((n) => n.id === d.boundChatId));
+  const personaForIcon = boundChat
+    ? PERSONA_BY_ID[(boundChat.data as { personaId?: string }).personaId ?? ""]
+    : PERSONAS.find((p) => p.name === d.agent);
+  const leafIcon = personaForIcon?.icon;
 
   const sendResize = useCallback(async () => {
     const term = termRef.current;
@@ -258,16 +266,16 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
         import("@xterm/addon-fit"),
         import("@xterm/addon-web-links"),
       ]);
-      // CSS is imported via dynamic side-effect in xterm package; ensure loaded
-      try {
-        await import("xterm/css/xterm.css");
-      } catch {}
 
       if (disposed || !containerRef.current) return;
-      term = new Terminal({
+      // Simple wait for layout
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      if (disposed || !containerRef.current) return;
+      try {
+        term = new Terminal({
         cursorBlink: true,
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-        fontSize: 11,
+        fontSize: 12,
         theme: { background: "#0a0a0c", foreground: "#e4e4e7", cursor: "#22c55e" },
         convertEol: true,
         scrollback: 2000,
@@ -277,7 +285,27 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       term.loadAddon(new WebLinksAddon());
 
       term.open(containerRef.current!);
-      fitAddon.fit();
+      try {
+        fitAddon.fit();
+      } catch {}
+      // Nudge PTY to new size after fit
+      setTimeout(() => {
+        try {
+          fitAddon?.fit();
+          const cols = term!.cols;
+          const rows = term!.rows;
+          if (cols > 0 && rows > 0) {
+            fetch("/api/terminal", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ node: id, action: "resize", cols, rows }),
+            }).catch(() => {});
+          }
+        } catch {}
+      }, 100);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "xterm init failed");
+      }
 
       // Per-key input -> POST to PTY
       term.onData((data) => {
@@ -405,8 +433,14 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       selected={selected}
       title={nodeTitle}
       subtitle={isAgentTerm ? d.harness : "workspace"}
-      icon={<TerminalSquare className="size-3 text-emerald-400" />}
-      width="w-[480px]"
+      icon={
+        leafIcon ? (
+          <img src={leafIcon} alt={personaForIcon?.name ?? "agent"} className="size-4 rounded-sm object-cover shrink-0" />
+        ) : (
+          <TerminalSquare className="size-3 text-emerald-400" />
+        )
+      }
+      width="w-[600px]"
     >
       {viewMode === "launcher" ? (
         <div className="p-4 space-y-3 bg-[#121214] text-zinc-200">
@@ -485,7 +519,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           )}
           <div
             ref={containerRef}
-            className="flex-1 min-h-[280px] h-[280px] w-full overflow-hidden nodrag nopan"
+            className="h-[380px] w-full overflow-hidden nodrag nopan"
             onMouseDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             style={{ touchAction: "none" }}
