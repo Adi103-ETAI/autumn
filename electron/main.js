@@ -18,6 +18,11 @@ const net = require("net");
 const { attachIpcMain } = require("./ipc/ipcmain");
 const registry = require("./ipc/registry");
 
+// Wave-0 migration: host the src/lib/autumn backend in main (transpiles the TS
+// lib modules on require — see electron/ts-register.js).
+require("./ts-register");
+const { registerBackend } = require("./backend/index.ts");
+
 // WSLg-friendly GPU handling - keep minimal; package.json already adds --no-sandbox --disable-gpu
 app.commandLine.appendSwitch("no-sandbox");
 
@@ -112,7 +117,17 @@ ipcMain.handle("autumn:openFileDialog", async (_e, opts = {}) => {
 });
 
 // ---- IPC registrar: all window.autumn.* traffic (doc 29 Wave 0) ----
-attachIpcMain(ipcMain, { isDev });
+// Principal derives from the sender's origin (fail-closed): only pages loaded
+// from our own server are `desktop`.
+const APP_ORIGINS = [BASE, `${PROTOCOL}://localhost:${PORT}`];
+const ipcApi = attachIpcMain(ipcMain, { isDev, allowedOrigins: APP_ORIGINS });
+
+// ---- Backend in main: the 7 Next API routes, ported as registry handlers ----
+// (bus/terminal/canvas/activity/commander/agentRun — see electron/backend/handlers.ts)
+const backendHandlers = registerBackend(ipcApi, { getWindow: () => mainWindow });
+if (isDev) {
+  console.log(`[main] backend: ${backendHandlers.length} handlers registered`);
+}
 
 // First REAL facade method, proving the whole path end-to-end:
 // renderer -> facade -> autumn:invoke -> registry -> handler -> envelope.
