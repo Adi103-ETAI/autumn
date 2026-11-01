@@ -13,6 +13,11 @@ const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
 
+// autumn IPC core (doc 29 Wave 0): every window.autumn.* call lands in the generic
+// registrar -> registry.dispatch() -> auth -> schema -> handler -> envelope.
+const { attachIpcMain } = require("./ipc/ipcmain");
+const registry = require("./ipc/registry");
+
 // WSLg-friendly GPU handling - keep minimal; package.json already adds --no-sandbox --disable-gpu
 app.commandLine.appendSwitch("no-sandbox");
 
@@ -97,7 +102,7 @@ function createWindow() {
   });
 }
 
-// Native file dialog bridge (renderer calls window.autumn.openFileDialog).
+// Native file dialog bridge (legacy renderer call window.autumn.openFileDialog).
 ipcMain.handle("autumn:openFileDialog", async (_e, opts = {}) => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: opts.title || "Select folder",
@@ -105,6 +110,30 @@ ipcMain.handle("autumn:openFileDialog", async (_e, opts = {}) => {
   });
   return result.canceled ? null : result.filePaths;
 });
+
+// ---- IPC registrar: all window.autumn.* traffic (doc 29 Wave 0) ----
+attachIpcMain(ipcMain, { isDev });
+
+// First REAL facade method, proving the whole path end-to-end:
+// renderer -> facade -> autumn:invoke -> registry -> handler -> envelope.
+// (Native folder picker; the legacy openFileDialog member keeps working above
+//  until Wave 1 re-points the UI at `projects.pickFolder`.)
+registry.register(
+  "bridge",
+  "projects.pickFolder",
+  async (params = {}) => {
+    const dialogOpts = {
+      title: params.title || "Select folder",
+      properties: ["openDirectory"],
+    };
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, dialogOpts)
+      : await dialog.showOpenDialog(dialogOpts);
+    if (result.canceled || !result.filePaths.length) return null;
+    return { path: result.filePaths[0] };
+  },
+  { description: "native folder picker (Wave 0 end-to-end proof)" }
+);
 
 // Forward lifecycle: app quit should also kill the Next server.
 app.on("before-quit", (e) => {
