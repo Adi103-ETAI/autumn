@@ -18,17 +18,41 @@ const { dispatch, implemented, manifest } = require("./registry");
 const { CALL, EVENT, INSPECT } = require("./facade");
 
 /**
+ * Default principal derivation (fail-closed): the principal comes from the
+ * SENDER's origin, never from the payload. A renderer page loaded from our own
+ * app origin is `desktop`; anything else is `untrusted` — which is not a known
+ * principal, so coreMethodAllowed() denies every call.
+ * @param {object} event  Electron IpcMainInvokeEvent (senderFrame.url)
+ * @param {string[]} allowedOrigins
+ */
+function derivePrincipal(event, allowedOrigins) {
+  const url =
+    (event && event.senderFrame && event.senderFrame.url) ||
+    (event && event.sender && typeof event.sender.getURL === "function" ? event.sender.getURL() : "") ||
+    "";
+  if (url && allowedOrigins.some((o) => url.startsWith(o))) return "desktop";
+  return "untrusted";
+}
+
+/**
  * @param {{handle:(channel:string, fn:Function)=>any}} ipcMain
  * @param {object} [opts]
  * @param {boolean} [opts.isDev]        enables dispatch logging
+ * @param {string[]} [opts.allowedOrigins]  app origins the renderer may load from
+ *                                          (default: 127.0.0.1/localhost:3000)
  * @param {(event:object)=>string} [opts.getPrincipal]  sender -> principal id
- *                                                      (default: "desktop")
+ *                                                      (overrides derivePrincipal)
  * @param {number} [opts.maxRecent]     rolling log size (default 200)
  * @param {(line:string)=>void} [opts.log]  log sink (default console.log)
  */
 function attachIpcMain(ipcMain, opts = {}) {
   const isDev = !!opts.isDev;
-  const getPrincipal = opts.getPrincipal || (() => "desktop");
+  const allowedOrigins = opts.allowedOrigins || [
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+  ];
+  const getPrincipal =
+    opts.getPrincipal || ((event) => derivePrincipal(event, allowedOrigins));
   const maxRecent = opts.maxRecent ?? 200;
   const log = opts.log || ((line) => console.log(line));
 
@@ -97,4 +121,4 @@ function attachIpcMain(ipcMain, opts = {}) {
   return { recent, emit, getPrincipal };
 }
 
-module.exports = { attachIpcMain };
+module.exports = { attachIpcMain, derivePrincipal };

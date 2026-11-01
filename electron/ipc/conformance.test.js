@@ -41,6 +41,10 @@ const EXPECTED_DORMANT = [
   "multiplayer",
 ];
 
+// autumn-private facade ops (electron/ipc/private-ops.js) — the ONLY ids allowed
+// outside the target surface. Enumerated here so nothing slips in silently.
+const PRIVATE_OPS = require("./private-ops");
+
 test("manifest totals match the v1.0.56 RE oracles (target: October Desktop)", () => {
   assert.equal(manifest.project, "autumn");
   assert.deepEqual(manifest.protocol, { API_VERSION: 2, SCHEMA: 8 });
@@ -120,27 +124,47 @@ test("registered handlers always belong to the target surface (no invented metho
   // Register a couple of in-surface and confirm manifest membership works.
   reg.register("bridge", "settings.get", () => ({}));
   reg.register("core", "bus.query", () => ({}));
+  reg.register("bridge", "__ops.commander", () => ({}));
   assert.equal(reg.inManifest("bridge", "settings.get"), true);
   assert.equal(reg.inManifest("core", "bus.query"), true);
   assert.equal(reg.inManifest("bridge", "invented.thing"), false);
+  // private ops are NOT part of the target surface — they're allow-listed separately
+  assert.equal(reg.inManifest("bridge", "__ops.commander"), false);
+  assert.ok(PRIVATE_OPS.includes("__ops.commander"));
+});
+
+test("private allow-list is well-formed and disjoint from the target surface", () => {
+  assert.deepEqual(PRIVATE_OPS, [
+    "__ops.canvasDelete",
+    "__ops.logsClear",
+    "__ops.commander",
+    "__ops.agentRun",
+  ]);
+  assert.equal(new Set(PRIVATE_OPS).size, PRIVATE_OPS.length, "no duplicates");
+  for (const id of PRIVATE_OPS) {
+    assert.ok(id.startsWith("__ops."), `${id} must live under __ops.`);
+    assert.equal(reg.inManifest("bridge", id), false, `${id} must be outside the target surface`);
+  }
 });
 
 test("honest baseline: conformance reports implemented/total", async () => {
-  // Baseline = 0 implemented. As waves land methods, `implemented` grows; this test
-  // documents the count and asserts none exceed the target surface.
+  // Baseline = 0 implemented (this process registers none). As waves land methods,
+  // `implemented` grows; registered ids must be surface or allow-listed private.
   const impl = reg.implemented();
   for (const h of impl) {
     assert.ok(
-      reg.inManifest(h.kind, h.id),
-      `registered ${h.kind}:${h.id} is not part of the target surface (October Desktop v1.0.56)`
+      reg.inManifest(h.kind, h.id) || PRIVATE_OPS.includes(h.id),
+      `registered ${h.kind}:${h.id} is not part of the target surface (October Desktop v1.0.56) or the private allow-list`
     );
   }
   // The report line (visible in test output via assert message on failure only).
   assert.ok(impl.length >= 0);
   // Future waves flip this: assert.equal(impl.filter(h=>h.kind==="core").length, 129)
   const coreDone = impl.filter((h) => h.kind === "core").length;
-  const bridgeDone = impl.filter((h) => h.kind === "bridge").length;
-  assert.ok(coreDone <= 129 && bridgeDone <= 572, "counts within surface");
+  const targetBridgeDone = impl.filter(
+    (h) => h.kind === "bridge" && !h.id.startsWith("__ops."),
+  ).length;
+  assert.ok(coreDone <= 129 && targetBridgeDone <= 572, "counts within surface");
 });
 
 test("all 68 namespaces are enumerable for the Bridge Inspector", () => {

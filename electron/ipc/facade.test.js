@@ -92,6 +92,25 @@ test("legacy autumn members and __bridge inspector are attached without collisio
   assert.equal(facade.__bridge(), "inspector");
 });
 
+test("private ops expose as __ops.<name> and dispatch to __ops.<name> ids", async () => {
+  const { facade, calls } = build({ privateOps: ["__ops.commander", "__ops.agentRun"] });
+  assert.equal(typeof facade.__ops.commander, "function");
+  assert.equal(typeof facade.__ops.agentRun, "function");
+  await facade.__ops.commander({ command: "connect a to b", canvas: {} });
+  assert.deepEqual(calls[calls.length - 1], {
+    kind: "bridge",
+    id: "__ops.commander",
+    params: { command: "connect a to b", canvas: {} },
+  });
+  await facade.__ops.agentRun(); // params default to {}
+  assert.deepEqual(calls[calls.length - 1], { kind: "bridge", id: "__ops.agentRun", params: {} });
+});
+
+test("no privateOps -> no __ops namespace on the facade", () => {
+  const { facade } = build();
+  assert.equal("__ops" in facade, false);
+});
+
 test("legacy member colliding with a target namespace throws", () => {
   assert.throws(
     () => buildFacade({ manifest, invoke: () => {}, subscribe: () => () => {}, legacy: { files: () => 1 } }),

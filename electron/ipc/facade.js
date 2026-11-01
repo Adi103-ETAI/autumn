@@ -30,10 +30,13 @@ function isEventMethod(name) {
  * @param {(id:string, cb:Function)=>Function} opts.subscribe  returns unsubscribe
  * @param {object} [opts.legacy]  autumn's own pre-facade members (kept for the
  *                                existing UI; not part of the target surface)
- * @param {Function} [opts.inspect]  dev Bridge Inspector accessor (autumn's own
+ * @param {object} [opts.inspect]  dev Bridge Inspector accessor (autumn's own
  *                                   member, exposed as `window.autumn.__bridge`)
+ * @param {string[]} [opts.privateOps] autumn-private op ids ("__ops.<name>"),
+ *                                   exposed as `window.autumn.__ops.<name>`
+ *                                   (source of truth: ./private-ops.js)
  */
-function buildFacade({ manifest, invoke, subscribe, legacy = {}, inspect }) {
+function buildFacade({ manifest, invoke, subscribe, legacy = {}, inspect, privateOps = [] }) {
   const root = {};
 
   for (const [ns, methods] of Object.entries(manifest.bridge.namespaces)) {
@@ -59,6 +62,18 @@ function buildFacade({ manifest, invoke, subscribe, legacy = {}, inspect }) {
   if (inspect) {
     if ("__bridge" in root) throw new Error("__bridge key collides");
     root.__bridge = inspect;
+  }
+
+  // autumn-private ops (no target-surface equivalent) — see ./private-ops.js.
+  // Exposed 1:1: registry id `__ops.<name>` <-> facade member `__ops.<name>`.
+  if (privateOps.length) {
+    if ("__ops" in root) throw new Error("__ops key collides");
+    const ops = {};
+    for (const id of privateOps) {
+      const name = id.startsWith("__ops.") ? id.slice("__ops.".length) : id;
+      ops[name] = (params) => invoke({ kind: "bridge", id: `__ops.${name}`, params: params ?? {} });
+    }
+    root.__ops = ops;
   }
 
   return root;

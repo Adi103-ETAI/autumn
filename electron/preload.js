@@ -17,6 +17,7 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 const { buildFacade, CALL, EVENT, INSPECT } = require("./ipc/facade");
+const PRIVATE_OPS = require("./ipc/private-ops");
 const manifest = require("./ipc/manifest.json");
 
 const invoke = (req) => ipcRenderer.invoke(CALL, req);
@@ -46,6 +47,7 @@ const facade = buildFacade({
     },
   },
   inspect: () => ipcRenderer.invoke(INSPECT),
+  privateOps: PRIVATE_OPS,
 });
 
 contextBridge.exposeInMainWorld("autumn", facade);

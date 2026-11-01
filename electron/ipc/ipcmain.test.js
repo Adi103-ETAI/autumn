@@ -23,6 +23,10 @@ function fakeIpcMain() {
   };
 }
 
+
+/** Event shape Electron sends: only our own app origin derives to `desktop`. */
+const APP_EVENT = { senderFrame: { url: "http://127.0.0.1:3000/" } };
+
 beforeEach(() => registry.reset());
 
 test("attach registers the generic CALL and INSPECT channels", () => {
@@ -38,7 +42,7 @@ test("renderer call roundtrip: facade request -> dispatch -> envelope", async ()
   attachIpcMain(ipc, {});
   registry.register("bridge", "settings.get", (p) => ({ theme: p.key }));
 
-  const env = await ipc.invoke(CALL, { sender: "main" }, {
+  const env = await ipc.invoke(CALL, APP_EVENT, {
     kind: "bridge",
     id: "settings.get",
     params: { key: "dark" },
@@ -49,11 +53,11 @@ test("renderer call roundtrip: facade request -> dispatch -> envelope", async ()
 test("missing id -> bad-params envelope; unknown method -> not-found", async () => {
   const ipc = fakeIpcMain();
   attachIpcMain(ipc, {});
-  const noId = await ipc.invoke(CALL, {}, {});
+  const noId = await ipc.invoke(CALL, APP_EVENT, {});
   assert.equal(noId.ok, false);
   assert.equal(noId.error.code, ERR.BAD_PARAMS);
 
-  const unknown = await ipc.invoke(CALL, {}, { id: "nope.missing", params: {} });
+  const unknown = await ipc.invoke(CALL, APP_EVENT, { id: "nope.missing", params: {} });
   assert.equal(unknown.ok, false);
   assert.equal(unknown.error.code, ERR.NOT_FOUND);
 });
@@ -78,8 +82,8 @@ test("recent log records successes and failures with timing", async () => {
   const api = attachIpcMain(ipc, { isDev: true, log: (l) => lines.push(l), getPrincipal: () => "desktop" });
   registry.register("bridge", "settings.get", () => ({ theme: "dark" }));
 
-  await ipc.invoke(CALL, {}, { id: "settings.get", params: {} });
-  await ipc.invoke(CALL, {}, { id: "missing.method", params: {} });
+  await ipc.invoke(CALL, APP_EVENT, { id: "settings.get", params: {} });
+  await ipc.invoke(CALL, APP_EVENT, { id: "missing.method", params: {} });
 
   assert.equal(api.recent.length, 2);
   assert.equal(api.recent[0].id, "missing.method");
@@ -97,9 +101,39 @@ test("recent log records successes and failures with timing", async () => {
 test("recent log rolls over at maxRecent", async () => {
   const ipc = fakeIpcMain();
   const api = attachIpcMain(ipc, { maxRecent: 3 });
-  for (let i = 0; i < 5; i++) await ipc.invoke(CALL, {}, { id: `n${i}.x`, params: {} });
+  for (let i = 0; i < 5; i++) await ipc.invoke(CALL, APP_EVENT, { id: `n${i}.x`, params: {} });
   assert.equal(api.recent.length, 3);
   assert.equal(api.recent[0].id, "n4.x");
+});
+
+test("principal derives from sender origin (fail-closed), payload cannot spoof it", async () => {
+  const { derivePrincipal } = require("./ipcmain");
+  const origins = ["http://127.0.0.1:3000"];
+  // our own page -> desktop
+  assert.equal(derivePrincipal({ senderFrame: { url: "http://127.0.0.1:3000/" } }, origins), "desktop");
+  // foreign / missing origin -> untrusted (unknown principal => denied everywhere)
+  assert.equal(derivePrincipal({ senderFrame: { url: "https://evil.example/" } }, origins), "untrusted");
+  assert.equal(derivePrincipal({}, origins), "untrusted");
+  assert.equal(derivePrincipal(null, origins), "untrusted");
+
+  // end-to-end: foreign page is denied even with a registered handler
+  const ipc = fakeIpcMain();
+  attachIpcMain(ipc, { allowedOrigins: origins });
+  registry.register("bridge", "settings.get", () => ({ theme: "dark" }));
+  const foreign = await ipc.invoke(
+    CALL,
+    { senderFrame: { url: "https://evil.example/" } },
+    { id: "settings.get", params: {} },
+  );
+  assert.equal(foreign.ok, false);
+  assert.equal(foreign.error.code, ERR.FORBIDDEN);
+  // and a `principal` claim inside the payload is ignored (not used for auth)
+  const spoof = await ipc.invoke(
+    CALL,
+    { senderFrame: { url: "http://127.0.0.1:3000/" } },
+    { id: "settings.get", params: {}, principal: "remote" },
+  );
+  assert.equal(spoof.ok, true);
 });
 
 test("INSPECT returns manifest surface + implemented + recent (Bridge Inspector)", async () => {
@@ -144,7 +178,7 @@ test("facade->registrar end-to-end: buildFacade over ipc handlers", async () => 
 
   const facade = buildFacade({
     manifest: registry.manifest,
-    invoke: (req) => ipc.invoke(CALL, {}, req),
+    invoke: (req) => ipc.invoke(CALL, APP_EVENT, req),
     subscribe: () => () => {},
   });
   const env = await facade.git.status({ repo: "/x" });
