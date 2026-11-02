@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 // Bump this when the Prisma schema changes — it busts the cached client
 // so the dev server picks up new fields/tables without a full restart.
-const SCHEMA_VERSION = 'v2-logs-text-field'
+const SCHEMA_VERSION = 'v3-artifacts-sessions'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
