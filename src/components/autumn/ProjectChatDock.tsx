@@ -1,13 +1,14 @@
 // Autumn — Floating "Project chat" launcher + panel above the dock.
 // Mirrors the Autumn Desktop layout: a pill button above the dock that
 // opens a centered chat panel (header + message area + input bar).
-// Reuses the commander chat store + /api/commander send flow.
+// Reuses the commander chat store + commander-op send flow via the bridge.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { CanvasSnapshot, CommanderResult } from "@/lib/autumn/types";
+import { call, BridgeError } from "@/lib/autumn/bridge";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { renderPlanText } from "@/components/autumn/CommanderPanel";
 import {
@@ -121,13 +122,10 @@ function ProjectChatPanel({
     });
     setThinking(true);
 
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 30_000);
     try {
-      const r = await fetch("/api/commander", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const plan = await call<CommanderResult>(
+        "__ops.commander",
+        {
           command: cmd,
           canvas: buildSnapshot(),
           lastTurn:
@@ -135,11 +133,9 @@ function ProjectChatPanel({
               ? messages[messages.length - 1].text
               : undefined,
           recentActions,
-        }),
-        signal: ctrl.signal,
-      });
-      if (!r.ok) throw new Error(`commander ${r.status}`);
-      const plan = (await r.json()) as CommanderResult;
+        },
+        30_000,
+      );
       updateMessage(pendingId, {
         text: renderPlanText(plan),
         plan,
@@ -150,7 +146,7 @@ function ProjectChatPanel({
       }
     } catch (err) {
       const aborted =
-        err instanceof DOMException && err.name === "AbortError";
+        err instanceof BridgeError && err.code === "timeout";
       updateMessage(pendingId, {
         text: aborted
           ? "⚠️ The Commander took too long to respond. Please try again."
@@ -159,7 +155,6 @@ function ProjectChatPanel({
         error: String(err),
       });
     } finally {
-      clearTimeout(timeout);
       setThinking(false);
     }
   };
