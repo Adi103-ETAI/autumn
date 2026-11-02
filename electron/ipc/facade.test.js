@@ -111,6 +111,22 @@ test("no privateOps -> no __ops namespace on the facade", () => {
   assert.equal("__ops" in facade, false);
 });
 
+test("__core exposes all 129 core methods across 21 groups, dispatching kind:core", async () => {
+  const { facade, calls } = build();
+  assert.equal(Object.keys(facade.__core).length, Object.keys(manifest.core.groups).length);
+  let count = 0;
+  for (const [group, ids] of Object.entries(manifest.core.groups)) {
+    for (const id of ids) {
+      const method = id.slice(group.length + 1);
+      assert.equal(typeof facade.__core[group][method], "function", `${id} missing`);
+      count++;
+      await facade.__core[group][method]({ x: 1 });
+      assert.deepEqual(calls[calls.length - 1], { kind: "core", id, params: { x: 1 } });
+    }
+  }
+  assert.equal(count, 129);
+});
+
 test("legacy member colliding with a target namespace throws", () => {
   assert.throws(
     () => buildFacade({ manifest, invoke: () => {}, subscribe: () => () => {}, legacy: { files: () => 1 } }),

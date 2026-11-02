@@ -8,6 +8,7 @@ import { Handle, Position, type NodeProps, NodeResizer } from "@xyflow/react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { PERSONA_BY_ID, PERSONAS } from "@/lib/autumn/personas";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/autumn/bridge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 // @ts-ignore - xterm css has no types but Next handles it
@@ -150,7 +151,7 @@ interface TerminalData {
 }
 
 // -----------------------------------------------------------------------------
-// TerminalNode (Real PTY via xterm.js + SSE)
+// TerminalNode (Real PTY via xterm.js + bridge output stream)
 // -----------------------------------------------------------------------------
 export function TerminalNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as TerminalData & {
@@ -173,7 +174,8 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import("xterm").Terminal | null>(null);
   const fitAddonRef = useRef<import("@xterm/addon-fit").FitAddon | null>(null);
-  const esRef = useRef<EventSource | null>(null);
+  // Holds the terminal.onData unsubscribe (live PTY output stream).
+  const esRef = useRef<(() => void) | null>(null);
   const dir = d.dir || wsDir || "";
   const isAgentTerm = !!d.harness;
   const nodeTitle = d.agent ? `${d.agent} · Terminal` : isAgentTerm ? "Agent · CLI" : "Terminal";
@@ -191,62 +193,31 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       if (fit) fit.fit();
       const cols = term.cols;
       const rows = term.rows;
-      await fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ node: id, action: "resize", cols, rows }),
-      });
+      await api.terminal.resize({ node: id, cols, rows });
     } catch {}
   }, [id]);
 
-  const connectLive = useCallback(() => {
+  const connectLive = useCallback(async () => {
     if (esRef.current) return;
     setError(null);
     try {
-      const qs = new URLSearchParams({ node: id, dir });
-      if (isAgentTerm) {
-        qs.set("harness", d.harness!);
-        qs.set("canvas", canvasId);
-      }
-      const es = new EventSource(`/api/terminal?${qs.toString()}`);
-      esRef.current = es;
-      es.onmessage = (ev) => {
-        try {
-          let payload: unknown = JSON.parse(ev.data);
-          // handle double-encoded ready (legacy)
-          if (typeof payload === "string") {
-            try {
-              const inner = JSON.parse(payload as string);
-              if (inner && typeof inner === "object") payload = inner;
-            } catch {}
-          }
-          if (payload && typeof payload === "object" && (payload as { type?: string }).type === "ready") {
-            setLive(true);
-            return;
-          }
-          // Regular PTY chunk (string)
-          const text = String(payload as string);
-          termRef.current?.write(text);
-        } catch {
-          termRef.current?.write(ev.data);
-        }
-      };
-      es.onerror = async () => {
-        // Try to read error via fetch for harness-not-installed case
-        setLive(false);
-        es.close();
-        esRef.current = null;
-        if (!isAgentTerm) {
-          try {
-            const r = await fetch(`/api/terminal?node=${encodeURIComponent(id)}&dir=${encodeURIComponent(dir)}`);
-            if (!r.ok) {
-              const j = await r.json().catch(() => null);
-              if (j?.error) setError(j.error);
-            }
-          } catch {}
-        }
-      };
+      // Subscribe to PTY output before starting so no early chunks are missed;
+      // the harness-not-installed warning arrives as a normal ANSI chunk here.
+      const unsub = api.terminal.onData((chunk) => {
+        if (chunk.node !== id) return;
+        termRef.current?.write(chunk.data);
+      });
+      esRef.current = unsub;
+      await api.terminal.start({
+        node: id,
+        dir,
+        ...(isAgentTerm ? { harness: d.harness!, canvas: canvasId } : {}),
+      });
+      // start resolving REPLACES the old "ready" event — session is live
+      setLive(true);
     } catch (e) {
+      esRef.current?.();
+      esRef.current = null;
       setError(e instanceof Error ? e.message : "failed to connect");
       setLive(false);
     }
@@ -295,11 +266,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           const cols = term!.cols;
           const rows = term!.rows;
           if (cols > 0 && rows > 0) {
-            fetch("/api/terminal", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ node: id, action: "resize", cols, rows }),
-            }).catch(() => {});
+            api.terminal.resize({ node: id, cols, rows }).catch(() => {});
           }
         } catch {}
       }, 100);
@@ -307,13 +274,9 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
         setError(e instanceof Error ? e.message : "xterm init failed");
       }
 
-      // Per-key input -> POST to PTY
+      // Per-key input -> PTY via bridge
       term.onData((data) => {
-        fetch("/api/terminal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node: id, action: "input", data }),
-        }).catch(() => {});
+        api.terminal.input({ node: id, data }).catch(() => {});
       });
 
       termRef.current = term;
@@ -325,11 +288,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           fitAddon?.fit();
           const cols = term!.cols;
           const rows = term!.rows;
-          fetch("/api/terminal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node: id, action: "resize", cols, rows }),
-          }).catch(() => {});
+          api.terminal.resize({ node: id, cols, rows }).catch(() => {});
         } catch {}
       });
       ro.observe(containerRef.current!);
@@ -337,7 +296,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       // Store cleanup
       (term as unknown as { _ro?: ResizeObserver })._ro = ro;
 
-      // Connect SSE after terminal ready
+      // Connect the live output stream after terminal ready
       connectLive();
     };
 
@@ -354,13 +313,9 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       } catch {}
       termRef.current = null;
       fitAddonRef.current = null;
-      esRef.current?.close();
+      esRef.current?.();
       esRef.current = null;
-      fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ node: id, action: "kill" }),
-      }).catch(() => {});
+      api.terminal.kill({ node: id }).catch(() => {});
       setLive(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,12 +337,8 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
         if (picked && picked[0]) {
           updateNodeData(id, { dir: picked[0] });
           // Kill old PTY so next connect uses new cwd
-          await fetch("/api/terminal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node: id, action: "kill" }),
-          }).catch(() => {});
-          esRef.current?.close();
+          await api.terminal.kill({ node: id }).catch(() => {});
+          esRef.current?.();
           esRef.current = null;
           setLive(false);
           setViewMode("terminal");
@@ -405,7 +356,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
         const path = window.prompt("Enter workspace path (e.g. /tmp or ~/autumn)", dir);
         if (path) {
           updateNodeData(id, { dir: path });
-          esRef.current?.close();
+          esRef.current?.();
           esRef.current = null;
           setLive(false);
           setTimeout(() => connectLive(), 200);
@@ -562,14 +513,10 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           </button>
           <button
             onClick={() => {
-              esRef.current?.close();
+              esRef.current?.();
               esRef.current = null;
               setLive(false);
-              fetch("/api/terminal", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ node: id, action: "kill" }),
-              }).catch(() => {});
+              api.terminal.kill({ node: id }).catch(() => {});
               termRef.current?.writeln("\r\n\x1b[33m[restarted]\x1b[0m");
               setTimeout(() => connectLive(), 300);
             }}

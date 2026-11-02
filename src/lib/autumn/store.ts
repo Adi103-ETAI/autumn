@@ -27,6 +27,7 @@ import {
 } from "./personas";
 import { defaultModelFor } from "./harness-meta";
 import { buildSeedCanvas } from "./seed";
+import { api, BridgeError } from "@/lib/autumn/bridge";
 
 export interface ActivityEntry {
   id: string;
@@ -983,19 +984,15 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     set({ activityLog: [] });
     // Also clear the persisted logs for the current canvas.
     const cid = get().canvasId;
-    fetch(`/api/logs?canvas=${encodeURIComponent(cid)}`, { method: "DELETE" }).catch(
-      () => {},
-    );
+    api.activity.clear(cid).catch(() => {});
   },
   loadActivity: async (canvasId) => {
     try {
-      const r = await fetch(
-        `/api/logs?canvas=${encodeURIComponent(canvasId)}&limit=200`,
-        { method: "GET" },
-      );
-      if (!r.ok) return;
-      const j = await r.json();
-      const entries: ActivityEntry[] = (j.entries ?? []).map(
+      const res = await api.activity.snapshot<{ entries: any[] }>({
+        canvas: canvasId,
+        limit: 200,
+      });
+      const entries: ActivityEntry[] = (res.entries ?? []).map(
         (e: {
           id: string;
           ts: number;
@@ -1247,11 +1244,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     const removed = get().nodes.filter((n) => idSet.has(n.id));
     for (const r of removed) {
       if (r.kind === "terminal") {
-        fetch("/api/terminal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ node: r.id, action: "kill" }),
-        }).catch(() => {});
+        api.terminal.kill({ node: r.id }).catch(() => {});
       }
     }
     set((s) => ({
@@ -1403,13 +1396,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
           taskSeq: s.taskSeq,
         }),
       };
-      const r = await fetch("/api/canvas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) throw new Error(`save ${r.status}`);
-      const j = await r.json();
+      const j = await api.canvas.save(payload);
       set({ isSaving: false, lastSavedAt: Date.now(), canvasId: j.id ?? s.canvasId });
       get().pushActivity({
         kind: "canvas_saved",
@@ -1428,9 +1415,14 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   loadCanvas: async (id) => {
     set({ isSaving: true, saveError: null });
     try {
-      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
-      if (!r.ok) throw new Error(`load ${r.status}`);
-      const j = await r.json();
+      let j: any;
+      try {
+        j = await api.canvas.load({ id });
+      } catch (e) {
+        // The old route answered 404 here; the bridge reports it as a not-found error.
+        if (e instanceof BridgeError && e.code === "not-found") throw new Error(`load 404`);
+        throw e;
+      }
       const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
       set({
         canvasId: j.id ?? id,
@@ -1461,18 +1453,18 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   duplicateCanvas: async (id) => {
     try {
-      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
-      if (!r.ok) throw new Error(`fetch ${r.status}`);
-      const j = await r.json();
+      let j: any;
+      try {
+        j = await api.canvas.load({ id });
+      } catch (e) {
+        // The old route answered 404 here; the bridge reports it as a not-found error.
+        if (e instanceof BridgeError && e.code === "not-found") throw new Error(`fetch 404`);
+        throw e;
+      }
       const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
       const newId = `canvas-${nanoid(10)}`;
       const newName = `${j.name ?? "Untitled Canvas"} (copy)`;
-      const r2 = await fetch("/api/canvas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: newId, name: newName, state: JSON.stringify(state) }),
-      });
-      if (!r2.ok) throw new Error(`dup ${r2.status}`);
+      await api.canvas.save({ id: newId, name: newName, state: JSON.stringify(state) });
       get().pushActivity({
         kind: "canvas_saved",
         text: `Duplicated canvas as "${newName}".`,
@@ -1632,11 +1624,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     const node = get().nodes.find((n) => n.id === id);
     if (node?.kind === "terminal") {
       // Kill the live PTY on the server (fire-and-forget)
-      fetch("/api/terminal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ node: id, action: "kill" }),
-      }).catch(() => {});
+      api.terminal.kill({ node: id }).catch(() => {});
     }
     return set((s) => {
       if (node) {
@@ -2267,7 +2255,7 @@ function executeStep(
 }
 
 // ---- activity log persistence (debounced batch POST) ----
-// Maintains a pending buffer of entries and flushes to /api/logs every ~1.5s
+// Maintains a pending buffer of entries and flushes them via api.activity.record every ~1.5s
 // to avoid one HTTP request per activity event.
 let pendingLogs: ActivityEntry[] = [];
 let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2281,19 +2269,15 @@ function scheduleLogPersist(canvasId: string, entry: ActivityEntry) {
     logFlushTimer = null;
     if (batch.length === 0) return;
     try {
-      await fetch("/api/logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          canvasId,
-          entries: batch.map((e) => ({
-            kind: e.kind,
-            text: e.text,
-            nodeId: e.nodeId ?? "commander",
-            meta: e.meta,
-            ts: e.ts,
-          })),
-        }),
+      await api.activity.record({
+        canvasId,
+        entries: batch.map((e) => ({
+          kind: e.kind,
+          text: e.text,
+          nodeId: e.nodeId ?? "commander",
+          meta: e.meta,
+          ts: e.ts,
+        })),
       });
     } catch {
       /* ignore — best-effort persistence */

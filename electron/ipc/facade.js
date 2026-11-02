@@ -76,6 +76,27 @@ function buildFacade({ manifest, invoke, subscribe, legacy = {}, inspect, privat
     root.__ops = ops;
   }
 
+  // Core-RPC surface: the target's SECOND method set (129 CORE_METHODS / 21
+  // groups, registry kind "core"). The target's renderer never calls these
+  // directly — they serve CLI/remote/local-client principals over the bus
+  // server — but autumn's ported bus client lives in the renderer, so it
+  // reaches the same registry handlers through `window.autumn.__core`.
+  // (dunder = autumn's own transport member, like __ops/__bridge; generated
+  // from the manifest so the shape can never drift from the oracle.)
+  if (manifest.core && manifest.core.groups) {
+    if ("__core" in root) throw new Error("__core key collides");
+    const coreRoot = {};
+    for (const [group, ids] of Object.entries(manifest.core.groups)) {
+      const member = {};
+      for (const id of ids) {
+        const m = id.startsWith(`${group}.`) ? id.slice(group.length + 1) : id;
+        member[m] = (params) => invoke({ kind: "core", id, params: params ?? {} });
+      }
+      coreRoot[group] = member;
+    }
+    root.__core = coreRoot;
+  }
+
   return root;
 }
 

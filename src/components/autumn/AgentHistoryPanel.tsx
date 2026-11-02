@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
+import { api } from "@/lib/autumn/bridge";
 import type { AgentRunDuration } from "@/lib/autumn/types";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
-// Shape of a single persisted session-stop entry returned by /api/logs.
+// Shape of a single persisted session-stop entry returned by activity.snapshot.
 interface RunEntry {
   id: string;
   ts: number;
@@ -91,14 +92,15 @@ export function AgentHistoryPanel() {
     setLoading(true);
     setError(null);
     try {
-      const url =
-        `/api/logs?canvas=${encodeURIComponent(canvasId)}` +
-        `&node=${encodeURIComponent(agentHistoryFor)}` +
-        `&kind=agent_session_stop&limit=100`;
-      const r = await fetch(url, { method: "GET" });
-      if (!r.ok) throw new Error(`fetch ${r.status}`);
-      const j = await r.json();
-      const entries: RunEntry[] = (j.entries ?? []) as RunEntry[];
+      const res = await api.activity.snapshot<{
+        entries: RunEntry[];
+      }>({
+        canvas: canvasId,
+        node: agentHistoryFor,
+        kind: "agent_session_stop",
+        limit: 100,
+      });
+      const entries = (res.entries ?? []) as RunEntry[];
       // Sort newest first (entries come back ordered asc by createdAt).
       entries.sort((a, b) => b.ts - a.ts);
       setRuns(entries);

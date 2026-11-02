@@ -50,6 +50,14 @@ export interface AutumnBridge {
   // autumn's own dev tooling member: Bridge Inspector data.
   __bridge(): Promise<InspectorData>;
 
+  // Core-RPC transport (registry kind "core", 129 CORE_METHODS / 21 groups):
+  // the target's renderer never calls core methods directly, but autumn's
+  // ported bus client lives in the renderer — e.g. __core.bus.query({...}).
+  __core: Record<string, Record<string, BridgeCall>>;
+
+  // autumn-private ops (electron/ipc/private-ops.js) — no target equivalent.
+  __ops: Record<string, BridgeCall>;
+
   // Pre-facade compat members (removed in Wave 1 when the UI moves onto the facade).
   openFileDialog(opts?: {
     title?: string;
