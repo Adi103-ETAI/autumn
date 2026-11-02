@@ -178,6 +178,14 @@ export function createPty(opts: CreatePtyOptions): boolean {
         ? `\r\n\x1b[33m[${session.command} exited (${exitInfo}) — fallback to shell]\x1b[0m\r\n`
         : `\r\n\x1b[33m[shell exited (${exitInfo}) — press Restart or close window]\x1b[0m\r\n`;
       for (const sub of session.subscribers) sub(msg);
+      // Wave 1: notify terminal.onExit subscribers (backend handler pushes to renderer)
+      for (const cb of exitListeners) {
+        try {
+          cb(opts.nodeId, { exitCode: exitInfo, signal: signal ?? undefined, kind: session.kind });
+        } catch {
+          /* listener errors must not break pty teardown */
+        }
+      }
       const oldSubs = new Set(session.subscribers);
       const savedDir = opts.dir;
       const savedCols = opts.cols;
@@ -249,6 +257,22 @@ export function ptyExists(nodeId: string): boolean {
 
 export function ptyKind(nodeId: string): "shell" | "agent" | undefined {
   return sessions.get(nodeId)?.kind;
+}
+
+// Wave 1: exit subscription for the terminal.onExit facade push. pty.onExit is
+// otherwise internal to createPty — backend handlers need to observe exits
+// (agent fallback, shell exit) without going through the data stream.
+type ExitListener = (
+  nodeId: string,
+  info: { exitCode: number; signal?: number; kind: "shell" | "agent" },
+) => void;
+const exitListeners = new Set<ExitListener>();
+
+export function onPtyExit(cb: ExitListener): () => void {
+  exitListeners.add(cb);
+  return () => {
+    exitListeners.delete(cb);
+  };
 }
 
 export function ptyCount(): number {

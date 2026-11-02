@@ -5,11 +5,25 @@
 // via electron/ts-register.js, and every handler is registered in the shared
 // registry so it serves `window.autumn.*` calls through the generic registrar.
 //
-// Until the renderer flips off `fetch` (M2) and the routes are deleted (M3),
-// both hosts serve the same logic — Prisma/SQLite tolerates the transitional
-// dual access; M3 leaves main as the single owner.
+// Wave 1 (doc 31): the 13 `w1-*` namespace modules register alongside the
+// original 14 route handlers. Their shared dependency surface is W1Deps
+// (w1-deps.ts) — a superset of BackendDeps with fs/git/shell/clipboard/spawn.
 
 import { makeHandlers, type BackendDeps, type RegisteredHandler } from "./handlers";
+import type { W1Deps } from "./w1-deps";
+import { makeBusHandlers } from "./w1-bus";
+import { makeTerminalHandlers } from "./w1-terminal";
+import { makeCanvasHandlers } from "./w1-canvas";
+import { makeFilesHandlers } from "./w1-files";
+import { makeFsHandlers } from "./w1-fs";
+import { makeGitHandlers } from "./w1-git";
+import { makeDevServerHandlers } from "./w1-devserver";
+import { makeOsHandlers } from "./w1-os";
+import { makeArtifactsHandlers } from "./w1-artifacts";
+import { makeSessionsHandlers } from "./w1-sessions";
+import { makeTasksHandlers } from "./w1-tasks";
+import { makeAgentHandlers } from "./w1-agent";
+import { makePchHandlers } from "./w1-pch";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -31,9 +45,100 @@ function realDeps(emit: (id: string, payload: unknown) => void): BackendDeps {
   return { busStore, pty, spawner, db, personas: { PERSONA_BY_ID }, emit };
 }
 
+/** Wave-1 dependencies: BackendDeps + node/electron surfaces (doc 31). */
+function realW1Deps(emit: (id: string, payload: unknown) => void): W1Deps {
+  // `any` on purpose: the require()d modules are untyped at this boundary and
+  // are structurally W1Deps at runtime (Prisma has the Wave-1 models after
+  // `prisma generate`; pty exports onPtyExit/ptyExists/ptyKind — doc 31).
+  const base: any = realDeps(emit);
+  // electron modules are required lazily so headless tests never load them.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require("node:fs/promises");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { simpleGit } = require("simple-git");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const cp = require("node:child_process");
+  return {
+    ...base,
+    now: () => Date.now(),
+    fs,
+    git: (cwd: string) => simpleGit({ baseDir: cwd, binary: "git", maxConcurrentProcesses: 1 }),
+    spawn: {
+      spawn: (command, args, opts) =>
+        cp.spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], ...opts }),
+    },
+    shell: {
+      openPath: async (p: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { shell } = require("electron");
+        return shell.openPath(p);
+      },
+      showItemInFolder: (p: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { shell } = require("electron");
+        shell.showItemInFolder(p);
+      },
+      openExternal: async (url: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { shell } = require("electron");
+        await shell.openExternal(url);
+      },
+    },
+    clipboard: {
+      readText: () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { clipboard } = require("electron");
+        return clipboard.readText();
+      },
+      writeText: (text: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { clipboard } = require("electron");
+        clipboard.writeText(text);
+      },
+      readImage: () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { clipboard } = require("electron");
+        const img = clipboard.readImage();
+        return img && !img.isEmpty() ? img : null;
+      },
+    },
+    screen: {
+      capture: async () => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { desktopCapturer } = require("electron");
+        const sources = await desktopCapturer.getSources({
+          types: ["screen"],
+          thumbnailSize: { width: 1280, height: 720 },
+        });
+        const primary = sources[0];
+        return primary && primary.thumbnail && !primary.thumbnail.isEmpty()
+          ? primary.thumbnail.toDataURL()
+          : null;
+      },
+    },
+  };
+}
+
 export interface IpcApiLike {
   emit(win: unknown, id: string, payload: unknown): void;
 }
+
+/** Every Wave-1 module factory — kept in one list so registration stays atomic. */
+const W1_FACTORIES = [
+  makeBusHandlers,
+  makeTerminalHandlers,
+  makeCanvasHandlers,
+  makeFilesHandlers,
+  makeFsHandlers,
+  makeGitHandlers,
+  makeDevServerHandlers,
+  makeOsHandlers,
+  makeArtifactsHandlers,
+  makeSessionsHandlers,
+  makeTasksHandlers,
+  makeAgentHandlers,
+  makePchHandlers,
+];
 
 /**
  * Register every backend handler in the IPC registry.
@@ -45,7 +150,11 @@ export function registerBackend(
   opts: { getWindow: () => unknown },
 ): RegisteredHandler[] {
   const emit = (id: string, payload: unknown) => ipcApi.emit(opts.getWindow(), id, payload);
-  const handlers = makeHandlers(realDeps(emit));
+  const deps = realW1Deps(emit);
+  const handlers: RegisteredHandler[] = [
+    ...makeHandlers(deps),
+    ...W1_FACTORIES.flatMap((make) => make(deps)),
+  ];
   for (const h of handlers) {
     registry.register(h.kind, h.id, h.handler, {
       schema: h.schema,
@@ -55,5 +164,5 @@ export function registerBackend(
   return handlers;
 }
 
-export { makeHandlers };
-export type { BackendDeps, RegisteredHandler };
+export { makeHandlers, W1_FACTORIES };
+export type { BackendDeps, RegisteredHandler, W1Deps };
