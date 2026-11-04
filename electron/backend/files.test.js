@@ -205,7 +205,7 @@ test("files.readDocument parses JSON; invalid JSON -> bad-params; files.writeDoc
 test("pathForFile / assetPath reject traversal and relative paths", async () => {
   const { call } = build();
   assert.equal((await call("files.pathForFile", { path: "relative.txt" })).error.code, "bad-params");
-  assert.equal((await call("files.pathForFile", { path: "/tmp/ok.txt" })).path, "/tmp/ok.txt");
+  assert.equal((await call("files.pathForFile", { path: "/tmp/ok.txt" })).path, path.normalize("/tmp/ok.txt"));
   assert.equal((await call("files.assetPath", { name: "../../etc/passwd" })).error.code, "bad-params");
   assert.equal((await call("files.assetPath", { dir: "/tmp/assets", name: "img.png" })).path, path.join("/tmp/assets", "img.png"));
 });

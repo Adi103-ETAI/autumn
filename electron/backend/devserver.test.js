@@ -109,9 +109,12 @@ test("devServer.start: spawns a child, stores the record, emits 'starting'", asy
   assert.equal(command, "npm");
   assert.deepEqual(args, ["run", "dev"]);
   assert.equal(opts.cwd, "/projects/demo");
-  // env is MERGED over the parent env (PATH must survive for npm to resolve)
+  // env is MERGED over the parent env (PATH must survive for npm to resolve).
+  // Windows stores PATH as "Path" in some shells, so look it up case-insensitively.
   assert.equal(opts.env.PORT, "5173");
-  assert.equal(opts.env.PATH, process.env.PATH);
+  const pathKey = Object.keys(opts.env ?? {}).find((k) => k.toUpperCase() === "PATH");
+  assert.ok(pathKey, "PATH (any case) survived the env merge");
+  assert.equal(opts.env[pathKey], process.env.PATH ?? process.env.Path);
 
   // module-level record: real introspection data, the exact child we spawned
   const rec = devServers.get("/projects/demo");

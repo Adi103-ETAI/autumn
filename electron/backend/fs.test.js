@@ -94,9 +94,10 @@ test("fs.open: echoes the recorded path; bad input -> bad-params", async () => {
 
 test("fs.reveal: delegates to shell.showItemInFolder and echoes the path", async () => {
   const { call, state } = build();
-  const res = await call("fs.reveal", { path: "/tmp/some-file.txt" });
-  assert.deepEqual(res, { path: "/tmp/some-file.txt" });
-  assert.deepEqual(state.revealed, ["/tmp/some-file.txt"]); // fake shell was called once
+  const want = path.normalize("/tmp/some-file.txt");
+  const res = await call("fs.reveal", { path: want });
+  assert.deepEqual(res, { path: want });
+  assert.deepEqual(state.revealed, [want]); // fake shell was called once
 });
 
 test("fs.reveal: missing/relative/NUL/non-string path -> bad-params, shell untouched", async () => {
@@ -114,10 +115,10 @@ test("fs.reveal: missing/relative/NUL/non-string path -> bad-params, shell untou
 
 test("fs.pathForFile: sanitizes to a normalized absolute path", async () => {
   const { call } = build();
-  assert.deepEqual(await call("fs.pathForFile", { path: "/tmp/a//b/../c.txt" }), { path: "/tmp/a/c.txt" });
-  assert.deepEqual(await call("fs.pathForFile", { path: "/tmp/./x.txt" }), { path: "/tmp/x.txt" });
+  assert.deepEqual(await call("fs.pathForFile", { path: "/tmp/a//b/../c.txt" }), { path: path.normalize("/tmp/a/c.txt") });
+  assert.deepEqual(await call("fs.pathForFile", { path: "/tmp/./x.txt" }), { path: path.normalize("/tmp/x.txt") });
   // an already-clean path passes through unchanged
-  assert.deepEqual(await call("fs.pathForFile", { path: "/tmp/x.txt" }), { path: "/tmp/x.txt" });
+  assert.deepEqual(await call("fs.pathForFile", { path: path.normalize("/tmp/x.txt") }), { path: path.normalize("/tmp/x.txt") });
 });
 
 test("fs.pathForFile: relative/empty/NUL/non-string -> bad-params (schema agrees)", async () => {
@@ -161,7 +162,7 @@ test("registry dispatch: success wraps {ok:true,result}; errors pass through", a
   assert.ok(Array.isArray(places.result.places));
 
   const reveal = await reg.dispatch({ kind: "bridge", id: "fs.reveal", params: { path: "/tmp/z.txt" } });
-  assert.deepEqual(reveal, { ok: true, result: { path: "/tmp/z.txt" } });
+  assert.deepEqual(reveal, { ok: true, result: { path: path.normalize("/tmp/z.txt") } });
 
   const open = await reg.dispatch({ kind: "bridge", id: "fs.open", params: { path: "/tmp/o.txt" } });
   assert.deepEqual(open, { ok: true, result: { path: "/tmp/o.txt" } });

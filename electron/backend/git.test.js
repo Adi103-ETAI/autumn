@@ -29,6 +29,8 @@ async function initRepo(t, dir) {
   fs.writeFileSync(path.join(dir, "README.md"), "# test\n", "utf8");
   const g = simpleGit({ baseDir: dir });
   await g.init();
+  // Keep checkouts byte-stable on Windows (LF, not CRLF) so content assertions hold.
+  await g.addConfig("core.autocrlf", "false");
   await g.addConfig("user.email", "autumn@example.test");
   await g.addConfig("user.name", "autumn tests");
   await g.add(["."]);
@@ -229,6 +231,11 @@ test("not-a-repo for an existing absolute cwd -> not-found", async (t) => {
   assert.equal(res.error.code, "not-found");
 });
 
+// Git for Windows may print forward-slash paths, and the FS is case-insensitive;
+// compare normalized, lower-cased paths.
+const samePath = (a, b) =>
+  path.normalize(String(a)).toLowerCase() === path.normalize(String(b)).toLowerCase();
+
 test("worktrees.prepare/list/resolve/matchFolder/drop round-trip", async (t) => {
   const repo = mkTmp(t);
   await initRepo(t, repo);
@@ -240,15 +247,15 @@ test("worktrees.prepare/list/resolve/matchFolder/drop round-trip", async (t) => 
   t.after(() => fs.rmSync(wt, { recursive: true, force: true }));
 
   const list = await call("worktrees.list", { cwd: repo });
-  assert.ok(list.items.some((i) => i.path === wt), "worktree listed");
+  assert.ok(list.items.some((i) => samePath(i.path, wt)), "worktree listed");
 
   const resolve = await call("worktrees.resolve", { cwd: wt });
   assert.equal(resolve.inWorktree, true);
-  assert.equal(resolve.path, wt);
+  assert.ok(samePath(resolve.path, wt));
 
   const matched = await call("worktrees.matchFolder", { cwd: repo, folder: path.join(wt, ".") });
   assert.equal(matched.match, true);
-  assert.equal(matched.path, wt);
+  assert.ok(samePath(matched.path, wt));
 
   const noMatch = await call("worktrees.matchFolder", { cwd: repo, folder: repo + "-nowhere" });
   assert.equal(noMatch.match, false);
@@ -256,7 +263,7 @@ test("worktrees.prepare/list/resolve/matchFolder/drop round-trip", async (t) => 
   const drop = await call("worktrees.drop", { cwd: repo, path: wt });
   assert.equal(drop.ok, true);
   const after = await call("worktrees.list", { cwd: repo });
-  assert.ok(!after.items.some((i) => i.path === wt), "worktree dropped");
+  assert.ok(!after.items.some((i) => samePath(i.path, wt)), "worktree dropped");
 });
 
 test("worktrees.derive is a pure derivation (nothing is created)", async (t) => {
