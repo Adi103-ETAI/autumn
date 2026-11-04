@@ -5,7 +5,7 @@
 
 import { useAutumnStore } from "@/lib/autumn/store";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListChecks, Radio, BarChart3 } from "lucide-react";
+import { ListChecks, Radio, BarChart3, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function RightPanelTabs() {
@@ -26,10 +26,10 @@ export function RightPanelTabs() {
       <Tabs
         value={tab}
         onValueChange={(v) =>
-          setTab(v as "tasks" | "bus" | "stats")
+          setTab(v as "tasks" | "bus" | "stats" | "git")
         }
       >
-        <TabsList className="grid w-full grid-cols-3 bg-muted/30 h-9">
+        <TabsList className="grid w-full grid-cols-4 bg-muted/30 h-9">
           <TabsTrigger value="tasks" className="text-xs gap-1.5">
             <ListChecks className="size-3" />
             <span>Tasks</span>
@@ -64,6 +64,10 @@ export function RightPanelTabs() {
             >
               {totalRuns}
             </span>
+          </TabsTrigger>
+          <TabsTrigger value="git" className="text-xs gap-1.5">
+            <GitBranch className="size-3" />
+            <span>Git</span>
           </TabsTrigger>
         </TabsList>
       </Tabs>

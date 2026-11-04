@@ -206,6 +206,83 @@ export const api = {
     p as Params,
     timeoutMs,
   ),
+
+  /** Wave-1: git + worktrees (electron/backend/git.ts) — status/stage/commit/push/PR */
+  git: {
+    status: (p: { cwd: string }) =>
+      call<{
+        current: string | null;
+        tracking: string | null;
+        ahead: number;
+        behind: number;
+        isClean: boolean;
+        modified: string[];
+        created: string[];
+        deleted: string[];
+        renamed: string[];
+        staged: string[];
+        conflicted: string[];
+      }>("git.status", p as Params),
+    changes: (p: { cwd: string }) =>
+      call<{ files: { path: string; index: string; working_dir: string }[]; staged: string[]; unstaged: string[]; insertions: number; deletions: number; changed: number }>("git.changes", p as Params),
+    stage: (p: { cwd: string; paths?: string[] }) =>
+      call<{ ok: true; staged: string[] | "all" }>("git.stage", p as Params),
+    discard: (p: { cwd: string; paths: string[] }) =>
+      call<{ ok: true }>("git.discard", p as Params),
+    commitAll: (p: { cwd: string; message: string }) =>
+      call<{ ok: true; commit: string; branch: string }>("git.commitAll", p as Params),
+    push: (p: { cwd: string; remote?: string; branch?: string }) =>
+      call<{ ok: true; remote: string; branch: string | null }>("git.push", p as Params),
+    initializeEmpty: (p: { cwd: string }) =>
+      call<{ ok: true; initialized: boolean; already: boolean }>("git.initializeEmpty", p as Params),
+    prFacts: (p: { cwd: string; base?: string }) =>
+      call<{ supported: boolean; head?: string; base?: string; compareUrl?: string | null; github?: boolean }>("git.prFacts", p as Params),
+    openPr: (p: { cwd: string; base?: string }) =>
+      call<{ ok: true; url: string; head?: string; base?: string }>("git.openPr", p as Params),
+  },
+
+  /** Wave-1: devServer (electron/backend/devserver.ts) — child-process dev server */
+  devServer: {
+    start: (p: { cwd: string; command: string; args?: string[]; env?: Record<string, string>; port?: number; key?: string }) =>
+      call<{ key: string; pid: number | null; status: string }>("devServer.start", p as Params),
+    stop: (p: { cwd?: string; key?: string }) =>
+      call<{ ok: true; stopped: true }>("devServer.stop", p as Params),
+    lanHost: () => call<{ host: string | null }>("devServer.lanHost", {}),
+  },
+
+  /** Wave-1: artifacts (electron/backend/artifacts.ts) — persisted run outputs */
+  artifacts: {
+    save: (p: { canvasId: string; name: string; kind?: string; content?: string; path?: string; meta?: unknown }) =>
+      call<{ id: string; canvasId: string; name: string; kind: string; version: number }>("artifacts.save", p as Params),
+    get: (p: { artifactId: string }) =>
+      call<{ id: string; name: string; kind: string; content: string | null; version: number; retired: boolean }>("artifacts.get", p as Params),
+    catalog: (p: { canvasId?: string; kind?: string } = {}) =>
+      call<{ items: { id: string; name: string; kind: string; version: number; updatedAt: number }[] }>("artifacts.catalog", p as Params),
+  },
+
+  /** Wave-1: tasks steer (electron/backend/tasks.ts) */
+  tasks: {
+    steer: (p: { canvasId: string; task: string; personaId?: string; harness?: string }) =>
+      call<{ taskId: string; text: string; simulated?: boolean; fellBack?: boolean; error?: string }>("tasks.steer", p as Params),
+  },
+
+  /** Wave-1: files (electron/backend/files.ts) */
+  files: {
+    list: (p: { dir: string }) =>
+      call<{ dir: string; items: { name: string; path: string; type: string }[] }>("files.list", p as Params),
+    read: (p: { path: string }) =>
+      call<{ path: string; content: string }>("files.read", p as Params),
+    write: (p: { path: string; content: string }) =>
+      call<{ ok: true; path: string; bytes: number }>("files.write", p as Params),
+  },
+
+  /** Wave-1: sessions (electron/backend/sessions.ts) */
+  sessions: {
+    read: (p: { sessionId: string }) =>
+      call<{ id: string; engine: string; title: string; messages: unknown[] }>("sessions.read", p as Params),
+    importedList: (p: { canvasId: string }) =>
+      call<{ sessions: { id: string; title: string; engine: string }[] }>("sessions.importedList", p as Params),
+  },
 };
 
 export default api;

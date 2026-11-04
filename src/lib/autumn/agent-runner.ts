@@ -148,6 +148,22 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     console.error("[runAgent] streamText failed:", err);
   }
 
+  // 4b) Persist the run output as an Artifact (Wave-1 artifacts.*). Best-effort:
+  //     the agent run must never fail because the artifact store did.
+  try {
+    if (text.trim() && !errored) {
+      await api.artifacts.save({
+        canvasId: useAutumnStore.getState().canvasId,
+        name: `${persona.name} — ${finalTask.slice(0, 60)}`,
+        content: text,
+        kind: "text",
+        meta: { nodeId, personaId: persona.id, task: finalTask },
+      });
+    }
+  } catch (err) {
+    console.warn("[runAgent] artifact save failed:", err);
+  }
+
   store.updateAgentMessage(nodeId, msgId, { streaming: false });
   store.setAgentStatus(nodeId, errored ? "error" : "done", errored ? "Backend unreachable — queued." : "Finished — awaiting next task.");
   store.pushActivity({
