@@ -334,7 +334,7 @@ export interface AutumnStore {
   isAgentRunning: Record<string, boolean>; // nodeId -> running
 
   // ui
-  rightPanelTab: "commander" | "tasks" | "bus" | "stats";
+  rightPanelTab: "commander" | "tasks" | "bus" | "stats" | "git";
   isListening: boolean; // voice
   showHelp: boolean;
   commandHistory: string[]; // recent user commands for quick-chips
@@ -390,7 +390,7 @@ export interface AutumnStore {
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
-  setRightPanelTab: (t: "commander" | "tasks" | "bus" | "stats") => void;
+  setRightPanelTab: (t: "commander" | "tasks" | "bus" | "stats" | "git") => void;
   setListening: (v: boolean) => void;
   setShowHelp: (v: boolean) => void;
   setSettingsNode: (id: string | null) => void;

@@ -24,6 +24,7 @@ import { CommandPalette } from "@/components/autumn/CommandPalette";
 import { ExportImportDialog } from "@/components/autumn/ExportImportDialog";
 import { ActivityTimeline } from "@/components/autumn/ActivityTimeline";
 import { RightPanelTabs } from "@/components/autumn/RightPanelTabs";
+import { GitPanel } from "@/components/autumn/GitPanel";
 import { NodeSearchOverlay } from "@/components/autumn/NodeSearchOverlay";
 import { ShortcutHelpOverlay } from "@/components/autumn/ShortcutHelpOverlay";
 import { AgentHistoryPanel } from "@/components/autumn/AgentHistoryPanel";
@@ -36,7 +37,7 @@ import { VoiceSetupModal } from "@/components/autumn/VoiceSetupModal";
 import { AiFinderOverlay } from "@/components/autumn/AiFinderOverlay";
 import { AppsIntegrationModal } from "@/components/autumn/AppsIntegrationModal";
 import { TipCard } from "@/components/autumn/TipCard";
-import { PanelRightClose, PanelRightOpen, ListChecks, Radio, BarChart3 } from "lucide-react";
+import { PanelRightClose, PanelRightOpen, ListChecks, Radio, BarChart3, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
@@ -162,6 +163,8 @@ export default function Home() {
                   <TaskBoard />
                 ) : tab === "stats" ? (
                   <StatsDashboard />
+                ) : tab === "git" ? (
+                  <GitPanel />
                 ) : (
                   <BusTrafficPanel />
                 )}
@@ -175,6 +178,7 @@ export default function Home() {
                 { id: "tasks", label: "Tasks", icon: ListChecks },
                 { id: "bus", label: "Bus", icon: Radio },
                 { id: "stats", label: "Stats", icon: BarChart3 },
+                { id: "git", label: "Git", icon: GitBranch },
               ] as const).map((t) => {
                 const Icon = t.icon;
                 const isActive = tab === t.id;
