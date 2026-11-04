@@ -11,19 +11,19 @@
 
 import { makeHandlers, type BackendDeps, type RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
-import { makeBusHandlers } from "./w1-bus";
-import { makeTerminalHandlers } from "./w1-terminal";
-import { makeCanvasHandlers } from "./w1-canvas";
-import { makeFilesHandlers } from "./w1-files";
-import { makeFsHandlers } from "./w1-fs";
-import { makeGitHandlers } from "./w1-git";
-import { makeDevServerHandlers } from "./w1-devserver";
-import { makeOsHandlers } from "./w1-os";
-import { makeArtifactsHandlers } from "./w1-artifacts";
-import { makeSessionsHandlers } from "./w1-sessions";
-import { makeTasksHandlers } from "./w1-tasks";
-import { makeAgentHandlers } from "./w1-agent";
-import { makePchHandlers } from "./w1-pch";
+import { makeBusHandlers } from "./bus";
+import { makeTerminalHandlers } from "./terminal";
+import { makeCanvasHandlers } from "./canvas";
+import { makeFilesHandlers } from "./files";
+import { makeFsHandlers } from "./fs";
+import { makeGitHandlers } from "./git";
+import { makeDevServerHandlers } from "./devserver";
+import { makeOsHandlers } from "./os";
+import { makeArtifactsHandlers } from "./artifacts";
+import { makeSessionsHandlers } from "./sessions";
+import { makeTasksHandlers } from "./tasks";
+import { makeAgentHandlers } from "./agent";
+import { makePchHandlers } from "./pch";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
