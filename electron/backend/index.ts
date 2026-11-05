@@ -5,9 +5,11 @@
 // via electron/ts-register.js, and every handler is registered in the shared
 // registry so it serves `window.autumn.*` calls through the generic registrar.
 //
-// Wave 1 (doc 31): the 13 `w1-*` namespace modules register alongside the
-// original 14 route handlers. Their shared dependency surface is W1Deps
-// (w1-deps.ts) — a superset of BackendDeps with fs/git/shell/clipboard/spawn.
+// Wave 1 (doc 31) + Wave 2 platform milestones (doc 32): the 13 `*.ts`
+// namespace modules register alongside the original 14 route handlers. Their
+// shared dependency surface is W1Deps (w1-deps.ts) — a superset of BackendDeps
+// with fs/git/shell/clipboard/spawn; Wave-2 platform modules additionally use
+// the flat-JSON store helper (store.ts).
 
 import { makeHandlers, type BackendDeps, type RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
@@ -24,6 +26,11 @@ import { makeSessionsHandlers } from "./sessions";
 import { makeTasksHandlers } from "./tasks";
 import { makeAgentHandlers } from "./agent";
 import { makePchHandlers } from "./pch";
+import { makeSettingsHandlers } from "./settings";
+import { makeDiagnosticsHandlers } from "./diagnostics";
+import { makeResourcesHandlers } from "./resources";
+import { makeNavHandlers } from "./nav";
+import { makeElementHandlers } from "./element";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -140,6 +147,9 @@ const W1_FACTORIES = [
   makePchHandlers,
 ];
 
+/** Every Wave-2 (platform) module factory. Wave-1 factories register alongside. */
+const W2_FACTORIES = [makeSettingsHandlers, makeDiagnosticsHandlers, makeResourcesHandlers, makeNavHandlers, makeElementHandlers];
+
 /**
  * Register every backend handler in the IPC registry.
  * @param ipcApi  result of attachIpcMain() (provides event pushes)
@@ -154,6 +164,7 @@ export function registerBackend(
   const handlers: RegisteredHandler[] = [
     ...makeHandlers(deps),
     ...W1_FACTORIES.flatMap((make) => make(deps)),
+    ...W2_FACTORIES.flatMap((make) => make(deps)),
   ];
   for (const h of handlers) {
     registry.register(h.kind, h.id, h.handler, {
@@ -164,5 +175,6 @@ export function registerBackend(
   return handlers;
 }
 
-export { makeHandlers, W1_FACTORIES };
+// Wave 1 factories export: the contract test registers the wave-2 set too.
+export { makeHandlers, W1_FACTORIES, W2_FACTORIES };
 export type { BackendDeps, RegisteredHandler, W1Deps };
