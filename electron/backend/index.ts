@@ -5,11 +5,10 @@
 // via electron/ts-register.js, and every handler is registered in the shared
 // registry so it serves `window.autumn.*` calls through the generic registrar.
 //
-// Wave 1 (doc 31) + Wave 2 platform milestones (doc 32): the 13 `*.ts`
-// namespace modules register alongside the original 14 route handlers. Their
-// shared dependency surface is W1Deps (w1-deps.ts) — a superset of BackendDeps
-// with fs/git/shell/clipboard/spawn; Wave-2 platform modules additionally use
-// the flat-JSON store helper (store.ts).
+// Wave-2 (doc 32): the 9 platform milestone handlers (settings/diagnostics/resources/nav/
+// element/runtime/wallpapers/cues/skills) register alongside the Wave-1 factories and the
+// original 14 route handlers. Their shared dependency surface is W1Deps (w1-deps.ts); the
+// platform modules additionally use the flat-JSON store helper (store.ts).
 
 import { makeHandlers, type BackendDeps, type RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
@@ -31,6 +30,10 @@ import { makeDiagnosticsHandlers } from "./diagnostics";
 import { makeResourcesHandlers } from "./resources";
 import { makeNavHandlers } from "./nav";
 import { makeElementHandlers } from "./element";
+import { makeRuntimeHandlers } from "./runtime";
+import { makeWallpapersHandlers } from "./wallpapers";
+import { makeCuesHandlers } from "./cues";
+import { makeSkillsHandlers } from "./skills";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -148,7 +151,17 @@ const W1_FACTORIES = [
 ];
 
 /** Every Wave-2 (platform) module factory. Wave-1 factories register alongside. */
-const W2_FACTORIES = [makeSettingsHandlers, makeDiagnosticsHandlers, makeResourcesHandlers, makeNavHandlers, makeElementHandlers];
+const W2_FACTORIES = [
+  makeSettingsHandlers,
+  makeDiagnosticsHandlers,
+  makeResourcesHandlers,
+  makeNavHandlers,
+  makeElementHandlers,
+  makeRuntimeHandlers,
+  makeWallpapersHandlers,
+  makeCuesHandlers,
+  makeSkillsHandlers,
+];
 
 /**
  * Register every backend handler in the IPC registry.
