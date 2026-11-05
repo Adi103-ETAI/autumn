@@ -1,12 +1,14 @@
 // Autumn — Commander panel (right side).
-// The universal chat + voice agent. Sends commands to /api/commander,
-// receives a DO_ACTIONS plan, and executes it against the canvas store.
+// The universal chat + voice agent. Sends commands through the bridge's
+// commander op, receives a DO_ACTIONS plan, and executes it against the
+// canvas store.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { runAgentForNode } from "@/lib/autumn/agent-runner";
+import { call, BridgeError } from "@/lib/autumn/bridge";
 import type { CanvasSnapshot, CommanderResult } from "@/lib/autumn/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -119,13 +121,10 @@ export function CommanderPanel() {
 
     // Guard the request with a client-side timeout so the "thinking"
     // indicator can never spin forever if the backend stalls.
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 30_000);
     try {
-      const r = await fetch("/api/commander", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const plan = await call<CommanderResult>(
+        "__ops.commander",
+        {
           command: cmd,
           canvas: buildSnapshot(),
           lastTurn:
@@ -133,11 +132,9 @@ export function CommanderPanel() {
               ? messages[messages.length - 1].text
               : undefined,
           recentActions,
-        }),
-        signal: ctrl.signal,
-      });
-      if (!r.ok) throw new Error(`commander ${r.status}`);
-      const plan = (await r.json()) as CommanderResult;
+        },
+        30_000,
+      );
       updateMessage(pendingId, { text: renderPlanText(plan), plan, pending: false });
 
       if (plan.kind === "steps") {
@@ -150,7 +147,8 @@ export function CommanderPanel() {
       }
     } catch (err) {
       console.error(err);
-      const aborted = err instanceof DOMException && err.name === "AbortError";
+      const aborted =
+        err instanceof BridgeError && err.code === "timeout";
       updateMessage(pendingId, {
         text: aborted
           ? `⚠️ The Commander took too long to respond. Please try again.`
@@ -159,7 +157,6 @@ export function CommanderPanel() {
         error: String(err),
       });
     } finally {
-      clearTimeout(timeout);
       setThinking(false);
     }
   };
@@ -515,7 +512,7 @@ export function CommanderPanel() {
   );
 }
 
-function renderPlanText(plan: CommanderResult): string {
+export function renderPlanText(plan: CommanderResult): string {
   if (plan.kind === "ask") return plan.ask;
   return plan.say;
 }

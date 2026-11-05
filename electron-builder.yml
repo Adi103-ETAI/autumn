@@ -1,0 +1,47 @@
+# Autumn — Electron packaging (electron-builder).
+# Build: npm run dist  (runs next build, then electron-builder --linux)
+# Output: dist/  →  Autumn-*.deb  +  Autumn-*.AppImage
+
+appId: com.autumn.desktop
+productName: Autumn
+copyright: Copyright © 2026 Autumn
+
+directories:
+  output: dist
+  buildResources: electron
+
+files:
+  - "dist/**/*"
+  - "electron/**/*"
+  - "prisma/**/*"
+  - "public/**/*"
+  # node-pty + @prisma/client are external native modules; copy them in.
+  - "node_modules/node-pty/**/*"
+  - "node_modules/@prisma/**/*"
+  - "node_modules/.prisma/**/*"
+  - "package.json"
+
+# The Next standalone server is produced by `next build` (output: "standalone")
+# and copied into dist/ by the `build` script. Electron's main.js spawns
+# `next start` on it — see electron/main.js.
+extraResources:
+  - from: .next/standalone
+    to: standalone
+
+linux:
+  target:
+    - deb
+    - AppImage
+  category: Development
+  maintainer: Autumn <autumn@example.com>
+  # Desktop file metadata.
+  desktop:
+    Name: Autumn
+    Comment: Multi-agent coding canvas (real agents + bus)
+    Categories: Development;IDE;
+
+# Keep the AppImage/portable build self-contained.
+electronDownload:
+  mirror: https://github.com/electron/electron/releases/download
+
+publish: null

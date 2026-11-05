@@ -49,7 +49,6 @@ export function BackgroundPicker() {
             }
           />
           <Mountain className="size-3.5 text-amber-400 transition-transform group-hover:scale-110" />
-          <span className="hidden sm:inline font-medium">{current.label}</span>
         </button>
       </PopoverTrigger>
 

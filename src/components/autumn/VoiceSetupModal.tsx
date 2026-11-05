@@ -4,7 +4,7 @@
 //   2. Test it     — live Web Speech API recognition with interim transcript
 //   3. Done        — enables voice (store.voiceEnabled) and closes the modal
 // Uses shadcn/ui `Dialog`, Framer Motion step transitions, amber accents.
-// "Powered by on-device speech recognition" (October uses NVIDIA Parakeet —
+// "Powered by on-device speech recognition" (Autumn uses NVIDIA Parakeet —
 // we use the browser's built-in Web Speech API).
 
 "use client";

@@ -70,6 +70,13 @@ server.log
 
 # Local SQLite database + db runtime files
 /db/
+prisma/db/
+
+# Electron build output (deb/AppImage/asar)
+/dist/
+/electron/dist/
+*.appimage
+/release/
 
 # Downloads (QA screenshots, fetched assets)
 /download/
@@ -92,9 +99,11 @@ worklog.md
 # Sandbox gateway config
 Caddyfile
 
-# z-ai config example (sandbox-specific)
-.z-ai-config.example
+# z-ai config example (sandbox-specific) - removed with z-ai-web-dev-sdk
 
 # Root-level scratch images (unused by the app)
 /architecture.png
 /sea.png
+tipcard-sticky-verify.png
+sticky-verify.png
+sticky-fresh.png

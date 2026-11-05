@@ -1,14 +1,16 @@
-// Autumn — Floating canvas toolbar.
-// Bottom-center overlay on the canvas with quick actions: arrange, fit, clear,
-// live node/edge counter, zoom level, multi-select bulk actions, QuickSpawnMenu
-// trigger, select all, and group indicator.
+// Autumn — Floating canvas toolbar (app-tile dock).
+// Bottom-center pill with 7 colorful app-tiles, mirroring the reference design:
+//   mic · agents(app-grid) · browser(compass) · video-editor · mobile-preview · terminal · sticky-note
+// Each tile is a gradient rounded square with a white glyph + colored glow.
+// The app-grid (agents) tile opens the AgentPickerPanel — an Autumn-style grid
+// popup with CODING AGENTS + APPS sections. Utility actions (search/arrange/fit/
+// clear/stats) were removed per the plan — fit-view already lives in the
+// MinimapPanel below the minimap.
 
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -16,312 +18,234 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Mic,
   LayoutGrid,
-  Maximize2,
-  Trash2,
-  Bot,
-  MonitorSmartphone,
+  Compass,
+  Clapperboard,
+  Smartphone,
+  TerminalSquare,
   StickyNote,
-  Search,
-  ZoomIn,
-  Copy,
-  CheckSquare,
   ChevronDown,
 } from "lucide-react";
-import { useReactFlow, useStore } from "@xyflow/react";
-import type { NodeKind } from "@/lib/autumn/types";
-import { QuickSpawnMenu } from "./QuickSpawnMenu";
-import { BackgroundPicker } from "./BackgroundPicker";
+import { AgentPickerPanel } from "./AgentPickerPanel";
 import { cn } from "@/lib/utils";
 
-// ── Node kind group indicator ────────────────────────────────────────────────
+// ── Tile definitions ────────────────────────────────────────────────────────
+// Each tile carries its own gradient + glow color so the dock reads as a row of
+// distinct colorful app icons (like the reference's bottom dock).
 
-const KIND_META: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
-  chat: { label: "Agents", color: "bg-fuchsia-400", icon: Bot },
-  terminal: { label: "Terminals", color: "bg-emerald-400", icon: Bot },
-  screen: { label: "Screens", color: "bg-sky-400", icon: MonitorSmartphone },
-  sticky: { label: "Notes", color: "bg-violet-400", icon: StickyNote },
-};
-
-function GroupIndicator() {
-  const nodes = useAutumnStore((s) => s.nodes);
-  const counts: Record<string, number> = {};
-  for (const n of nodes) {
-    counts[n.kind] = (counts[n.kind] ?? 0) + 1;
-  }
-  const kinds = Object.entries(counts).filter(([kind]) => KIND_META[kind]);
-
-  if (kinds.length === 0) return null;
-
-  return (
-    <div className="flex items-center gap-1">
-      {kinds.map(([kind, count]) => {
-        const meta = KIND_META[kind];
-        if (!meta) return null;
-        return (
-          <span key={kind} className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
-            <span className={cn("size-1.5 rounded-full", meta.color)} />
-            {count}
-          </span>
-        );
-      })}
-    </div>
-  );
+interface TileDef {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Tailwind gradient classes for the tile background. */
+  gradient: string;
+  /** Hex/oklch glow color used in the box-shadow. */
+  glow: string;
 }
 
+const TILES: TileDef[] = [
+  {
+    key: "voice",
+    label: "Voice input",
+    icon: Mic,
+    gradient: "from-rose-500 to-pink-600",
+    glow: "oklch(0.65 0.23 12)",
+  },
+  {
+    key: "agents",
+    label: "Coding agents",
+    icon: LayoutGrid,
+    gradient: "from-violet-500 to-fuchsia-600",
+    glow: "oklch(0.62 0.22 300)",
+  },
+  {
+    key: "browser",
+    label: "Browser",
+    icon: Compass,
+    gradient: "from-sky-500 to-blue-600",
+    glow: "oklch(0.62 0.2 240)",
+  },
+  {
+    key: "video",
+    label: "Video editor",
+    icon: Clapperboard,
+    gradient: "from-slate-700 to-slate-900",
+    glow: "oklch(0.45 0.02 260)",
+  },
+  {
+    key: "mobile",
+    label: "Mobile preview",
+    icon: Smartphone,
+    gradient: "from-emerald-500 to-teal-600",
+    glow: "oklch(0.68 0.17 165)",
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    icon: TerminalSquare,
+    gradient: "from-zinc-700 to-zinc-900",
+    glow: "oklch(0.42 0.02 145)",
+  },
+  {
+    key: "note",
+    label: "Sticky note",
+    icon: StickyNote,
+    gradient: "from-amber-400 to-orange-500",
+    glow: "oklch(0.78 0.16 70)",
+  },
+];
+
 export function CanvasToolbar() {
-  const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
-  const clearCanvas = useAutumnStore((s) => s.clearCanvas);
   const addNode = useAutumnStore((s) => s.addNode);
-  const nodeCount = useAutumnStore((s) => s.nodes.length);
-  const edgeCount = useAutumnStore((s) => s.edges.length);
-  const selectedNodeIds = useAutumnStore((s) => s.selectedNodeIds);
-  const removeNodes = useAutumnStore((s) => s.removeNodes);
-  const duplicateNode = useAutumnStore((s) => s.duplicateNode);
-  const clearSelection = useAutumnStore((s) => s.clearSelection);
-  const setShowNodeSearch = useAutumnStore((s) => s.setShowNodeSearch);
-  const selectAllNodes = useAutumnStore((s) => s.selectAllNodes);
-  const nodes = useAutumnStore((s) => s.nodes);
-  const { fitView } = useReactFlow();
-  // Subscribe to the react-flow viewport transform for a reactive zoom reading.
-  const zoom = useStore((s) => s.transform[2]);
 
-  // QuickSpawnMenu open state
-  const [spawnMenuOpen, setSpawnMenuOpen] = useState(false);
-  const spawnRef = useRef<HTMLDivElement>(null);
+  // Voice state — mirrors VoiceMicButton's handleClick logic so the dock's mic
+  // tile behaves identically to the floating mic button.
+  const voiceEnabled = useAutumnStore((s) => s.voiceEnabled);
+  const setVoiceSetupOpen = useAutumnStore((s) => s.setVoiceSetupOpen);
+  const isListening = useAutumnStore((s) => s.isListening);
+  const setListening = useAutumnStore((s) => s.setListening);
+  const setRightPanelTab = useAutumnStore((s) => s.setRightPanelTab);
 
-  // Close spawn menu on outside click
+  // AgentPickerPanel open state (triggered by the app-grid agents tile).
+  // Opens the Autumn-style grid popup with CODING AGENTS + APPS sections.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Close picker on outside click / Esc.
   useEffect(() => {
-    if (!spawnMenuOpen) return;
+    if (!pickerOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (spawnRef.current && !spawnRef.current.contains(e.target as Node)) {
-        setSpawnMenuOpen(false);
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
       }
     };
     const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSpawnMenuOpen(false);
+      if (e.key === "Escape") setPickerOpen(false);
     };
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onEsc);
+    // Defer by a tick so the opening click doesn't immediately close it.
+    const t = setTimeout(() => {
+      window.addEventListener("mousedown", onDown);
+      window.addEventListener("keydown", onEsc);
+    }, 0);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onEsc);
     };
-  }, [spawnMenuOpen]);
+  }, [pickerOpen]);
 
-  const hasMulti = selectedNodeIds.length > 0;
-  const zoomPct = Math.round(zoom * 100);
+  // ── Tile click handlers ──────────────────────────────────────────────────
+  const handleMicClick = () => {
+    if (!voiceEnabled) {
+      setVoiceSetupOpen(true);
+      return;
+    }
+    // Toggle listening. The actual recognition start/stop lives in the
+    // VoiceMicButton component (which we keep mounted for its Web Speech API
+    // wiring); here we just flip the flag it reacts to.
+    if (isListening) {
+      setListening(false);
+    } else {
+      setListening(true);
+      // Ensure the Commander panel is visible so the transcript lands somewhere.
+      setRightPanelTab("commander");
+    }
+  };
+
+  const handleAgentsClick = () => setPickerOpen((v) => !v);
+  const handleBrowserClick = () => addNode({ kind: "youtube" });
+  const handleVideoClick = () => addNode({ kind: "remotion" });
+  const handleMobileClick = () =>
+    addNode({ kind: "screen", data: { screenKind: "phone" } });
+  const handleTerminalClick = () => addNode({ kind: "terminal" });
+  const handleNoteClick = () => addNode({ kind: "sticky" });
+
+  const handlers: Record<string, () => void> = {
+    voice: handleMicClick,
+    agents: handleAgentsClick,
+    browser: handleBrowserClick,
+    video: handleVideoClick,
+    mobile: handleMobileClick,
+    terminal: handleTerminalClick,
+    note: handleNoteClick,
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
-      <ZoomChip />
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-full border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-1.5 shadow-2xl" style={{ boxShadow: "0 8px 32px -8px oklch(0.78 0.18 55 / 0.1), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)" }}>
-        {/* Quick add — agent button triggers QuickSpawnMenu */}
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border/40" ref={spawnRef}>
-          <div className="relative">
-            <ToolbarButton
-              label="Add agent"
-              onClick={() => setSpawnMenuOpen((v) => !v)}
-              icon={Bot}
-              color="text-fuchsia-400"
-              extraElement={
-                <ChevronDown className="size-2.5 text-fuchsia-400/70" />
-              }
-            />
-            <QuickSpawnMenu
-              open={spawnMenuOpen}
-              onClose={() => setSpawnMenuOpen(false)}
-            />
-          </div>
-          <ToolbarButton
-            label="Add screen"
-            onClick={() => addNode({ kind: "screen" })}
-            icon={MonitorSmartphone}
-            color="text-sky-400"
-          />
-          <ToolbarButton
-            label="Add note"
-            onClick={() => addNode({ kind: "sticky" })}
-            icon={StickyNote}
-            color="text-amber-400"
-          />
-        </div>
+      <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-2xl border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-2 shadow-2xl"
+        style={{
+          boxShadow:
+            "0 8px 32px -8px oklch(0.78 0.18 55 / 0.12), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)",
+        }}
+      >
+        {TILES.map((tile) => {
+          const Icon = tile.icon;
+          const isAgents = tile.key === "agents";
+          const isVoice = tile.key === "voice";
+          const active = (isVoice && isListening) || (isAgents && pickerOpen);
 
-        {/* Canvas actions */}
-        <div className="flex items-center gap-0.5 px-1 border-r border-border/40">
-          <ToolbarButton
-            label="Search nodes (⌘F)"
-            onClick={() => setShowNodeSearch(true)}
-            icon={Search}
-            color="text-emerald-400"
-          />
-          <ToolbarButton
-            label="Select all (⌘A)"
-            onClick={selectAllNodes}
-            icon={CheckSquare}
-            color="text-sky-400"
-          />
-          <ToolbarButton
-            label="Arrange nodes"
-            onClick={arrangeNodes}
-            icon={LayoutGrid}
-            color="text-emerald-400"
-          />
-          <ToolbarButton
-            label="Fit view"
-            onClick={() => fitView({ padding: 0.2, duration: 400 })}
-            icon={Maximize2}
-            color="text-amber-400"
-          />
-          {/* Scenic background picker */}
-          <BackgroundPicker />
-        </div>
-
-        {/* Multi-select bulk actions (only shown when something is selected) */}
-        {hasMulti && (
-          <div className="flex items-center gap-0.5 px-1 border-r border-border/40 fade-in-up">
-            <div className="px-1.5 flex items-center gap-1 text-[10px] text-sky-400">
-              <Badge
-                variant="outline"
-                className="h-5 px-1.5 text-[9px] border-sky-400/40 text-sky-300"
-              >
-                {selectedNodeIds.length} selected
-              </Badge>
-            </div>
-            <ToolbarButton
-              label="Duplicate all selected"
-              onClick={() => {
-                const store = useAutumnStore.getState();
-                const ids = [...store.selectedNodeIds];
-                ids.forEach((id) => store.duplicateNode(id));
+          const tileEl = (
+            <button
+              key={tile.key}
+              type="button"
+              onClick={handlers[tile.key]}
+              aria-label={tile.label}
+              aria-pressed={active}
+              className={cn(
+                "group relative flex size-10 items-center justify-center rounded-xl",
+                "bg-gradient-to-br transition-all duration-150",
+                tile.gradient,
+                "hover:scale-105 active:scale-95",
+                active && "ring-2 ring-white/70 ring-offset-2 ring-offset-card",
+              )}
+              style={{
+                boxShadow: `0 4px 14px -4px ${tile.glow}80, inset 0 1px 0 0 rgb(255 255 255 / 0.15)`,
               }}
-              icon={Copy}
-              color="text-amber-300"
-            />
-            <ToolbarButton
-              label="Remove all selected"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Remove ${selectedNodeIds.length} selected node${
-                      selectedNodeIds.length === 1 ? "" : "s"
-                    }?`,
-                  )
-                ) {
-                  removeNodes(selectedNodeIds);
-                }
-              }}
-              icon={Trash2}
-              color="text-rose-400"
-            />
-            <ToolbarButton
-              label="Clear selection"
-              onClick={clearSelection}
-              icon={Maximize2}
-              color="text-muted-foreground"
-            />
-          </div>
-        )}
+            >
+              {/* Glossy highlight (top-left sheen) */}
+              <span
+                className="pointer-events-none absolute inset-0 rounded-xl opacity-60"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgb(255 255 255 / 0.25) 0%, rgb(255 255 255 / 0) 45%)",
+                }}
+              />
+              <Icon className="relative size-5 text-white drop-shadow-sm" />
+              {/* Active-listening pulse for the mic */}
+              {isVoice && isListening && (
+                <span className="absolute -right-0.5 -top-0.5 flex size-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-300 opacity-75" />
+                  <span className="relative inline-flex size-2.5 rounded-full bg-rose-500" />
+                </span>
+              )}
+              {/* Chevron indicator on the agents tile (opens a menu) */}
+              {isAgents && (
+                <ChevronDown className="absolute -bottom-0.5 size-2.5 text-white/80" />
+              )}
+            </button>
+          );
 
-        {/* Danger */}
-        <div className="flex items-center gap-0.5 pl-1">
-          <ToolbarButton
-            label="Clear canvas"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Clear all nodes and edges from the canvas? This cannot be undone.",
-                )
-              ) {
-                clearCanvas();
-              }
-            }}
-            icon={Trash2}
-            color="text-rose-400"
+          return (
+            <Tooltip key={tile.key}>
+              <TooltipTrigger asChild>{tileEl}</TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {tile.label}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+
+        {/* AgentPickerPanel — Autumn-style grid popup anchored to the
+            app-grid agents tile. Shows CODING AGENTS + APPS in a 4-col grid. */}
+        <div ref={pickerRef} className="relative">
+          <AgentPickerPanel
+            open={pickerOpen}
+            onClose={() => setPickerOpen(false)}
           />
-        </div>
-
-        {/* Stats + zoom + group indicator */}
-        <div className="flex items-center gap-2 pl-2 pr-1 border-l border-border/40 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-fuchsia-400" />
-            {nodeCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="size-1.5 rounded-full bg-violet-400" />
-            {edgeCount}
-          </span>
-          <GroupIndicator />
-          <span className="flex items-center gap-1 font-mono text-[10px]">
-            <ZoomIn className="size-2.5 text-muted-foreground/70" />
-            {zoomPct}%
-          </span>
         </div>
       </div>
     </TooltipProvider>
   );
 }
-
-function ToolbarButton({
-  label,
-  onClick,
-  icon: Icon,
-  color,
-  extraElement,
-}: {
-  label: string;
-  onClick: () => void;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  extraElement?: React.ReactNode;
-}) {
-  return (
-    <Tooltip side="top">
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 rounded-full hover:bg-accent/60 transition-colors"
-          onClick={onClick}
-        >
-          <Icon className={`size-4 ${color}`} />
-          {extraElement}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-// ZoomChip — small bottom-left chip that shows the current zoom level as a
-// percentage. Click to reset to 100%. Reactively subscribes to the react-flow
-// viewport transform so it updates the moment the user zooms.
-function ZoomChip() {
-  const zoom = useStore((s) => s.transform[2]);
-  const { zoomTo } = useReactFlow();
-  const zoomPct = Math.round(zoom * 100);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={() => zoomTo(1, { duration: 300 })}
-          className="chip-zoom-reset absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full border border-border/50 bg-card/70 backdrop-blur-xl px-2.5 py-1 font-mono text-[10px] text-muted-foreground shadow-lg hover:border-amber-500/50 hover:text-amber-300"
-          aria-label={`Zoom: ${zoomPct}%. Click to reset to 100%`}
-        >
-          <ZoomIn className="size-2.5" />
-          <span>{zoomPct}%</span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">
-        Reset to 100%
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-// Re-export for type usage
-export type { NodeKind };

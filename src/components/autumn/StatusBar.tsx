@@ -183,10 +183,10 @@ export function StatusBar() {
 
       <div className="flex-1" />
 
-      {/* Persona roster with tooltips */}
+      {/* Persona roster with tooltips - 4 leaf agents */}
       <TooltipProvider delayDuration={150}>
         <div className="hidden md:flex items-center gap-0.5">
-          {PERSONAS.slice(0, 7).map((p) => {
+          {PERSONAS.slice(0, 4).map((p) => {
             const online = nodes.some(
               (n) =>
                 n.kind === "chat" &&
@@ -210,18 +210,14 @@ export function StatusBar() {
                       background: online ? `${p.color}15` : "transparent",
                     }}
                   >
-                    <div
-                      className={cn(
-                        "size-3 rounded-sm flex items-center justify-center text-[8px] font-bold text-white",
-                        isRunning && "animate-pulse",
-                      )}
+                    <img
+                      src={p.icon}
+                      alt={p.name}
+                      className={cn("size-4 rounded-sm object-cover", isRunning && "animate-pulse")}
                       style={{
-                        background: p.color,
                         boxShadow: isRunning ? `0 0 6px ${p.color}` : undefined,
                       }}
-                    >
-                      {p.glyph}
-                    </div>
+                    />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-[10px]">
