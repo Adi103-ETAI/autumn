@@ -19,7 +19,7 @@ export function buildSeedCanvas(): {
     id: "node-atlas",
     kind: "chat",
     name: "Atlas",
-    position: { x: 80, y: 120 },
+    position: { x: 80, y: 100 },
     createdAt: now,
     data: {
       harness: "claude-code",
@@ -35,7 +35,7 @@ export function buildSeedCanvas(): {
         {
           id: "m1",
           role: "system",
-          text: `${atlas.name} online · ${atlas.harness} · ${atlas.tagline}`,
+          text: `${atlas.name} online · claude-code · ${atlas.tagline}`,
           ts: now,
         },
       ],
@@ -46,7 +46,7 @@ export function buildSeedCanvas(): {
     id: "node-apollo",
     kind: "chat",
     name: "Apollo",
-    position: { x: 480, y: 80 },
+    position: { x: 620, y: 60 },
     createdAt: now,
     data: {
       harness: "claude-code",
@@ -62,7 +62,7 @@ export function buildSeedCanvas(): {
         {
           id: "m2",
           role: "system",
-          text: `${apollo.name} online · ${apollo.harness} · ${apollo.tagline}`,
+          text: `${apollo.name} online · claude-code · ${apollo.tagline}`,
           ts: now,
         },
       ],
@@ -73,7 +73,7 @@ export function buildSeedCanvas(): {
     id: "node-orion",
     kind: "chat",
     name: "Orion",
-    position: { x: 480, y: 320 },
+    position: { x: 620, y: 760 },
     createdAt: now,
     data: {
       harness: "codex",
@@ -89,7 +89,7 @@ export function buildSeedCanvas(): {
         {
           id: "m3",
           role: "system",
-          text: `${orion.name} online · ${orion.harness} · ${orion.tagline}`,
+          text: `${orion.name} online · codex · ${orion.tagline}`,
           ts: now,
         },
       ],
@@ -100,7 +100,7 @@ export function buildSeedCanvas(): {
     id: "node-screen",
     kind: "screen",
     name: "Preview · desktop",
-    position: { x: 880, y: 180 },
+    position: { x: 1100, y: 220 },
     createdAt: now,
     data: {
       screenKind: "desktop",
@@ -114,7 +114,7 @@ export function buildSeedCanvas(): {
     id: "node-sticky",
     kind: "sticky",
     name: "Note",
-    position: { x: 80, y: 380 },
+    position: { x: 80, y: 700 },
     createdAt: now,
     data: {
       text: "Try: \"spawn Atlas and Orion, connect them, and have Atlas build UI while Orion does backend for a medical app.\"",

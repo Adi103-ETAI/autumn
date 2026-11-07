@@ -174,10 +174,10 @@ export function CanvasToolbar() {
   return (
     <TooltipProvider delayDuration={200}>
       <div
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-2xl border border-border/40 bg-card/70 backdrop-blur-xl px-2 py-2 shadow-2xl"
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-2xl border border-white/10 bg-black/55 backdrop-blur-xl px-2 py-1.5 shadow-2xl"
         style={{
           boxShadow:
-            "0 8px 32px -8px oklch(0.78 0.18 55 / 0.12), 0 0 0 1px oklch(0.78 0.18 55 / 0.06)",
+            "0 12px 40px -12px oklch(0.05 0.02 55 / 0.7), 0 0 0 1px oklch(0.78 0.18 55 / 0.05)",
         }}
       >
         {TILES.map((tile) => {
@@ -194,25 +194,17 @@ export function CanvasToolbar() {
               aria-label={tile.label}
               aria-pressed={active}
               className={cn(
-                "group relative flex size-10 items-center justify-center rounded-xl",
+                "group relative flex size-9 items-center justify-center rounded-[10px]",
                 "bg-gradient-to-br transition-all duration-150",
                 tile.gradient,
                 "hover:scale-105 active:scale-95",
                 active && "ring-2 ring-white/70 ring-offset-2 ring-offset-card",
               )}
               style={{
-                boxShadow: `0 4px 14px -4px ${tile.glow}80, inset 0 1px 0 0 rgb(255 255 255 / 0.15)`,
+                boxShadow: `0 3px 10px -3px ${tile.glow}66, inset 0 1px 0 0 rgb(255 255 255 / 0.12)`,
               }}
             >
-              {/* Glossy highlight (top-left sheen) */}
-              <span
-                className="pointer-events-none absolute inset-0 rounded-xl opacity-60"
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgb(255 255 255 / 0.25) 0%, rgb(255 255 255 / 0) 45%)",
-                }}
-              />
-              <Icon className="relative size-5 text-white drop-shadow-sm" />
+              <Icon className="relative size-4 text-white/95" />
               {/* Active-listening pulse for the mic */}
               {isVoice && isListening && (
                 <span className="absolute -right-0.5 -top-0.5 flex size-2.5">

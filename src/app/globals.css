@@ -1906,16 +1906,26 @@ textarea:focus-visible {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.6), 0 14px 40px -10px rgba(59, 130, 246, 0.35) !important;
 }
 
-/* Cardinal Anchor Points (Bright Neon Green #22c55e / #00ff87) */
+/* Cardinal Anchor Points (green) — hidden until the node is hovered, selected,
+   or a connection is in progress, so the canvas reads as clean floating windows. */
 .autumn-handle {
-  width: 10px !important;
-  height: 10px !important;
+  width: 9px !important;
+  height: 9px !important;
   background-color: #22c55e !important;
-  border: 2px solid #09090b !important;
+  border: 2px solid oklch(0.14 0.01 55) !important;
   border-radius: 9999px !important;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.75), 0 0 0 2px rgba(34, 197, 94, 0.25) !important;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.55), 0 0 0 2px rgba(34, 197, 94, 0.18) !important;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease !important;
   z-index: 20 !important;
+}
+
+/* Reveal anchors on node hover, selection, connect-source mode, or direct hover */
+.react-flow__node:hover .autumn-handle,
+.react-flow__node.selected .autumn-handle,
+.react-flow__node.connect-source .autumn-handle,
+.autumn-handle:hover {
+  opacity: 1;
 }
 
 .autumn-handle:hover {

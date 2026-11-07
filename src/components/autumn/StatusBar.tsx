@@ -23,7 +23,6 @@ import {
   Keyboard,
   Radio,
   Loader2,
-  Signal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -258,18 +257,6 @@ export function StatusBar() {
         <Keyboard className="size-2.5" />
         <kbd className="font-mono">?</kbd>
       </button>
-
-      {/* Connection quality indicator (simulated: always excellent) */}
-      <div className="hidden lg:flex items-center gap-1 text-[9px] text-muted-foreground/60">
-        <Signal className="size-2.5 text-emerald-400" />
-        <div className="connection-quality">
-          <div className="connection-quality-bar" style={{ height: "3px" }} />
-          <div className="connection-quality-bar" style={{ height: "5px" }} />
-          <div className="connection-quality-bar" style={{ height: "7px" }} />
-          <div className="connection-quality-bar" style={{ height: "10px" }} />
-        </div>
-        <span>excellent</span>
-      </div>
 
       {lastAction && (
         <>

@@ -10,7 +10,6 @@ import { useEffect } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
 import { useKeyboardShortcuts } from "@/lib/autumn/use-keyboard-shortcuts";
-import { TopBar } from "@/components/autumn/TopBar";
 import { CanvasView } from "@/components/autumn/CanvasView";
 import { ProjectChatDock } from "@/components/autumn/ProjectChatDock";
 import { TaskBoard } from "@/components/autumn/TaskBoard";
@@ -139,12 +138,13 @@ export default function Home() {
 
   // ---- STAGE: workspace ----
   // The spatial canvas with dock, right panel, and all the tooling.
-  // (Project chat now lives in the floating ProjectChatDock above the dock.)
+  // The MenuBar now carries the full October-style single-row header
+  // (menus + workspace name + Live/Screens/Sync/Sessions), so there is
+  // no separate TopBar row above the canvas.
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
       <MenuBar />
-      <TopBar />
       <div className="relative flex flex-1 overflow-hidden">
         <LeftSidebar />
         <main className="flex-1 min-w-0 relative overflow-hidden">
