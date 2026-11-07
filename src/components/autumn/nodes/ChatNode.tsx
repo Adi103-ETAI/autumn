@@ -1,6 +1,6 @@
 // Autumn — ChatNode component (Autumn UI Clone Specification).
 // Fully implemented according to autumn_ui_analysis.md:
-// - Common window container shell with macOS traffic lights, title & shortcut badge.
+// - Common window container shell with header title & shortcut badge.
 // - 4 Cardinal connection anchors (top, bottom, left, right) in bright neon green (#22c55e).
 // - "Ready when you are" idle state view with workspace metadata.
 // - Active chat view with user message pills and markdown assistant output.
@@ -328,15 +328,9 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             borderColor: selected ? "#3b82f6" : undefined,
           }}
         >
-          {/* Header Bar - October-style window chrome: traffic lights left, controls right */}
+          {/* Header Bar — clean window chrome: title left, controls right */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-[#27272a] bg-[#18181b]/80 select-none">
-            {/* Left: macOS traffic lights (October window chrome) */}
-            <div className="flex items-center gap-1.5 mr-1.5 shrink-0" aria-hidden>
-              <span className="size-2.5 rounded-full bg-[#ff5f57]/90" />
-              <span className="size-2.5 rounded-full bg-[#febc2e]/90" />
-              <span className="size-2.5 rounded-full bg-[#28c840]/90" />
-            </div>
-            {/* Left: Title & Subtitle Badge */}
+            {/* Title & Subtitle Badge */}
             <div className="flex-1 min-w-0 flex items-center gap-1.5 mr-2">
               {persona?.icon ? (
                 <img src={persona.icon} alt={persona.name} className="size-5 rounded-md object-cover shrink-0" />

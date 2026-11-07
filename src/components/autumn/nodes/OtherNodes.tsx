@@ -103,14 +103,8 @@ function CommonNodeFrame({
           selected && "autumn-node-selected",
         )}
       >
-        {/* October-style window chrome: traffic lights left, controls right */}
+        {/* Clean window chrome: title left, controls right */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-[#27272a] bg-[#18181b]/80 select-none">
-          {/* macOS traffic lights */}
-          <div className="flex items-center gap-1.5 mr-1.5 shrink-0" aria-hidden>
-            <span className="size-2.5 rounded-full bg-[#ff5f57]/90" />
-            <span className="size-2.5 rounded-full bg-[#febc2e]/90" />
-            <span className="size-2.5 rounded-full bg-[#28c840]/90" />
-          </div>
           <div className="flex-1 min-w-0 flex items-center gap-1.5 mr-2">
             {icon}
             <span className="text-xs font-semibold text-zinc-200 truncate">{title}</span>

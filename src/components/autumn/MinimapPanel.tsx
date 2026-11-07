@@ -1,14 +1,16 @@
-// Autumn — MinimapPanel (Pixel-perfect match to Autumn Reference Screenshot).
+// Autumn — MinimapPanel (October-style spatial canvas minimap).
 // Custom high-fidelity spatial canvas minimap:
 // 1. Guaranteed visibility & accurate mirroring of every active canvas node.
-// 2. Real-time centered viewfinder frustum tracking live canvas viewport.
+// 2. Stable projection anchored to the node bounding box (no "swimming" while
+//    panning); it only re-anchors when nodes move or the viewport escapes.
 // 3. Interactive click & drag to pan the canvas anywhere.
 // 4. Sleek bottom control bar: [ Map ] [ LayoutGrid ] [ Maximize2 ]  |  [ - ] [ 66% ] [ + ]
 
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
-import { useReactFlow, useViewport } from "@xyflow/react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
+import { useReactFlow, useViewport, useStore } from "@xyflow/react";
+import { useShallow } from "zustand/react/shallow";
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { NodeKind, AutumnNode } from "@/lib/autumn/types";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
@@ -30,8 +32,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 // Minimap Dimensions
-const MAP_WIDTH = 204;
-const MAP_HEIGHT = 130;
+const MAP_WIDTH = 216;
+const MAP_HEIGHT = 136;
 const PADDING = 140; // World coordinate padding
 
 // Approximate standard node sizes in Autumn canvas space
@@ -56,16 +58,7 @@ const AUTUMN_NODE_COLORS: Record<NodeKind, string> = {
   remotion: "#6366f1", // Indigo for Video editor
 };
 
-// One-character glyphs rendered inside each node rect in the minimap
-const NODE_GLYPHS: Record<NodeKind, string> = {
-  chat: "◈",
-  terminal: ">_",
-  youtube: "▶",
-  sticky: "✎",
-  screen: "▣",
-  analytics: "▨",
-  remotion: "⬡",
-};
+// One-character glyphs removed — muted colored chips read cleaner at this size.
 
 const STICKY_HEX: Record<string, string> = {
   amber: "#fbbf24",
@@ -132,32 +125,77 @@ export function MinimapPanel() {
     toast.success("Auto-arranged canvas layout");
   }, [arrangeNodes, fitView]);
 
-  // ── Spatial coordinate projection ──────────────────────────────────────────
+  // ── Stable spatial coordinate projection ───────────────────────────────────
   // Current screen viewport in world canvas space
   const vpWidthWorld = windowSize.w / zoom;
   const vpHeightWorld = windowSize.h / zoom;
   const vpLeftWorld = -vpX / zoom;
   const vpTopWorld = -vpY / zoom;
 
-  // Calculate world bounding box containing all nodes + the viewport
-  let minX = vpLeftWorld;
-  let maxX = vpLeftWorld + vpWidthWorld;
-  let minY = vpTopWorld;
-  let maxY = vpTopWorld + vpHeightWorld;
+  // Selected canvas nodes (for highlight chips in the map)
+  const selectedIds = useStore(
+    useShallow((s) => s.nodes.filter((n) => n.selected).map((n) => n.id)),
+  );
 
-  for (const n of nodes) {
-    const dims = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
-    minX = Math.min(minX, n.position.x);
-    maxX = Math.max(maxX, n.position.x + dims.w);
-    minY = Math.min(minY, n.position.y);
-    maxY = Math.max(maxY, n.position.y + dims.h);
-  }
+  // The map is anchored to the nodes' bounding box so it stays still while
+  // panning. It only grows to include the viewport when the frustum escapes
+  // the node region, and re-anchors once the viewport fits the nodes again.
+  const nodeBounds = useMemo<{
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } | null>(() => {
+    if (nodes.length === 0) return null;
+    let nMinX = Infinity;
+    let nMinY = Infinity;
+    let nMaxX = -Infinity;
+    let nMaxY = -Infinity;
+    for (const n of nodes) {
+      const dims = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
+      nMinX = Math.min(nMinX, n.position.x);
+      nMaxX = Math.max(nMaxX, n.position.x + dims.w);
+      nMinY = Math.min(nMinY, n.position.y);
+      nMaxY = Math.max(nMaxY, n.position.y + dims.h);
+    }
+    return {
+      minX: nMinX - PADDING,
+      minY: nMinY - PADDING,
+      maxX: nMaxX + PADDING,
+      maxY: nMaxY + PADDING,
+    };
+  }, [nodes]);
 
-  // Add padding around world
-  minX -= PADDING;
-  maxX += PADDING;
-  minY -= PADDING;
-  maxY += PADDING;
+  const vpRightWorld = vpLeftWorld + vpWidthWorld;
+  const vpBottomWorld = vpTopWorld + vpHeightWorld;
+
+  const bounds =
+    nodeBounds === null
+      ? // Empty canvas: frame just the viewport with padding
+        {
+          minX: vpLeftWorld - PADDING,
+          minY: vpTopWorld - PADDING,
+          maxX: vpRightWorld + PADDING,
+          maxY: vpBottomWorld + PADDING,
+        }
+      : vpLeftWorld >= nodeBounds.minX &&
+          vpTopWorld >= nodeBounds.minY &&
+          vpRightWorld <= nodeBounds.maxX &&
+          vpBottomWorld <= nodeBounds.maxY
+        ? // Viewport inside the node region — anchor the map to the nodes
+          nodeBounds
+        : // Viewport escaped — expand the frame to include it
+          {
+            minX: Math.min(nodeBounds.minX, vpLeftWorld),
+            minY: Math.min(nodeBounds.minY, vpTopWorld),
+            maxX: Math.max(nodeBounds.maxX, vpRightWorld),
+            maxY: Math.max(nodeBounds.maxY, vpBottomWorld),
+          };
+
+  const minX = bounds.minX;
+  const maxX = bounds.maxX;
+  const minY = bounds.minY;
+  const maxY = bounds.maxY;
 
   const worldW = Math.max(1, maxX - minX);
   const worldH = Math.max(1, maxY - minY);
@@ -240,12 +278,12 @@ export function MinimapPanel() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 8 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="relative rounded-lg border border-white/10 bg-[#121215]/95 backdrop-blur-md shadow-2xl overflow-hidden cursor-crosshair"
+              className="relative rounded-xl border border-white/10 bg-[#101014]/90 backdrop-blur-md overflow-hidden cursor-crosshair"
               style={{
                 width: `${MAP_WIDTH}px`,
                 height: `${MAP_HEIGHT}px`,
                 boxShadow:
-                  "0 12px 32px -4px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)",
+                  "0 16px 40px -8px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06)",
               }}
             >
               <svg
@@ -265,10 +303,10 @@ export function MinimapPanel() {
                     height="12"
                     patternUnits="userSpaceOnUse"
                   >
-                    <circle cx="2" cy="2" r="0.6" fill="rgba(255,255,255,0.06)" />
+                    <circle cx="2" cy="2" r="0.6" fill="rgba(255,255,255,0.045)" />
                   </pattern>
                 </defs>
-                <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="#0d0d11" />
+                <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="#0b0b0f" />
                 <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="url(#minimap-grid)" />
 
                 {/* Empty canvas hint */}
@@ -286,7 +324,7 @@ export function MinimapPanel() {
                   </text>
                 )}
 
-                {/* Render All Active Canvas Nodes */}
+                {/* Render All Active Canvas Nodes — muted accent chips */}
                 {nodes.map((n) => {
                   const dims = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
                   const nx = toMapX(n.position.x);
@@ -294,46 +332,22 @@ export function MinimapPanel() {
                   const nw = Math.max(6, dims.w * scale);
                   const nh = Math.max(5, dims.h * scale);
                   const color = getNodeFillColor(n);
-                  const glyph = NODE_GLYPHS[n.kind] ?? "◻";
+                  const isSelected = selectedIds.includes(n.id);
 
                   return (
-                    <g key={n.id}>
-                      {/* Node body */}
-                      <rect
-                        x={nx}
-                        y={ny}
-                        width={nw}
-                        height={nh}
-                        rx={2.5}
-                        fill={color}
-                        fillOpacity={0.88}
-                        stroke="rgba(255, 255, 255, 0.22)"
-                        strokeWidth={0.75}
-                      />
-                      {/* Subtle header stripe */}
-                      <rect
-                        x={nx}
-                        y={ny}
-                        width={nw}
-                        height={Math.min(3.5, nh * 0.18)}
-                        rx={2.5}
-                        fill="rgba(255,255,255,0.18)"
-                      />
-                      {/* Node glyph if big enough */}
-                      {nw > 14 && nh > 12 && (
-                        <text
-                          x={nx + nw / 2}
-                          y={ny + nh / 2 + 1}
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          fontSize={Math.min(8, nw * 0.35)}
-                          fill="rgba(255,255,255,0.55)"
-                          fontFamily="system-ui, sans-serif"
-                        >
-                          {glyph}
-                        </text>
-                      )}
-                    </g>
+                    <rect
+                      key={n.id}
+                      x={nx}
+                      y={ny}
+                      width={nw}
+                      height={nh}
+                      rx={3}
+                      fill={color}
+                      fillOpacity={isSelected ? 0.4 : 0.18}
+                      stroke={color}
+                      strokeOpacity={isSelected ? 0.95 : 0.55}
+                      strokeWidth={isSelected ? 1.4 : 1}
+                    />
                   );
                 })}
 
@@ -343,10 +357,10 @@ export function MinimapPanel() {
                   y={vfY}
                   width={vfW}
                   height={vfH}
-                  rx={3}
-                  fill="rgba(59, 130, 246, 0.1)"
-                  stroke="rgba(99, 179, 255, 0.8)"
-                  strokeWidth={1.5}
+                  rx={4}
+                  fill="rgba(255, 255, 255, 0.05)"
+                  stroke="rgba(255, 255, 255, 0.7)"
+                  strokeWidth={1.25}
                   strokeDasharray="0"
                 />
               </svg>
