@@ -13,7 +13,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Leaf, Sparkles, Mic, Bot, Cable, Terminal } from "lucide-react";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 
@@ -52,10 +51,9 @@ export function HelpDialog() {
           </div>
           <DialogDescription className="text-sm leading-relaxed">
             Autumn is a spatial canvas for orchestrating AI coding agents.
-            Speak or type to the <strong>Commander</strong>; it spawns named
-            agents (Atlas, Apollo, Orion, Juno, …) on the canvas, connects
-            them with bus edges, and assigns each their part of the work.
-            Connected agents coordinate via the{" "}
+            Speak or type to the <strong>Commander</strong> — it spawns named
+            agents on the canvas, connects them with bus edges, and assigns
+            each their part of the work. Connected agents coordinate via the{" "}
             <code className="text-amber-300">message_peer</code> bus tool.
           </DialogDescription>
         </DialogHeader>
@@ -65,7 +63,7 @@ export function HelpDialog() {
             <Feature
               icon={Sparkles}
               title="Commander"
-              desc="Natural language → DO_ACTIONS plan. Try voice or text."
+              desc="Turns natural language into canvas actions. Try voice or text."
               color="text-amber-400"
             />
             <Feature
@@ -83,7 +81,7 @@ export function HelpDialog() {
             <Feature
               icon={Terminal}
               title="Task board"
-              desc="Shared Octoplan-style board with dependency edges."
+              desc="Shared task board with dependency edges."
               color="text-orange-400"
             />
           </div>
@@ -124,9 +122,6 @@ export function HelpDialog() {
         </div>
 
         <DialogFooter>
-          <Badge variant="outline" className="text-[10px] mr-auto">
-            open clone of Autumn Desktop
-          </Badge>
           <Button onClick={() => setShow(false)} className="gap-1.5">
             <Leaf className="size-3.5" />
             Enter the workshop

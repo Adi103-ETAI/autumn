@@ -1,4 +1,4 @@
-// Autumn — MinimapPanel (October-style spatial canvas minimap).
+// Autumn — spatial canvas minimap.
 // Custom high-fidelity spatial canvas minimap:
 // 1. Guaranteed visibility & accurate mirroring of every active canvas node.
 // 2. Stable projection anchored to the node bounding box (no "swimming" while
@@ -13,7 +13,6 @@ import { useReactFlow, useViewport, useStore } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { NodeKind, AutumnNode } from "@/lib/autumn/types";
-import { PERSONA_BY_ID } from "@/lib/autumn/personas";
 import {
   Map as MapIcon,
   LayoutGrid,
@@ -36,7 +35,8 @@ const MAP_WIDTH = 216;
 const MAP_HEIGHT = 136;
 const PADDING = 140; // World coordinate padding
 
-// Approximate standard node sizes in Autumn canvas space
+// Approximate standard node sizes — fallback only; real measured dimensions
+// from the React Flow store take priority so chips mirror true canvas shapes.
 const NODE_DIMENSIONS: Record<NodeKind, { w: number; h: number }> = {
   chat: { w: 360, h: 460 },
   terminal: { w: 480, h: 360 },
@@ -47,39 +47,19 @@ const NODE_DIMENSIONS: Record<NodeKind, { w: number; h: number }> = {
   remotion: { w: 320, h: 260 },
 };
 
-// Exact colors matching Autumn reference screenshot
-const AUTUMN_NODE_COLORS: Record<NodeKind, string> = {
-  chat: "#a855f7",     // Violet/purple for AI agents (Atlas, Orion)
-  terminal: "#22c55e", // Bright neon green for Apollo / Terminal
-  youtube: "#8b5cf6",  // Purple for Browser / YouTube
-  sticky: "#fbbf24",   // Warm amber/yellow for Sticky notes
-  screen: "#38bdf8",   // Sky blue for Mobile / Screens
-  analytics: "#f97316",// Orange for Analytics
-  remotion: "#6366f1", // Indigo for Video editor
-};
-
-// One-character glyphs removed — muted colored chips read cleaner at this size.
-
-const STICKY_HEX: Record<string, string> = {
-  amber: "#fbbf24",
-  rose: "#f43f5e",
-  emerald: "#10b981",
-  violet: "#a855f7",
-  cyan: "#06b6d4",
+// Hardcoded chip colors per node kind
+const MINIMAP_COLORS: Record<NodeKind, string> = {
+  chat: "#ef4444",     // red — all AI agents
+  terminal: "#a855f7", // purple — terminal
+  youtube: "#f97316",  // orange — browser / YouTube
+  sticky: "#fbbf24",   // yellow — notes
+  screen: "#38bdf8",   // blue — preview / screens
+  analytics: "#f97316",// orange — analytics
+  remotion: "#6366f1", // indigo — video editor
 };
 
 function getNodeFillColor(n: AutumnNode): string {
-  const kind = n.kind;
-  if (kind === "chat") {
-    const personaId = (n.data as { personaId?: string } | undefined)?.personaId;
-    const persona = personaId ? PERSONA_BY_ID[personaId] : undefined;
-    return persona?.color ?? AUTUMN_NODE_COLORS.chat;
-  }
-  if (kind === "sticky") {
-    const color = (n.data as { color?: string } | undefined)?.color;
-    return (color && STICKY_HEX[color]) ?? AUTUMN_NODE_COLORS.sticky;
-  }
-  return AUTUMN_NODE_COLORS[kind] ?? "#71717a";
+  return MINIMAP_COLORS[n.kind] ?? "#71717a";
 }
 
 export function MinimapPanel() {
@@ -91,6 +71,29 @@ export function MinimapPanel() {
 
   const nodes = useAutumnStore((s) => s.nodes);
   const arrangeNodes = useAutumnStore((s) => s.arrangeNodes);
+
+  // Real measured node dimensions from the React Flow store, keyed by node id.
+  // Falls back to NODE_DIMENSIONS for nodes not measured yet.
+  const measuredById = useStore(
+    useShallow((s) => {
+      const map: Record<string, { w?: number; h?: number }> = {};
+      s.nodeLookup.forEach((node, id) => {
+        if (node.measured?.width != null || node.measured?.height != null) {
+          map[id] = { w: node.measured.width, h: node.measured.height };
+        }
+      });
+      return map;
+    }),
+  );
+
+  const nodeSize = useCallback(
+    (n: AutumnNode) => {
+      const m = measuredById[n.id];
+      const fallback = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
+      return { w: m?.w ?? fallback.w, h: m?.h ?? fallback.h };
+    },
+    [measuredById],
+  );
 
   // Floating minimap preview box state (open by default, toggleable via Map icon)
   const [isOpen, setIsOpen] = useState(true);
@@ -152,7 +155,7 @@ export function MinimapPanel() {
     let nMaxX = -Infinity;
     let nMaxY = -Infinity;
     for (const n of nodes) {
-      const dims = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
+      const dims = nodeSize(n);
       nMinX = Math.min(nMinX, n.position.x);
       nMaxX = Math.max(nMaxX, n.position.x + dims.w);
       nMinY = Math.min(nMinY, n.position.y);
@@ -164,7 +167,7 @@ export function MinimapPanel() {
       maxX: nMaxX + PADDING,
       maxY: nMaxY + PADDING,
     };
-  }, [nodes]);
+  }, [nodes, nodeSize]);
 
   const vpRightWorld = vpLeftWorld + vpWidthWorld;
   const vpBottomWorld = vpTopWorld + vpHeightWorld;
@@ -324,9 +327,10 @@ export function MinimapPanel() {
                   </text>
                 )}
 
-                {/* Render All Active Canvas Nodes — muted accent chips */}
+                {/* Render All Active Canvas Nodes — muted accent chips.
+                    Chip width/height mirror the node's real canvas size. */}
                 {nodes.map((n) => {
-                  const dims = NODE_DIMENSIONS[n.kind] || { w: 320, h: 240 };
+                  const dims = nodeSize(n);
                   const nx = toMapX(n.position.x);
                   const ny = toMapY(n.position.y);
                   const nw = Math.max(6, dims.w * scale);
