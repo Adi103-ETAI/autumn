@@ -28,6 +28,7 @@ import {
 import {
   Settings,
   User,
+  Users,
   Plus,
   FolderOpen,
   Github,
@@ -86,12 +87,14 @@ export function MenuBar() {
   const addWorkspace = useAutumnStore((s) => s.addWorkspace);
   const saveCanvas = useAutumnStore((s) => s.saveCanvas);
   const canvasName = useAutumnStore((s) => s.canvasName);
+  const setCanvasName = useAutumnStore((s) => s.setCanvasName);
+  const canvasId = useAutumnStore((s) => s.canvasId);
+  const workspaces = useAutumnStore((s) => s.workspaces);
   const setShowExportDialog = useAutumnStore((s) => s.setShowExportDialog);
   const clearCanvas = useAutumnStore((s) => s.clearCanvas);
   const resetOnboarding = useAutumnStore((s) => s.resetOnboarding);
 
   // Edit actions
-  const setCanvasName = useAutumnStore((s) => s.setCanvasName);
   const duplicateNode = useAutumnStore((s) => s.duplicateNode);
   const removeNode = useAutumnStore((s) => s.removeNode);
   const selectedNodeId = useAutumnStore((s) => s.selectedNodeId);
@@ -159,6 +162,22 @@ export function MenuBar() {
       toast.success("Canvas cleared");
     }
   };
+
+  const handleSync = async () => {
+    await saveCanvas();
+    const err = useAutumnStore.getState().saveError;
+    if (err) {
+      toast.error(`Sync failed: ${err}`);
+    } else {
+      toast.success("Synced", {
+        description: `"${canvasName}" saved to the local database.`,
+      });
+    }
+  };
+
+  // Framework badge from the active workspace (e.g. "Next.js").
+  const activeWorkspace = workspaces.find((w) => w.id === canvasId);
+  const framework = activeWorkspace?.framework;
 
   // ---- menu definitions ----
   const menus: MenuDef[] = [
@@ -461,6 +480,30 @@ export function MenuBar() {
             }
           },
         },
+        {
+          type: "item",
+          label: "Clear all local data",
+          icon: Trash2,
+          onSelect: () => {
+            if (
+              window.confirm(
+                "Clear ALL local data?\n\nThis removes saved onboarding, workspaces, and connected agents, then restarts the app from the very first screen.",
+              )
+            ) {
+              [
+                "autumn-onboarding-completed",
+                "autumn-onboarding-data",
+                "autumn-workspaces",
+                "autumn-connected-agents",
+              ].forEach((k) => localStorage.removeItem(k));
+              resetOnboarding();
+              toast.success("Local data cleared", {
+                description: "Reloading the app from scratch…",
+              });
+              setTimeout(() => window.location.reload(), 600);
+            }
+          },
+        },
       ],
     },
   ];
@@ -468,17 +511,17 @@ export function MenuBar() {
   return (
     <nav
       aria-label="Application menu bar"
-      className="autumn-menubar relative z-[300] h-8 shrink-0 flex items-center gap-0.5 px-2 border-b border-border/40 bg-zinc-950/80 backdrop-blur-md select-none"
+      className="autumn-menubar relative z-[300] h-10 shrink-0 flex items-center gap-0.5 px-2.5 border-b border-border/40 bg-zinc-950/80 backdrop-blur-md select-none"
       data-autumn-menubar
     >
       {/* ---- Brand ---- */}
       <button
         type="button"
         onClick={() => setAppStage("home")}
-        className="flex items-center gap-1.5 px-2 h-6 rounded-md hover:bg-white/5 transition-colors group"
+        className="flex items-center gap-1.5 px-2 h-7 rounded-md hover:bg-white/5 transition-colors group"
         aria-label="Autumn — go to home"
       >
-        <AutumnLogo size={16} priority />
+        <AutumnLogo size={18} priority />
         <span className="text-[13px] font-semibold tracking-tight text-foreground">
           Autumn
         </span>
@@ -493,7 +536,7 @@ export function MenuBar() {
             <button
               type="button"
               className={cn(
-                "px-2.5 h-6 rounded-md text-[13px] text-muted-foreground",
+                "px-2.5 h-7 rounded-md text-[13px] text-muted-foreground",
                 "hover:bg-white/10 hover:text-foreground transition-colors",
                 "focus-visible:outline-none focus-visible:bg-white/10 focus-visible:text-foreground",
                 "data-[state=open]:bg-white/10 data-[state=open]:text-foreground",
@@ -546,8 +589,81 @@ export function MenuBar() {
         </DropdownMenu>
       ))}
 
+      {/* ---- Workspace identity (workspace stage only): editable name + framework ---- */}
+      {inWorkspace && (
+        <div className="ml-1.5 flex min-w-0 items-center gap-2">
+          <div className="group relative flex items-center">
+            <input
+              value={canvasName}
+              onChange={(e) => setCanvasName(e.target.value)}
+              className="bg-transparent text-[13px] font-medium text-foreground/90 pl-2 pr-6 py-1 rounded-md w-44 hover:bg-white/5 focus:bg-white/5 focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors"
+              aria-label="Workspace name"
+            />
+            <Pencil className="size-3 text-muted-foreground/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-0 transition-opacity absolute right-1.5 pointer-events-none" />
+          </div>
+          {framework && (
+            <Badge
+              variant="outline"
+              className="text-[10px] h-5 px-1.5 border-white/15 bg-white/5 text-muted-foreground font-mono hidden md:inline-flex"
+            >
+              {framework}
+            </Badge>
+          )}
+        </div>
+      )}
+
       {/* ---- Spacer ---- */}
       <div className="flex-1" />
+
+      {/* ---- Workspace actions (workspace stage only): Live + Screens + Sync + Sessions ---- */}
+      {inWorkspace && (
+        <div className="flex items-center gap-1 mr-1">
+          {/* Live status */}
+          <div
+            className="flex items-center gap-1.5 px-2 h-7 rounded-md text-[11px] text-muted-foreground"
+            title="Live"
+          >
+            <span className="size-1.5 rounded-full bg-emerald-400 pulse-ring" aria-label="Live" />
+            <span className="hidden lg:inline">Live</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => addNode({ kind: "screen" })}
+            title="Add a screen node"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <Plus className="size-3.5" />
+            <span className="hidden lg:inline">Screens</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleSync()}
+            title="Sync / save this canvas"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <RefreshCw className="size-3.5" />
+            <span className="hidden lg:inline">Sync</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              toast("Sessions coming soon", {
+                description: "Multi-session canvas switching is in development.",
+              })
+            }
+            title="Sessions"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-md text-[12px] text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <Users className="size-3.5" />
+            <span className="hidden lg:inline">Sessions</span>
+          </button>
+
+          <span className="mx-1 h-4 w-px bg-border/40" aria-hidden />
+        </div>
+      )}
 
       {/* ---- Right cluster: accent + settings + sign in ---- */}
       <div className="flex items-center gap-1">

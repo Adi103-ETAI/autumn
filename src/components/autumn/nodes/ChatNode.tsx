@@ -328,8 +328,14 @@ export function ChatNode({ id, data, selected }: NodeProps) {
             borderColor: selected ? "#3b82f6" : undefined,
           }}
         >
-          {/* Header Bar - Windows style, controls on right */}
+          {/* Header Bar - October-style window chrome: traffic lights left, controls right */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-[#27272a] bg-[#18181b]/80 select-none">
+            {/* Left: macOS traffic lights (October window chrome) */}
+            <div className="flex items-center gap-1.5 mr-1.5 shrink-0" aria-hidden>
+              <span className="size-2.5 rounded-full bg-[#ff5f57]/90" />
+              <span className="size-2.5 rounded-full bg-[#febc2e]/90" />
+              <span className="size-2.5 rounded-full bg-[#28c840]/90" />
+            </div>
             {/* Left: Title & Subtitle Badge */}
             <div className="flex-1 min-w-0 flex items-center gap-1.5 mr-2">
               {persona?.icon ? (
@@ -345,7 +351,11 @@ export function ChatNode({ id, data, selected }: NodeProps) {
               <span className="text-xs font-semibold text-zinc-200 truncate">
                 {persona?.name ?? "Atlas"}
               </span>
-              {d.harness && <span className="text-[10px] text-zinc-500 truncate">· {d.harness}</span>}
+              {d.harness && (
+                <span className="hidden group-hover:inline text-[10px] text-zinc-500 truncate">
+                  · {d.harness}
+                </span>
+              )}
               {peerCount > 0 && (
                 <span
                   className="flex items-center gap-0.5 text-[9px] text-emerald-400/80 bg-emerald-500/10 px-1 py-0.2 rounded"

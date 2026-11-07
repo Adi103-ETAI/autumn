@@ -19,14 +19,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import { useAutumnStore, type Workspace, type WorkspaceKind } from "@/lib/autumn/store";
 import { decodeCanvasFromHash } from "@/lib/autumn/share-canvas";
@@ -38,12 +30,7 @@ import {
   Github,
   GitBranch,
   Link as LinkIcon,
-  Settings,
-  User,
   X,
-  RotateCcw,
-  Trash2,
-  Cpu,
 } from "lucide-react";
 
 // ---------- helpers ----------
@@ -104,6 +91,7 @@ const KIND_ICONS: Record<WorkspaceKind, typeof Plus> = {
 interface EntryPoint {
   key: "new" | "folder" | "repo" | "link";
   title: string;
+  description: string;
   icon: typeof Plus;
 }
 
@@ -111,21 +99,25 @@ const ENTRY_POINTS: EntryPoint[] = [
   {
     key: "new",
     title: "New workspace",
+    description: "Start from a blank spatial canvas.",
     icon: Plus,
   },
   {
     key: "folder",
     title: "Open folder",
+    description: "Work with a project on this machine.",
     icon: FolderOpen,
   },
   {
     key: "repo",
     title: "Clone repo",
+    description: "Clone a Git repository into a workspace.",
     icon: Github,
   },
   {
     key: "link",
     title: "Open from link",
+    description: "Open a shared canvas URL.",
     icon: LinkIcon,
   },
 ];
@@ -140,9 +132,7 @@ export function HomeScreen() {
   const addWorkspace = useAutumnStore((s) => s.addWorkspace);
   const removeWorkspace = useAutumnStore((s) => s.removeWorkspace);
   const openWorkspace = useAutumnStore((s) => s.openWorkspace);
-  const setShowAgentSetup = useAutumnStore((s) => s.setShowAgentSetup);
   const importCanvasState = useAutumnStore((s) => s.importCanvasState);
-  const resetOnboarding = useAutumnStore((s) => s.resetOnboarding);
 
   // Dialog state — which dialog is open (null when none).
   const [openDialog, setOpenDialog] = useState<null | "folder" | "repo" | "link">(null);
@@ -253,101 +243,24 @@ export function HomeScreen() {
 
   return (
     <div className="relative min-h-screen flex flex-col bg-black">
-      {/* Header bar */}
-      <header className="relative z-10 h-14 shrink-0 flex items-center justify-between px-4 sm:px-6 border-b border-white/5 bg-black">
-        <div className="flex items-center gap-2">
-          <AutumnLogo size={28} priority />
-          <span className="text-sm font-semibold tracking-tight text-foreground">
-            Autumn
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60 h-8"
-            onClick={() =>
-              toast("Sign in is not available in the web demo", {
-                description: "Authentication is local-only in this build.",
-              })
-            }
-          >
-            <User className="size-3.5" />
-            <span className="hidden sm:inline">Sign in</span>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground hover:text-foreground hover:bg-accent/60"
-                title="Settings"
-                aria-label="Settings"
-              >
-                <Settings className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
-                Settings
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setShowAgentSetup(true)}
-                className="gap-2 cursor-pointer"
-              >
-                <Cpu className="size-4" />
-                <span>Agent setup</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  resetOnboarding();
-                  toast.success("Replaying onboarding", {
-                    description: "Starting the setup flow from the beginning.",
-                  });
-                }}
-                className="gap-2 cursor-pointer"
-              >
-                <RotateCcw className="size-4" />
-                <span>Replay onboarding</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  if (
-                    typeof window !== "undefined" &&
-                    window.confirm(
-                      "Clear ALL local data?\n\nThis removes saved onboarding, workspaces, and connected agents, then restarts the app from the very first screen.",
-                    )
-                  ) {
-                    if (typeof window !== "undefined") {
-                      [
-                        "autumn-onboarding-completed",
-                        "autumn-onboarding-data",
-                        "autumn-workspaces",
-                        "autumn-connected-agents",
-                      ].forEach((k) => localStorage.removeItem(k));
-                    }
-                    resetOnboarding();
-                    toast.success("Local data cleared", {
-                      description: "Reloading the app from scratch…",
-                    });
-                    setTimeout(() => window.location.reload(), 600);
-                  }
-                }}
-                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-4" />
-                <span>Clear all local data</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
-
-      {/* Main content */}
+      {/* Main content — the MenuBar above already carries the global header
+          (brand, menus, settings, sign in), so the body starts straight in. */}
       <main className="relative z-10 flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        {/* Hero */}
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <AutumnLogo size={40} priority />
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Autumn
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Built for whoever ships.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* "Open or create" section */}
         <section aria-labelledby="open-or-create-heading">
           <h2
@@ -357,7 +270,7 @@ export function HomeScreen() {
             Open or create
           </h2>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {ENTRY_POINTS.map((entry, i) => (
               <motion.button
                 key={entry.key}
@@ -366,10 +279,19 @@ export function HomeScreen() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 + i * 0.06, duration: 0.32, ease: "easeOut" }}
                 onClick={() => handleEntryClick(entry.key)}
-                className="group inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-white/5 bg-[#1a202c] hover:border-amber-500/40 hover:bg-amber-500/5 text-sm font-medium text-foreground/90 hover:text-foreground transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                className="group flex flex-col items-start gap-8 rounded-xl border border-white/8 bg-card/60 p-4 text-left hover:border-amber-500/40 hover:bg-amber-500/[0.06] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
               >
-                <entry.icon className="size-4 text-amber-400 transition-colors group-hover:text-amber-300" />
-                <span>{entry.title}</span>
+                <span className="flex size-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] transition-colors group-hover:border-amber-500/40 group-hover:bg-amber-500/10">
+                  <entry.icon className="size-4 text-amber-400 transition-colors group-hover:text-amber-300" />
+                </span>
+                <span>
+                  <span className="block text-sm font-medium text-foreground/90 group-hover:text-foreground">
+                    {entry.title}
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                    {entry.description}
+                  </span>
+                </span>
               </motion.button>
             ))}
           </div>
