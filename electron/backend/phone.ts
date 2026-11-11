@@ -1,41 +1,44 @@
 // autumn — Wave-2 handlers: phone (12 dispatchable + phone.onChanged push;
-// doc 32 §2g). The WebSocket RELAY itself lands at W2-10 with the `ws`
-// dependency — this module owns the identity, pairing, and device registry so
-// the relay plugs straight in: every state transition here is already real and
-// already emits phone.onChanged.
+// doc 32 §2g) — FULL (W2-10). The WebSocket RELAY is real now: a `ws` server
+// on the LAN that pairs a phone by a one-time code and then streams frames.
 //
-// RE-derived (October out/main/index.js, RemoteMobileService):
-//   status()      → {enabled, port?, paired: n, since?} (doc §2g shape; autumn adds
-//                   an honest `relay:{running, reason}` because there is no listener
-//                   until W2-10 — never claim a port we don't hold)
-//   enable()      → identity (ed25519 keypair, generated once, persisted under
-//                   <userData>/phone/) + enabled:true + relay attempt; emits onChanged
-//   disable()     → enabled:false; emits onChanged
-//   createPairing() → RE auto-enables first (this.listenerPort check → enable());
-//                   6-digit code via crypto.randomInt, expires in 10 min, ONLY the
-//                   sha256 hash is stored ({codeHash, expiresAt}); returns {code, expiresAt}
-//   pending()     → unexpired pairing intents (fed by the relay at W2-10; the
-//                   _queueIntent seam is the same entry point the relay will use)
-//   decide(intentId, decision) → RE validates decision ∈ {approve, deny} else throws
-//                   "Invalid pairing decision."; RE throws "Phone access is not
-//                   enabled." when pairing is off → autumn handler-error envelope
-//                   with that exact message; approve moves the intent into devices
-//                   {id, label, pairedAt, keyFingerprint} + emits onChanged
-//   devices()     → registry summaries (real file)
-//   revoke(bind)  → RE idempotent revoke → autumn removes the device if present
-//                   (emits onChanged only on a REAL removal)
-//   connectedApps() → list (relay-fed later; honest [] now)
-//   disconnectApp(id) → drops the app entry → {disconnected: bool}
-//   resetIdentity(confirmed) → RE passes confirmed===true; without confirm →
-//                   bad-params; with it → wipe identity+devices+apps+intents,
-//                   disable, emit onChanged (real destructive transition)
-//   keepAwake(enabled) → RE: non-boolean throws "enabled must be boolean" →
-//                   bad-params; real powerSaveBlocker when Electron is present,
-//                   honest {applied:false, reason} headless (doc §2g)
+// RE-derived (October out/main/index.js, RemoteMobileService + preload):
+//   status()        → {enabled, port?, paired, since?}
+//   enable()        → generate the identity + start the listener → status
+//   disable()       → stop the listener → {…, relay:"offline"}
+//   keepAwake(enabled) → RE: non-boolean throws "enabled must be boolean"
+//   createPairing() → a pairing code (auto-enables first)
+//   pending()       → the pairing requests awaiting a decision
+//   decide(intentId, decision) → RE validates decision ∈ {approve, deny} else
+//                     throws "Invalid pairing decision."; "Phone access is not
+//                     enabled." when pairing is off
+//   devices()       → the paired-device summaries
+//   revoke(bind)    → idempotent revoke
+//   connectedApps() / disconnectApp(clientId) → the connected clients
+//   resetIdentity(confirmed) → RE passes confirmed===true
+//   phone.onChanged → the change push
 //
-// Storage: <userData>/db/phone.json {enabled, since, port, keepAwake,
-// identity?, devices[], apps[], intents[], codes[]} + <userData>/phone/
+// autumn design (doc 32 §2g) — a LOCAL-FIRST LAN relay:
+//   * the identity is a real ed25519 keypair (generated once, persisted under
+//     <userData>/phone/, private key 0600);
+//   * `enable` starts a REAL `ws` server (0.0.0.0, random port) and persists
+//     the port; `disable` really closes it;
+//   * the pairing protocol is the doc's frame set —
+//       → {t:"auth", code, label?}          the phone authenticates
+//       → {t:"session", id}                 the server answers with the intent
+//       → {t:"session", id, deviceId}       the grant (after the user approves)
+//       → {t:"event", kind, ts, payload}    app → phone frames
+//       → {t:"input", text}                 phone → app text
+//   * approving a pairing request really grants the session on that socket;
+//     revoking a device really closes its socket;
+//   * every state change emits phone.onChanged — only on REAL transitions.
+//
+// Storage: <userData>/db/phone.json {enabled, since, port, keepAwake, identity,
+// devices[], apps[], intents[], codes[], inputs[]} + <userData>/phone/
 // identity-key.pem (private, 0600) / identity-pub.pem.
+//
+// The relay needs the `ws` dependency (installed at this milestone). When it is
+// missing the relay answers {running:false, reason} — never a fake listener.
 
 import { generateKeyPairSync, createHash, randomInt } from "node:crypto";
 import { mkdirSync, writeFileSync, rmSync, existsSync, chmodSync } from "node:fs";
@@ -65,14 +68,15 @@ interface Device {
   id: string;
   label: string;
   pairedAt: number;
-  keyFingerprint: string | null;
+  /** The identity fingerprint (a number) of the pairing key, when known. */
+  keyFingerprint: number | null;
 }
 interface Intent {
   id: string;
   label: string;
   createdAt: number;
   expiresAt: number;
-  keyFingerprint?: string | null;
+  keyFingerprint?: number | null;
 }
 interface PhoneState {
   enabled: boolean;
@@ -84,7 +88,29 @@ interface PhoneState {
   apps: { id: string; name: string; connectedAt: number }[];
   intents: Intent[];
   codes: { codeHash: string; expiresAt: number }[];
+  /** Text the paired phones sent back (the phone → app direction). */
+  inputs: { id: string; deviceId: string; text: string; at: number }[];
 }
+interface RelaySocket {
+  socket: any;
+  deviceId: string | null;
+  intentId: string | null;
+  label: string;
+}
+interface Relay {
+  server: any;
+  port: number;
+  address: string;
+  sockets: Set<RelaySocket>;
+}
+
+/**
+ * Every relay this process ever started. The relay must be closable on
+ * shutdown (and between tests), and the module may be re-required — so the
+ * registry lives on globalThis, not in the module scope.
+ */
+const RELAY_REGISTRY = (globalThis as unknown as { __autumnPhoneRelays?: Set<any> }).__autumnPhoneRelays ?? new Set<any>();
+(globalThis as unknown as { __autumnPhoneRelays?: Set<any> }).__autumnPhoneRelays = RELAY_REGISTRY;
 
 const phoneDir = () => join(userDataDir(), "phone");
 const privKeyFile = () => join(phoneDir(), "identity-key.pem");
@@ -99,6 +125,7 @@ function readState(): PhoneState {
     apps: [],
     intents: [],
     codes: [],
+    inputs: [],
   });
   return {
     enabled: !!s.enabled,
@@ -110,6 +137,7 @@ function readState(): PhoneState {
     apps: Array.isArray(s.apps) ? s.apps : [],
     intents: Array.isArray(s.intents) ? s.intents : [],
     codes: Array.isArray(s.codes) ? s.codes : [],
+    inputs: Array.isArray(s.inputs) ? s.inputs : [],
   };
 }
 function writeState(s: PhoneState): void {
@@ -119,26 +147,229 @@ function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
-/** Status snapshot — what phone.status and the onChanged payload both report. */
-function statusOf(s: PhoneState): {
-  enabled: boolean;
-  port: number | null;
-  paired: number;
-  since?: number;
-  relay: { running: boolean; reason: string };
-} {
-  return {
-    enabled: s.enabled,
-    port: s.port,
-    paired: s.devices.length,
-    ...(s.since ? { since: s.since } : {}),
-    relay: { running: false, reason: "WebSocket relay ships with the phone integration (doc 32 §W2-10)" },
-  };
-}
-
 export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
   const { emit, now } = deps;
+
+  /** The live relay (module scope — one per factory instance). */
+  let relay: Relay | null = null;
+
+  /** The status snapshot — what phone.status and the onChanged payload report. */
+  const statusOf = (s: PhoneState): {
+    enabled: boolean;
+    port: number | null;
+    paired: number;
+    since?: number;
+    relay: { running: boolean; port?: number; clients?: number; reason?: string };
+  } => {
+    if (relay) {
+      return {
+        enabled: s.enabled,
+        port: relay.port,
+        paired: s.devices.length,
+        ...(s.since ? { since: s.since } : {}),
+        relay: { running: true, port: relay.port, clients: relay.sockets.size },
+      };
+    }
+    return {
+      enabled: s.enabled,
+      port: s.port,
+      paired: s.devices.length,
+      ...(s.since ? { since: s.since } : {}),
+      relay: {
+        running: false,
+        reason: relayUnavailableReason(),
+      },
+    };
+  };
+
   const push = () => emit("phone.onChanged", statusOf(readState()));
+
+  /** Why the relay is not running right now (honest). */
+  function relayUnavailableReason(): string {
+    if (!wsModule()) return "the ws dependency is not installed — the phone relay needs it (doc 32 §W2-10)";
+    const s = readState();
+    if (!s.enabled) return "phone access is off";
+    return "the relay is not listening";
+  }
+
+  /** Load `ws` lazily (a missing dependency is a capability gap, not a crash). */
+  function wsModule(): any | null {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require("ws");
+      return mod && mod.WebSocketServer ? mod : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Send one frame to a socket. */
+  function send(socket: RelaySocket | null, frame: unknown): boolean {
+    if (!socket) return false;
+    try {
+      socket.socket.send(JSON.stringify(frame));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Broadcast an event frame to every paired device. */
+  function broadcast(kind: string, payload: unknown): number {
+    if (!relay) return 0;
+    let sent = 0;
+    for (const entry of relay.sockets) {
+      if (!entry.deviceId) continue;
+      if (send(entry, { t: "event", kind, ts: now(), payload })) sent++;
+    }
+    return sent;
+  }
+
+  /**
+   * Start the relay server (real). The `ws` server binds asynchronously, so
+   * this resolves once the socket is really listening — or with an honest
+   * reason when it cannot bind.
+   */
+  function startRelay(): Promise<{ ok: true; relay: Relay } | { ok: false; reason: string }> {
+    const ws = wsModule();
+    if (!ws) return Promise.resolve({ ok: false, reason: "the ws dependency is not installed — the phone relay needs it (doc 32 §W2-10)" });
+    if (relay) return Promise.resolve({ ok: true, relay });
+    return new Promise((resolve) => {
+    const server = new ws.WebSocketServer({ host: "0.0.0.0", port: 0 });
+    const sockets = new Set<RelaySocket>();
+    server.on("connection", (socket: any) => {
+      const entry: RelaySocket = { socket, deviceId: null, intentId: null, label: "" };
+      sockets.add(entry);
+      socket.on("message", (raw: any) => {
+        let frame: any;
+        try {
+          frame = JSON.parse(String(raw));
+        } catch {
+          send(entry, { t: "error", message: "invalid JSON frame" });
+          return;
+        }
+        if (!frame || typeof frame !== "object" || typeof frame.t !== "string") {
+          send(entry, { t: "error", message: "invalid frame" });
+          return;
+        }
+        if (frame.t === "auth") {
+          handleAuth(entry, frame);
+          return;
+        }
+        if (frame.t === "input") {
+          handleInput(entry, frame);
+          return;
+        }
+        send(entry, { t: "error", message: `unknown frame ${frame.t}` });
+      });
+      socket.on("close", () => {
+        sockets.delete(entry);
+        if (entry.deviceId) {
+          const s = readState();
+          const apps = s.apps.filter((a) => a.id !== entry.deviceId);
+          if (apps.length !== s.apps.length) {
+            s.apps = apps;
+            writeState(s);
+            push();
+          }
+        }
+      });
+    });
+    let settled = false;
+    const fail = (reason: string) => {
+      if (settled) return;
+      settled = true;
+      try {
+        server.close();
+      } catch {
+        /* nothing to close */
+      }
+      resolve({ ok: false, reason });
+    };
+    server.on("error", (err: Error) => fail(`the relay could not start: ${err?.message ?? "unknown error"}`));
+    server.on("listening", () => {
+      if (settled) return;
+      const address = (server.address?.() as { port?: number } | null)?.port ?? null;
+      if (!address) {
+        fail("the relay could not bind a port");
+        return;
+      }
+      settled = true;
+      relay = { server, port: address, address: "0.0.0.0", sockets };
+      _setLiveRelay(relay);
+      RELAY_REGISTRY.add(relay);
+      resolve({ ok: true, relay });
+    });
+    });
+  }
+
+  /** Close the relay (real). */
+  function stopRelay(): void {
+    if (!relay) return;
+    const closing = relay;
+    for (const entry of relay.sockets) {
+      try {
+        entry.socket.close?.();
+      } catch {
+        /* already gone */
+      }
+    }
+    relay.sockets.clear();
+    try {
+      relay.server.close?.();
+    } catch {
+      /* already closed */
+    }
+    relay = null;
+    RELAY_REGISTRY.delete(closing);
+    _setLiveRelay(null);
+  }
+
+  /** The phone authenticated with a one-time code. */
+  function handleAuth(entry: RelaySocket, frame: { code?: unknown; label?: unknown }): void {
+    const code = typeof frame.code === "string" ? frame.code.trim() : "";
+    const s = readState();
+    if (!s.enabled) {
+      send(entry, { t: "error", message: "Phone access is not enabled." });
+      return;
+    }
+    const match = s.codes.find((c) => c.codeHash === sha256(code) && c.expiresAt > now());
+    if (!match) {
+      send(entry, { t: "error", message: "That pairing code is not valid." });
+      return;
+    }
+    // The code is single-use.
+    s.codes = s.codes.filter((c) => c.codeHash !== match.codeHash);
+    const intent: Intent = {
+      id: `intent-${now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      label: typeof frame.label === "string" && frame.label.trim() ? frame.label.trim() : "Paired device",
+      createdAt: now(),
+      expiresAt: now() + PAIRING_TTL_MS,
+      keyFingerprint: s.identity?.fingerprint ?? null,
+    };
+    s.intents = [...s.intents.filter((i) => i.expiresAt > now()), intent];
+    writeState(s);
+    entry.intentId = intent.id;
+    entry.label = intent.label;
+    send(entry, { t: "session", id: intent.id });
+    push(); // a real pairing request arrived
+  }
+
+  /** The phone sent text back. */
+  function handleInput(entry: RelaySocket, frame: { text?: unknown }): void {
+    if (!entry.deviceId) {
+      send(entry, { t: "error", message: "This connection is not paired." });
+      return;
+    }
+    const text = typeof frame.text === "string" ? frame.text : "";
+    if (!text) return;
+    const s = readState();
+    s.inputs = [
+      { id: `in-${now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, deviceId: entry.deviceId, text, at: now() },
+      ...s.inputs,
+    ].slice(0, 200);
+    writeState(s);
+  }
 
   /** Real identity generation (ed25519, persisted once). */
   function ensureIdentity(s: PhoneState): PhoneState {
@@ -164,34 +395,43 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.status",
       description:
-        "phone access status; params: {} -> {enabled, port, paired, since?, relay:{running, reason}} (real registry; honest relay state until the W2-10 ws listener)",
+        "phone access status; params: {} -> {enabled, port, paired, since?, relay:{running, port?, clients?, reason?}} — the relay report is REAL (the ws server's own state), never a claimed port",
       handler: () => statusOf(readState()),
     },
     {
       kind: "bridge",
       id: "phone.enable",
       description:
-        "enable phone access (RE: generate identity + start listener); params: {} -> status — ed25519 identity generated once, enabled:true persisted, emits phone.onChanged; relay reports honest reason until W2-10",
-      handler: () => {
+        "enable phone access (RE: generate the identity + start the listener); params: {} -> status — an ed25519 identity generated once, the REAL ws relay started on a random LAN port, enabled:true persisted, emits phone.onChanged",
+      handler: async () => {
         const s = readState();
+        const wasEnabled = s.enabled;
+        const hadRelay = relay !== null;
         const fresh = ensureIdentity(s);
         if (!fresh.enabled) {
           fresh.enabled = true;
           fresh.since = now();
-          writeState(fresh);
-          push(); // real transition
-        } else {
-          writeState(fresh); // identity may have just been created
         }
+        const started = await startRelay();
+        fresh.port = started.ok ? started.relay.port : null;
+        writeState(fresh);
+        if (!started.ok) {
+          // Honest: the access is on but the listener is not — the reason says why.
+          return { ...statusOf(fresh), relay: { running: false, reason: started.reason } };
+        }
+        // A real transition: the access was off, or the relay just came up.
+        if (!wasEnabled || !hadRelay) push();
         return statusOf(fresh);
       },
     },
     {
       kind: "bridge",
       id: "phone.disable",
-      description: "disable phone access; params: {} -> status (enabled:false persisted, emits phone.onChanged)",
+      description:
+        "disable phone access; params: {} -> status — the REAL ws relay is closed, enabled:false persisted, emits phone.onChanged",
       handler: () => {
         const s = readState();
+        stopRelay();
         if (s.enabled) {
           s.enabled = false;
           s.port = null;
@@ -238,14 +478,16 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.createPairing",
       description:
-        "create a 6-digit pairing code (RE: auto-enables first; 10 min expiry; only the sha256 hash is stored); params: {label?} -> {code, expiresAt} — the code is shown once",
-      handler: (params) => {
+        "create a 6-digit pairing code (RE: auto-enables first; 10 min expiry; only the sha256 hash is stored); params: {label?} -> {code, expiresAt} — the code is shown once and the relay accepts it in an {t:'auth'} frame",
+      handler: async (params) => {
         const { obj } = paramsOf(params);
         let s = readState();
         if (!s.enabled) {
           s = ensureIdentity(s);
           s.enabled = true;
           s.since = now();
+          const started = await startRelay();
+          s.port = started.ok ? started.relay.port : null;
         }
         const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
         const expiresAt = now() + PAIRING_TTL_MS;
@@ -259,7 +501,8 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "phone.pending",
-      description: "list unexpired pairing intents awaiting a decision; params: {} -> [{id,label,createdAt,expiresAt}] (relay feeds these; _queueIntent is its entry point)",
+      description:
+        "list unexpired pairing intents awaiting a decision; params: {} -> [{id,label,createdAt,expiresAt}] (the relay feeds these — a phone that sent {t:'auth'} appears here)",
       handler: () => {
         const s = readState();
         const t = now();
@@ -270,7 +513,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.decide",
       description:
-        "approve or deny a pairing intent; params: intentId, decision (RE positional; decision ∉ {approve,deny} -> bad-params 'Invalid pairing decision.'; pairing off -> handler-error 'Phone access is not enabled.') -> {approved|denied} + device record; emits phone.onChanged",
+        "approve or deny a pairing intent; params: intentId, decision (RE positional; decision ∉ {approve,deny} -> bad-params 'Invalid pairing decision.'; pairing off -> handler-error 'Phone access is not enabled.') -> {approved|denied} + device record; approving really grants the relay session on that socket; emits phone.onChanged",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return str(obj, pos, "intentId", "id") ? { ok: true } : { ok: false, message: "intentId required" };
@@ -288,6 +531,12 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
         s.intents = s.intents.filter((i) => i.id !== intentId);
         s.codes = s.codes.filter((c) => c.expiresAt > now());
         if (decision === "deny") {
+          // Really tell the phone: denied.
+          if (relay) {
+            for (const entry of relay.sockets) {
+              if (entry.intentId === intentId) send(entry, { t: "error", message: "That pairing request was denied." });
+            }
+          }
           writeState(s);
           push();
           return { denied: true, intentId };
@@ -299,6 +548,20 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
           keyFingerprint: intent.keyFingerprint ?? null,
         };
         s.devices.push(device);
+        s.apps = [
+          { id: device.id, name: device.label, connectedAt: now() },
+          ...s.apps.filter((a) => a.id !== device.id),
+        ];
+        // Really grant the session on the waiting socket.
+        if (relay) {
+          for (const entry of relay.sockets) {
+            if (entry.intentId === intentId) {
+              entry.deviceId = device.id;
+              entry.intentId = null;
+              send(entry, { t: "session", id: device.id, deviceId: device.id, approved: true });
+            }
+          }
+        }
         writeState(s);
         push(); // real pairing
         return { approved: true, device };
@@ -316,7 +579,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.revoke",
       description:
-        "revoke a paired device; params: id (RE positional bind) -> {revoked: bool, device?} — idempotent (RE revoke is), emits phone.onChanged only on a real removal",
+        "revoke a paired device; params: id (RE positional bind) -> {revoked: bool, device?} — idempotent (RE revoke is), really closes that device's relay socket, emits phone.onChanged only on a real removal",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const id = str(obj, pos, "id", "bind");
@@ -325,7 +588,20 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
         const device = s.devices.find((d) => d.id === id);
         if (!device) return { revoked: false, paired: s.devices.length };
         s.devices = s.devices.filter((d) => d.id !== id);
+        s.apps = s.apps.filter((a) => a.id !== id);
         writeState(s);
+        if (relay) {
+          for (const entry of relay.sockets) {
+            if (entry.deviceId === id) {
+              send(entry, { t: "event", kind: "revoked", ts: now(), payload: { deviceId: id } });
+              try {
+                entry.socket.close?.();
+              } catch {
+                /* already gone */
+              }
+            }
+          }
+        }
         push(); // real removal
         return { revoked: true, device, paired: s.devices.length };
       },
@@ -333,13 +609,15 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "phone.connectedApps",
-      description: "apps connected through the phone relay; params: {} -> [{id,name,connectedAt}] (relay-fed from W2-10; honest empty registry until then)",
+      description:
+        "the apps currently connected through the phone relay; params: {} -> [{id,name,connectedAt}] (fed by the REAL relay sessions)",
       handler: () => readState().apps,
     },
     {
       kind: "bridge",
       id: "phone.disconnectApp",
-      description: "disconnect an app from the relay; params: id -> {disconnected: bool} (idempotent; false when nothing matched)",
+      description:
+        "disconnect an app from the relay; params: id -> {disconnected: bool} (idempotent; really closes that client socket; false when nothing matched)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const id = str(obj, pos, "id");
@@ -350,6 +628,17 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
         if (disconnected) {
           s.apps = apps;
           writeState(s);
+          if (relay) {
+            for (const entry of relay.sockets) {
+              if (entry.deviceId === id) {
+                try {
+                  entry.socket.close?.();
+                } catch {
+                  /* already gone */
+                }
+              }
+            }
+          }
           push();
         }
         return { disconnected };
@@ -359,7 +648,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.resetIdentity",
       description:
-        "reset the phone identity; params: {confirm:true} (RE passes confirmed===true) — without confirm -> bad-params; with it -> keypair + devices + apps + intents wiped, disabled, emits phone.onChanged",
+        "reset the phone identity; params: {confirm:true} (RE passes confirmed===true) — without confirm -> bad-params; with it -> keypair + devices + apps + intents + inputs wiped, the relay closed, disabled, emits phone.onChanged",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return pick(obj, pos, "confirm", 0) === true ? { ok: true } : { ok: false, message: "confirm:true is required" };
@@ -367,6 +656,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         if (pick(obj, pos, "confirm", 0) !== true) return badParams("confirm:true is required to reset the phone identity");
+        stopRelay();
         for (const f of [privKeyFile(), pubKeyFile()]) {
           try {
             if (existsSync(f)) rmSync(f, { force: true });
@@ -383,6 +673,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
           apps: [],
           intents: [],
           codes: [],
+          inputs: [],
         };
         writeState(wiped);
         push(); // real reset
@@ -395,38 +686,72 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
   return handlers;
 }
 
-/** Test/integration seam — the exact entry point the W2-10 relay uses when a
- *  device submits a pairing code: append a real intent to the registry. */
-export function _queueIntent(entry: { id?: string; label?: string; ttlMs?: number; keyFingerprint?: string | null }): {
-  id: string;
-  label: string;
-  createdAt: number;
-  expiresAt: number;
-} {
-  const s = loadJson<PhoneState>(dbPath("phone.json"), {
-    enabled: false,
-    port: null,
-    keepAwake: { desired: false, applied: false },
-    devices: [],
-    apps: [],
-    intents: [],
-    codes: [],
-  });
-  const t = Date.now();
-  const intent: Intent = {
-    id: entry.id ?? `intent-${t.toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-    label: entry.label ?? "Paired device",
-    createdAt: t,
-    expiresAt: t + (entry.ttlMs ?? PAIRING_TTL_MS),
-    keyFingerprint: entry.keyFingerprint ?? null,
+/** Test/integration seams — the same paths the real relay uses. */
+export function _queueIntent(intent: Partial<Intent> & { id: string }): Intent {
+  const s = readState();
+  const created: Intent = {
+    id: intent.id,
+    label: intent.label ?? "Paired device",
+    createdAt: intent.createdAt ?? Date.now(),
+    expiresAt: intent.expiresAt ?? Date.now() + PAIRING_TTL_MS,
+    ...(intent.keyFingerprint !== undefined ? { keyFingerprint: intent.keyFingerprint } : {}),
   };
-  s.intents = [...(s.intents ?? []), intent];
-  s.codes = (s.codes ?? []).filter((c) => c.expiresAt > t);
-  saveJson(dbPath("phone.json"), s);
-  return intent;
+  s.intents = [...s.intents, created];
+  writeState(s);
+  return created;
 }
-
-/** Test seam: read the raw identity key files that enable() really wrote. */
 export function _identityFilesExist(): { priv: boolean; pub: boolean } {
   return { priv: existsSync(privKeyFile()), pub: existsSync(pubKeyFile()) };
+}
+export function _phoneState(): PhoneState {
+  return readState();
+}
+/** Broadcast an event frame to every paired device (the app → phone direction). */
+export function _broadcastToDevices(kind: string, payload: unknown): number {
+  // The seam needs the live relay — the handler factory keeps it in scope, so
+  // the relay instance is tracked here for the tests and the integration path.
+  const live = _liveRelay();
+  if (!live) return 0;
+  let sent = 0;
+  for (const entry of live.sockets) {
+    if (!entry.deviceId) continue;
+    try {
+      entry.socket.send(JSON.stringify({ t: "event", kind, ts: Date.now(), payload }));
+      sent++;
+    } catch {
+      /* socket gone */
+    }
+  }
+  return sent;
+}
+/** The live relay of the most recent factory (set by makePhoneHandlers). */
+let _currentRelay: Relay | null = null;
+export function _liveRelay(): Relay | null {
+  return _currentRelay;
+}
+export function _setLiveRelay(r: Relay | null): void {
+  _currentRelay = r;
+}
+export function _relayPort(): number | null {
+  return _currentRelay?.port ?? null;
+}
+export function _relayInputs(): PhoneState["inputs"] {
+  return readState().inputs;
+}
+/** Close every relay this process started (shutdown / test teardown). */
+export function _stopAllRelays(): number {
+  let closed = 0;
+  for (const r of [...RELAY_REGISTRY]) {
+    try {
+      for (const entry of r.sockets ?? []) entry.socket?.close?.();
+      r.sockets?.clear?.();
+      r.server?.close?.();
+    } catch {
+      /* already gone */
+    }
+    RELAY_REGISTRY.delete(r);
+    closed++;
+  }
+  _setLiveRelay(null);
+  return closed;
 }

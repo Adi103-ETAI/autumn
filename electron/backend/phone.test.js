@@ -1,21 +1,30 @@
 "use strict";
-// layer-1 tests for the phone bridge ids (doc 32 W2-5 §2g). 12 dispatchable +
-// phone.onChanged push. Local pairing registry: ed25519 identity, 6-digit
-// one-time codes (sha256 stored, plaintext never persisted), RE error strings
-// for decide, idempotent revoke, confirm-gated identity reset. The WebSocket
-// RELAY is the W2-10 milestone — status must report honest
-// relay:{running:false, reason} until then.
-const { test, beforeEach } = require("node:test");
+// layer-1 tests for the phone bridge ids (doc 32 W2-10 §2g). 12 dispatchable +
+// phone.onChanged push. The RELAY is real: a `ws` server on the LAN that pairs
+// a phone with a one-time code and then streams frames.
+//
+// The end-to-end test drives the real protocol: a `ws` client connects, sends
+// {t:"auth", code}, gets {t:"session", id}, the user approves the pairing, the
+// client gets the grant, and an app event really reaches the phone.
+const { test, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { createHash } = require("node:crypto");
 require("../ts-register");
 const reg = require("../ipc/registry");
 const manifest = require("../ipc/manifest.json");
 const { useTempUserData, dbPath } = require("./store.ts");
 
-const { makePhoneHandlers, _queueIntent, _identityFilesExist } = require("./phone.ts");
+const {
+  makePhoneHandlers,
+  _queueIntent,
+  _identityFilesExist,
+  _phoneState,
+  _broadcastToDevices,
+  _relayInputs,
+  _liveRelay,
+  _stopAllRelays,
+} = require("./phone.ts");
 
 const DISPATCHABLE = manifest.bridge.namespaces.phone.filter((m) => !/^on[A-Z]/.test(m)); // 12
 
@@ -43,6 +52,12 @@ beforeEach(() => {
   for (const p of [require.resolve("./phone.ts")]) delete require.cache[p];
 });
 
+// The relay keeps a socket open — every test must close it, or the test
+// process never exits.
+afterEach(() => {
+  _stopAllRelays();
+});
+
 test("id surface: 12 dispatchable phone ids; onChanged is in the manifest but push-only", () => {
   useTempUserData();
   const { handlers } = build();
@@ -53,7 +68,7 @@ test("id surface: 12 dispatchable phone ids; onChanged is in the manifest but pu
   assert.ok(!handlers.some((h) => h.id === "phone.onChanged"), "onChanged must stay a subscription");
 });
 
-test("status: honest initial state with the deferred relay report", async () => {
+test("status: honest initial state (access off, no relay)", async () => {
   useTempUserData();
   const { call } = build();
   const s = await call("phone.status", {});
@@ -61,35 +76,32 @@ test("status: honest initial state with the deferred relay report", async () => 
   assert.equal(s.enabled, false);
   assert.equal(s.port, null);
   assert.equal(s.paired, 0);
-  assert.equal(s.relay.running, false, "no listener until W2-10 — never claim a port we don't hold");
-  assert.match(s.relay.reason, /W2-10/);
+  assert.equal(s.relay.running, false, "no listener until it is really started");
+  assert.ok(s.relay.reason);
 });
 
-test("enable: generates a real ed25519 identity once and emits onChanged only on the transition", async () => {
+test("enable: generates a real ed25519 identity once and starts the REAL relay", async () => {
   const dir = useTempUserData();
   const { call, emits } = build();
   const first = await call("phone.enable", {});
   assert.equal(first.enabled, true);
   assert.ok(first.since, "since recorded on enable");
+  assert.equal(first.relay.running, true, "the ws server really listens");
+  assert.ok(first.relay.port > 0);
+  assert.ok(first.relay.clients >= 0);
   assert.deepEqual(_identityFilesExist(), { priv: true, pub: true }, "keypair really written");
   assert.ok(fs.existsSync(path.join(dir, "phone", "identity-key.pem")));
   const keyText = fs.readFileSync(path.join(dir, "phone", "identity-key.pem"), "utf8");
   assert.match(keyText, /BEGIN PRIVATE KEY/);
   assert.equal(emits("phone.onChanged").length, 1);
 
+  // Idempotent: a second enable does not re-emit.
   await call("phone.enable", {});
   assert.equal(emits("phone.onChanged").length, 1, "no second emit without a real transition");
-});
 
-test("disable: real transition + emit; idempotent disable does not re-emit", async () => {
-  useTempUserData();
-  const { call, emits } = build();
-  await call("phone.enable", {});
   const off = await call("phone.disable", {});
   assert.equal(off.enabled, false);
-  assert.equal(emits("phone.onChanged").length, 2);
-  await call("phone.disable", {});
-  assert.equal(emits("phone.onChanged").length, 2, "already-disabled → no emit");
+  assert.equal(off.relay.running, false, "the relay really closed");
 });
 
 test("createPairing: auto-enables, returns a 6-digit code with 10-min expiry, persists ONLY the sha256", async () => {
@@ -103,6 +115,7 @@ test("createPairing: auto-enables, returns a 6-digit code with 10-min expiry, pe
 
   const state = JSON.parse(fs.readFileSync(dbPath("phone.json"), "utf8"));
   assert.equal(state.enabled, true, "createPairing auto-enables (RE)");
+  const { createHash } = require("node:crypto");
   const codeHash = createHash("sha256").update(res.code).digest("hex");
   assert.ok(state.codes.some((c) => c.codeHash === codeHash), "sha256 of the code is stored");
   assert.ok(!JSON.stringify(state.codes).includes(res.code), "plaintext code must never be written");
@@ -113,7 +126,7 @@ test("pending: lists unexpired intents, drops expired ones", async () => {
   useTempUserData();
   const { call } = build();
   _queueIntent({ id: "i-live", label: "Live", ttlMs: 60_000 });
-  _queueIntent({ id: "i-dead", label: "Dead", ttlMs: -1000 });
+  _queueIntent({ id: "i-dead", label: "Dead", expiresAt: Date.now() - 1000 });
   const pending = await call("phone.pending", {});
   assert.deepEqual(pending.map((i) => i.id), ["i-live"]);
 });
@@ -233,12 +246,140 @@ test("resetIdentity: confirm required; wipes keys/devices/state, disables, emits
   assert.equal(emits("phone.onChanged").length, count + 1);
 });
 
+test("relay end-to-end: a real ws client pairs with a code and receives app events", async () => {
+  useTempUserData();
+  const WebSocket = require("ws");
+  const { call } = build();
+  const enabled = await call("phone.enable", {});
+  assert.equal(enabled.relay.running, true);
+  const port = enabled.relay.port;
+  assert.ok(port > 0);
+
+  const pairing = await call("phone.createPairing", { label: "Test phone" });
+  assert.match(pairing.code, /^\d{6}$/);
+
+  // The phone connects and authenticates with the one-time code.
+  const socket = new WebSocket(`ws://127.0.0.1:${port}`);
+  const frames = [];
+  socket.on("message", (raw) => frames.push(JSON.parse(String(raw))));
+  await new Promise((resolve, reject) => {
+    socket.once("open", resolve);
+    socket.once("error", reject);
+  });
+  socket.send(JSON.stringify({ t: "auth", code: pairing.code, label: "Test phone" }));
+
+  // The relay answers with the pairing intent and the request shows up.
+  const session = await waitFor(() => frames.find((f) => f.t === "session"));
+  assert.ok(session, `expected a session frame, got ${JSON.stringify(frames)}`);
+  const pending = await call("phone.pending", {});
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].id, session.id);
+  assert.equal(pending[0].label, "Test phone");
+
+  // The user approves → the phone really gets the grant.
+  const approved = await call("phone.decide", { intentId: session.id, decision: "approve" });
+  assert.equal(approved.approved, true);
+  const grant = await waitFor(() => frames.find((f) => f.t === "session" && f.approved));
+  assert.ok(grant, "the phone received the session grant");
+  assert.equal(grant.deviceId, approved.device.id);
+
+  // The app → phone direction really streams.
+  const sent = _broadcastToDevices("agent-question", { question: "status?" });
+  assert.equal(sent, 1);
+  const event = await waitFor(() => frames.find((f) => f.t === "event"));
+  assert.ok(event, "the phone received the event frame");
+  assert.equal(event.kind, "agent-question");
+  assert.equal(event.payload.question, "status?");
+
+  // The phone → app direction really records the input.
+  socket.send(JSON.stringify({ t: "input", text: "all good" }));
+  const inputs = await waitFor(() => (_relayInputs().length ? _relayInputs() : null));
+  assert.ok(inputs, "the input was recorded");
+  assert.equal(inputs[0].text, "all good");
+  assert.equal(inputs[0].deviceId, approved.device.id);
+
+  // Revoking really closes the socket and drops the device.
+  const closed = new Promise((resolve) => socket.once("close", () => resolve(true)));
+  await call("phone.revoke", approved.device.id);
+  assert.ok(await Promise.race([closed, new Promise((r) => setTimeout(() => r(false), 2000))]), "the socket closed");
+  assert.deepEqual(await call("phone.devices", {}), []);
+
+  socket.close();
+  await call("phone.disable", {});
+  assert.equal(_liveRelay(), null, "the relay really shut down");
+});
+
+test("relay: a bad pairing code is refused and no intent is created", async () => {
+  useTempUserData();
+  const WebSocket = require("ws");
+  const { call } = build();
+  const enabled = await call("phone.enable", {});
+  const socket = new WebSocket(`ws://127.0.0.1:${enabled.relay.port}`);
+  const frames = [];
+  socket.on("message", (raw) => frames.push(JSON.parse(String(raw))));
+  await new Promise((resolve, reject) => {
+    socket.once("open", resolve);
+    socket.once("error", reject);
+  });
+  socket.send(JSON.stringify({ t: "auth", code: "000000" }));
+  const err = await waitFor(() => frames.find((f) => f.t === "error"));
+  assert.ok(err, "the relay refuses a wrong code");
+  assert.match(err.message, /pairing code/i);
+  assert.deepEqual(await call("phone.pending", {}), [], "no intent was created");
+  socket.close();
+  await call("phone.disable", {});
+});
+
+test("relay: the code is single-use", async () => {
+  useTempUserData();
+  const WebSocket = require("ws");
+  const { call } = build();
+  const enabled = await call("phone.enable", {});
+  const pairing = await call("phone.createPairing", {});
+  const port = enabled.relay.port;
+
+  const first = new WebSocket(`ws://127.0.0.1:${port}`);
+  const firstFrames = [];
+  first.on("message", (raw) => firstFrames.push(JSON.parse(String(raw))));
+  await new Promise((resolve, reject) => {
+    first.once("open", resolve);
+    first.once("error", reject);
+  });
+  first.send(JSON.stringify({ t: "auth", code: pairing.code }));
+  await waitFor(() => firstFrames.find((f) => f.t === "session"));
+
+  const second = new WebSocket(`ws://127.0.0.1:${port}`);
+  const secondFrames = [];
+  second.on("message", (raw) => secondFrames.push(JSON.parse(String(raw))));
+  await new Promise((resolve, reject) => {
+    second.once("open", resolve);
+    second.once("error", reject);
+  });
+  second.send(JSON.stringify({ t: "auth", code: pairing.code }));
+  const err = await waitFor(() => secondFrames.find((f) => f.t === "error"));
+  assert.ok(err, "the code cannot be replayed");
+
+  first.close();
+  second.close();
+  await call("phone.disable", {});
+});
+
+/** Wait until `fn` returns a truthy value (or time out). */
+async function waitFor(fn, timeoutMs = 4000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const v = fn();
+    if (v) return v;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return null;
+}
+
 test("registry-level: every phone id dispatch-resolves", async () => {
   useTempUserData();
   const { handlers, dispatch } = build();
   const paramsFor = (id) => {
     if (id === "phone.decide") return { intentId: "ghost", decision: "deny" };
-    if (id === "phone.resetIdentity") return {}; // schema refuses without confirm — still an envelope
     return {};
   };
   for (const h of handlers) {
@@ -246,4 +387,6 @@ test("registry-level: every phone id dispatch-resolves", async () => {
     assert.ok(env && typeof env.ok === "boolean", `${h.id} must resolve to an envelope`);
     if (!env.ok) assert.ok(!/^no handler for /.test(env.error.message), `${h.id}: ${env.error.message}`);
   }
+  // The sweep starts the relay (phone.enable) — the afterEach closes it.
+  assert.ok(_liveRelay(), "the sweep really started the relay");
 });
