@@ -38,6 +38,13 @@ import { makeSkillsHandlers } from "./skills";
 import { makeUpdateHandlers } from "./update";
 import { makeAuthHandlers } from "./auth";
 import { makeAgentAccountsHandlers } from "./agentAccounts";
+import { makeBackendsHandlers } from "./backends";
+import { makeBrowserHandlers } from "./browser";
+import { makeVoiceHandlers } from "./voice";
+import { makePhoneHandlers } from "./phone";
+import { makeVideoHandlers } from "./video";
+import { makeSlidesHandlers } from "./slides";
+import { makeRemotionHandlers } from "./remotion";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -168,6 +175,13 @@ const W2_FACTORIES = [
   makeUpdateHandlers,
   makeAuthHandlers,
   makeAgentAccountsHandlers,
+  makeBackendsHandlers,
+  makeBrowserHandlers,
+  makeVoiceHandlers,
+  makePhoneHandlers,
+  makeVideoHandlers,
+  makeSlidesHandlers,
+  makeRemotionHandlers,
 ];
 
 /**
