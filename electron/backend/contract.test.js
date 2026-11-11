@@ -136,3 +136,143 @@ test("contract: every Wave-1 handler/description is present and every id is brid
   const dupes = seen.filter((id, i) => seen.indexOf(id) !== i);
   assert.deepEqual(dupes, [], `duplicate ids across Wave-1 factories: ${dupes.join(", ")}`);
 });
+
+// ---------------------------------------------------------------------------
+// Wave-2 contract (doc 32 §0 / §7 W2-6): the 19 platform namespaces, 115
+// renderer-used dispatchable ids + 6 `on*` subscriptions. Same two rules as
+// Wave 1 — every renderer-used non-on* id dispatch-resolves, every on* is a
+// facade subscription — plus: bridge kind, descriptions, no duplicate ids
+// across the whole registered surface.
+// ---------------------------------------------------------------------------
+
+const { W1_FACTORIES: _W1F, W2_FACTORIES } = require("./index.ts");
+
+// Doc 32 §0 — the 19 Wave-2 namespaces (rendererUsage cross-check below).
+const WAVE2_NAMESPACES = [
+  "settings", "update", "diagnostics", "resources", "runtime", "wallpapers",
+  "nav", "element", "cues", "skills", "auth", "agentAccounts", "backends",
+  "browser", "voice", "phone", "video", "slides", "remotion",
+];
+
+/** Register the FULL surface (Wave-0 + Wave-1 + Wave-2) into the registry. */
+function registerAll() {
+  const deps = fakeDeps();
+  for (const h of makeHandlers(deps)) reg.register(h.kind, h.id, h.handler, { schema: h.schema, description: h.description });
+  for (const make of [...W1_FACTORIES, ...W2_FACTORIES]) {
+    for (const h of make(deps)) reg.register(h.kind, h.id, h.handler, { schema: h.schema, description: h.description });
+  }
+  return deps;
+}
+
+test("contract(W2): the 19 Wave-2 namespaces exist in the bridge oracle and in rendererUsage", () => {
+  const bridge = manifest.bridge.namespaces;
+  const usage = manifest.rendererUsage.namespaces;
+  for (const ns of WAVE2_NAMESPACES) {
+    assert.ok(bridge[ns], `namespace ${ns} missing from manifest bridge.namespaces`);
+    assert.ok(usage[ns], `namespace ${ns} missing from manifest rendererUsage`);
+  }
+  assert.equal(WAVE2_NAMESPACES.length, 19, "doc 32 §0 scope is 19 namespaces");
+});
+
+test("contract(W2): every renderer-used non-on* Wave-2 method dispatch-resolves", async () => {
+  registerAll();
+  const usage = manifest.rendererUsage.namespaces;
+  const missing = [];
+  let checked = 0;
+  for (const ns of WAVE2_NAMESPACES) {
+    for (const method of usage[ns] ?? []) {
+      if (isEventMethod(method)) continue;
+      checked++;
+      const id = `${ns}.${method}`;
+      if (!reg.has("bridge", id)) missing.push(id);
+    }
+  }
+  assert.equal(checked, 115, `doc 32 §0 scope is 115 renderer-used dispatchable ids, got ${checked}`);
+  assert.deepEqual(missing, [], `renderer-used Wave-2 methods with no backend: ${missing.join(", ")}`);
+});
+
+test("contract(W2): every renderer-used on* Wave-2 method exists in the facade as a subscription", () => {
+  const facade = buildFacade({
+    manifest,
+    invoke: async () => ({ ok: true, result: null }),
+    subscribe: (id, cb) => {
+      assert.equal(typeof cb, "function");
+      return () => {};
+    },
+  });
+  const usage = manifest.rendererUsage.namespaces;
+  const missing = [];
+  let checked = 0;
+  for (const ns of WAVE2_NAMESPACES) {
+    for (const method of usage[ns] ?? []) {
+      if (!isEventMethod(method)) continue;
+      checked++;
+      const member = facade[ns] && facade[ns][method];
+      if (typeof member !== "function") missing.push(`${ns}.${method}`);
+    }
+  }
+  assert.equal(checked, 6, `doc 32 §0 scope is 6 on* subscriptions, got ${checked}`);
+  assert.deepEqual(missing, [], `renderer-used Wave-2 on* methods missing from facade: ${missing.join(", ")}`);
+});
+
+test("contract(W2): every Wave-2 handler is bridge-kind, described, and unique across the full surface", () => {
+  const deps = fakeDeps();
+  const seen = [];
+  for (const make of W2_FACTORIES) {
+    for (const h of make(deps)) {
+      assert.equal(h.kind, "bridge", `${h.id} must be bridge kind`);
+      assert.ok(h.description && h.description.length >= 10, `${h.id} missing a real description`);
+      assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in the target surface (no invented ids)`);
+      seen.push(h.id);
+    }
+  }
+  const dupes = seen.filter((id, i) => seen.indexOf(id) !== i);
+  assert.deepEqual(dupes, [], `duplicate ids across Wave-2 factories: ${dupes.join(", ")}`);
+
+  // Cross-wave uniqueness: no Wave-2 id may collide with the Wave-0/1 surface.
+  const wave1Ids = new Set();
+  for (const make of W1_FACTORIES) for (const h of make(deps)) wave1Ids.add(h.id);
+  const collide = seen.filter((id) => wave1Ids.has(id));
+  assert.deepEqual(collide, [], `Wave-2 ids colliding with Wave-1: ${collide.join(", ")}`);
+});
+
+test("contract(W2): every boundary id dispatches and answers the not-implemented envelope", async () => {
+  registerAll();
+  const BOUNDARY = [
+    "backends.convexAuthStatus", "backends.convexCreate", "backends.convexLogin",
+    "voice.compile", "voice.cancelCompile", "voice.intentReady", "voice.parakeet", "voice.voicePack",
+    "runtime.installOctober", "runtime.removeOctober",
+  ];
+  for (const id of BOUNDARY) {
+    assert.ok(reg.has("bridge", id), `${id} must dispatch`);
+    const env = await reg.dispatch({ kind: "bridge", id, params: {} });
+    assert.equal(env.ok, false, `${id} must fail honestly`);
+    assert.equal(env.error.code, "not-implemented", `${id} must be the boundary envelope`);
+    assert.ok(env.error.message.length > 10, `${id} needs an explanatory message`);
+  }
+});
+
+test("contract(W2): the registered surface covers every renderer-used id across ALL waves", async () => {
+  registerAll();
+  const usage = manifest.rendererUsage.namespaces;
+  const missing = [];
+  let checked = 0;
+  for (const [ns, methods] of Object.entries(usage)) {
+    for (const method of methods) {
+      if (isEventMethod(method)) continue;
+      checked++;
+      if (!reg.has("bridge", `${ns}.${method}`)) missing.push(`${ns}.${method}`);
+    }
+  }
+  // Namespaces not yet built (Wave 3/4 subsystems: cloud, compute, storage, …)
+  // are expected here until their milestones land — so this asserts the PARTIAL
+  // set we own today is complete, and reports the remainder for the roadmap.
+  const w2Owned = new Set(WAVE2_NAMESPACES);
+  const w1Owned = new Set([...WAVE1_NAMESPACES]);
+  const ownedMissing = missing.filter((id) => {
+    const ns = id.slice(0, id.lastIndexOf("."));
+    return w2Owned.has(ns) || w1Owned.has(ns);
+  });
+  assert.ok(checked > 300, `expected >300 renderer-used ids checked, got ${checked}`);
+  assert.deepEqual(ownedMissing, [], `owned-wave renderer-used ids with no backend: ${ownedMissing.join(", ")}`);
+});
