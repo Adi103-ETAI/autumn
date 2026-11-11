@@ -46,7 +46,17 @@ function buildFacade({ manifest, invoke, subscribe, legacy = {}, inspect, privat
       if (isEventMethod(m)) {
         member[m] = (cb) => subscribe(id, cb);
       } else {
-        member[m] = (params) => invoke({ kind: "bridge", id, params: params ?? {} });
+        // Calls take ONE params object (autumn convention). The TARGET's renderer
+        // also calls positionally — `signIn(email, password)`, `terminal.input(id, data)`
+        // — and a single-arg facade would silently drop everything after arg 1.
+        // Multi-arg calls are packed as {args:[...]} and normalizers in the handler
+        // modules (paramsOf in auth.ts/agentAccounts.ts) accept both shapes.
+        member[m] = (params, ...rest) =>
+          invoke({
+            kind: "bridge",
+            id,
+            params: rest.length > 0 ? { args: [params, ...rest] } : (params ?? {}),
+          });
       }
     }
     root[ns] = member;

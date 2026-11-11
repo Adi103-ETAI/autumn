@@ -5,8 +5,9 @@
 // via electron/ts-register.js, and every handler is registered in the shared
 // registry so it serves `window.autumn.*` calls through the generic registrar.
 //
-// Wave-2 (doc 32): the 10 platform milestone handlers (settings/diagnostics/resources/nav/
-// element/runtime/wallpapers/cues/skills/update) register alongside the Wave-1 factories and
+// Wave-2 (doc 32): the 12 platform milestone handlers (settings/diagnostics/resources/nav/
+// element/runtime/wallpapers/cues/skills/update/auth/agentAccounts) register alongside the
+// Wave-1 factories and
 // the original 14 route handlers. Their shared dependency surface is W1Deps (w1-deps.ts); the
 // platform modules additionally use the flat-JSON store helper (store.ts).
 
@@ -35,6 +36,8 @@ import { makeWallpapersHandlers } from "./wallpapers";
 import { makeCuesHandlers } from "./cues";
 import { makeSkillsHandlers } from "./skills";
 import { makeUpdateHandlers } from "./update";
+import { makeAuthHandlers } from "./auth";
+import { makeAgentAccountsHandlers } from "./agentAccounts";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -163,6 +166,8 @@ const W2_FACTORIES = [
   makeCuesHandlers,
   makeSkillsHandlers,
   makeUpdateHandlers,
+  makeAuthHandlers,
+  makeAgentAccountsHandlers,
 ];
 
 /**

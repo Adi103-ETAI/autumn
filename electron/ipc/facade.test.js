@@ -60,6 +60,31 @@ test("callable methods default params to {} (argument-optional calls)", async ()
   });
 });
 
+test("positional multi-arg calls (target renderer style) pack as {args:[...]}", async () => {
+  const { facade, calls } = build();
+  // RE target renderer: signIn(email, password), terminal.input(id, data) —
+  // without packing, everything after arg 1 would be silently dropped.
+  await facade.auth.signIn("user@example.com", "hunter2222");
+  assert.deepEqual(calls[calls.length - 1], {
+    kind: "bridge",
+    id: "auth.signIn",
+    params: { args: ["user@example.com", "hunter2222"] },
+  });
+  await facade.terminal.input("node-1", "ls\n");
+  assert.deepEqual(calls[calls.length - 1], {
+    kind: "bridge",
+    id: "terminal.input",
+    params: { args: ["node-1", "ls\n"] },
+  });
+  // single-arg calls stay raw (autumn object convention + single positional strings)
+  await facade.auth.resetPassword("user@example.com");
+  assert.deepEqual(calls[calls.length - 1], {
+    kind: "bridge",
+    id: "auth.resetPassword",
+    params: "user@example.com",
+  });
+});
+
 test("on* methods subscribe and return an unsubscribe function", async () => {
   const { facade, subs } = build();
   const cb = () => {};
