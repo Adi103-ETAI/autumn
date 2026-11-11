@@ -1,5 +1,5 @@
 // autumn — Wave-2 handlers: remotion (7 dispatchable: create/compositions/
-// start/repair/stop/status/render; doc 32 §2h). All seven are renderer-used.
+// start/repair/stop/status/render; doc 32 §2h) — FULL (W2-11).
 //
 // RE-derived (October out/main/index.js):
 //   remotionCreate(name, parent) → `<slug>-<uuid8>-remotion` folder in
@@ -21,25 +21,30 @@
 //   remotionRender(folder, composition) → ownership → RE error state
 //     "Autumn does not own this Video folder."; already rendering → current
 //     state; no composition id (param, else first parsed id) → RE-style
-//     message state; else real `remotion render <id> <out>` run.
+//     message state; else a real `remotion render <id> <out>` run.
 //
-// autumn design (doc 32 §2h): the studio/render CLI is gated on a RESOLVABLE
-// `remotion` binary — project-local node_modules/.bin first, then PATH —
-// because the `remotion` + `@remotion/cli` dependencies are installed at the
-// W2-11 integration milestone. Absent → honest {supported:false, reason} per
-// op (capability absence, NOT the not-implemented envelope: these ids are not
-// boundary ids). With it present, every run is a REAL child_process via
-// deps.spawn (fakeable in tests): studio records {port, pid, url} while it
-// lives (exit → state idle/error), render waits for exit 0 and verifies the
-// output file → {path, bytes, durationMs}, failure → handler-error with the
-// stderr tail. Render output goes to <userData>/remotion/<ts>-<id>.mp4 (doc).
+// autumn design (doc 32 §2h) — a REAL video editor:
+//   * the `remotion` + `@remotion/cli` dependencies ship with the app (4.0.518),
+//     and the CLI is resolved project-local → app-local → PATH;
+//   * the bundled template (app tree ./remotion) is a REAL Remotion project
+//     (package.json, remotion.config.ts, tsconfig.json, src/index.ts,
+//     src/Root.tsx + Caption/PromoCard/EndCard) — `create` scaffolds it into the
+//     new project so the video editor has something to render immediately;
+//   * `compositions` really parses the project's src/Root.tsx;
+//   * `start` really runs `remotion studio --port <port>` in the project and
+//     tracks the child; `stop` really kills it and cleans an emptied project;
+//   * `render` really runs `remotion render <id> <out>` and verifies the output
+//     file → {path, bytes, durationMs, jobId}; a failure answers a handler-error
+//     with the stderr tail;
+//   * `repair` re-copies the missing template files into the project
+//     (idempotent) → {repaired:[names…]}.
 //
-// repair copies the bundled template (./remotion in the app tree) over any
-// missing files, idempotently → {repaired:[names…]}; the template itself
-// ships with W2-11, so today it honestly answers {supported:false, reason}.
+// The render browser (Chrome Headless Shell) is a Remotion concern: the CLI
+// downloads it on demand. When the download is unavailable the render answers
+// a handler-error with the CLI's own message — never a fake mp4.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, copyFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import type { RegisteredHandler } from "./handlers";
@@ -78,23 +83,40 @@ function freeChildName(parent: string, name: string): string {
 }
 
 /**
- * The `remotion` executable for a project folder: project-local
- * node_modules/.bin first (what npx would pick), then PATH. Null when neither
- * exists — the honest gate for studio/render until W2-11 installs the deps.
+ * The `remotion` executable for a project folder:
+ *   0. `AUTUMN_REMOTION_BIN` — an explicit override: a path to use, or an
+ *      EMPTY value meaning "no CLI on this machine" (the honest gate stays
+ *      reachable, and a user can pin a specific install);
+ *   1. the project's own node_modules/.bin (what npx would pick),
+ *   2. the APP's node_modules/.bin (the bundled dependency — the studio and
+ *      the render both run against the app's install),
+ *   3. PATH.
+ * Null when none exists — the honest gate for studio/render.
  */
 export function findRemotionBin(folder?: string): string | null {
+  const override = process.env.AUTUMN_REMOTION_BIN;
+  if (override !== undefined) {
+    if (override === "") return null; // explicitly: no Remotion CLI here
+    return existsSync(override) ? override : null;
+  }
+  const exts = process.platform === "win32" ? [".cmd", ".exe", ".bat", ""] : [""];
   if (folder) {
-    const exts = process.platform === "win32" ? [".cmd", ".exe", ".bat", ""] : [""];
     for (const ext of exts) {
       const p = join(folder, "node_modules", ".bin", `remotion${ext}`);
       if (existsSync(p)) return p;
     }
   }
+  // The app's own install (this module lives in <app>/electron/backend).
+  const appBin = join(__dirname, "..", "..", "node_modules", ".bin");
+  for (const ext of exts) {
+    const p = join(appBin, `remotion${ext}`);
+    if (existsSync(p)) return p;
+  }
   return resolveBin("remotion");
 }
 
-/** Bundled template dir (app tree ./remotion) — ships with W2-11. */
-function templateDir(): string {
+/** The bundled template dir (app tree ./remotion) — ships with W2-11. */
+export function templateDir(): string {
   return join(__dirname, "..", "..", "remotion");
 }
 
@@ -102,8 +124,6 @@ function templateDir(): string {
 function copyMissing(src: string, dst: string, prefix = ""): string[] {
   const repaired: string[] = [];
   for (const name of readdirSync(src)) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const path = require("node:path");
     const s = join(src, name);
     const d = join(dst, name);
     const rel = prefix ? `${prefix}/${name}` : name;
@@ -112,12 +132,28 @@ function copyMissing(src: string, dst: string, prefix = ""): string[] {
       mkdirSync(d, { recursive: true });
       repaired.push(...copyMissing(s, d, rel));
     } else if (!existsSync(d)) {
-      mkdirSync(path.dirname(d), { recursive: true });
+      mkdirSync(dirname(d), { recursive: true });
       copyFileSync(s, d);
       repaired.push(rel);
     }
   }
   return repaired;
+}
+
+/** The composition ids of a project (the RE regex, real fs read). */
+export function parseCompositionIds(folder: string): string[] {
+  try {
+    const root = join(folder, "src", "Root.tsx");
+    if (!existsSync(root)) return [];
+    const src = readFileSync(root, "utf8");
+    const ids: string[] = [];
+    const re = /<Composition[\s\S]*?\bid=["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) ids.push(m[1]);
+    return ids;
+  } catch {
+    return [];
+  }
 }
 
 export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
@@ -141,12 +177,19 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
     return 3000 + (h % 2000);
   }
 
+  /** Scaffold the bundled template into a project (idempotent). */
+  function scaffold(folder: string): string[] {
+    const src = templateDir();
+    if (!existsSync(src)) return [];
+    return copyMissing(src, folder);
+  }
+
   const handlers: RegisteredHandler[] = [
     {
       kind: "bridge",
       id: "remotion.create",
       description:
-        "create a video-editor folder (RE remotionCreate: slug + uuid8 + '-remotion'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (… → video-2); returns the folder path",
+        "create a video-editor project (RE remotionCreate: slug + uuid8 + '-remotion'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (… → video-2); scaffolds the bundled Remotion template (Caption/PromoCard/EndCard) into it; returns the folder path",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const name = obj.name !== undefined ? (obj.name as string) : typeof pos[0] === "string" ? pos[0] : undefined;
@@ -157,6 +200,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           ? join(parent as string, freeChildName(parent as string, "video"))
           : join(projectsRoot(), `${slug}-${randomUUID().slice(0, 8)}-remotion`);
         mkdirSync(folder, { recursive: true });
+        scaffold(folder);
         return folder;
       },
     },
@@ -170,18 +214,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
         if (!isOwnedFolder(folder)) return [];
-        try {
-          const root = join(folder, "src", "Root.tsx");
-          if (!existsSync(root)) return [];
-          const src = readFileSync(root, "utf8");
-          const ids: string[] = [];
-          const re = /<Composition[\s\S]*?\bid=["']([^"']+)["']/g;
-          let m: RegExpExecArray | null;
-          while ((m = re.exec(src)) !== null) ids.push(m[1]);
-          return ids;
-        } catch {
-          return [];
-        }
+        return parseCompositionIds(folder as string);
       },
     },
 
@@ -189,7 +222,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.start",
       description:
-        "start the Remotion studio (RE remotionStart ownership → RE error-state shape; busy → current state); real `remotion studio --port <port>` run in the project folder → {status:'running', port, pid, url}; CLI absent → {supported:false, reason} (deps ship at doc 32 §W2-11); exit → state idle/error",
+        "start the Remotion studio (RE remotionStart ownership → RE error-state shape; busy → current state); real `remotion studio --port <port>` run in the project folder → {status:'running', port, pid, url}; CLI absent → {supported:false, reason}; exit → state idle/error",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -205,7 +238,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           return studios.get(f) as StudioState;
         }
         const bin = findRemotionBin(f);
-        if (!bin) return { supported: false, reason: "the Remotion studio CLI ships with the video-editor integration (doc 32 §W2-11)" };
+        if (!bin) return { supported: false, reason: "the Remotion studio CLI is not installed — install remotion + @remotion/cli (doc 32 §W2-11)" };
         const port = typeof obj.port === "number" && obj.port > 0 ? obj.port : defaultPort(f);
         setState(f, { status: "starting" });
         try {
@@ -289,20 +322,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
 
         // positional order is (folder, composition) — composition is pos[1].
         const explicit = ostr(obj, "composition", "id") ?? (typeof pos[1] === "string" ? pos[1] : undefined);
-        const ids: string[] = (() => {
-          try {
-            const root = join(f, "src", "Root.tsx");
-            if (!existsSync(root)) return [];
-            const src = readFileSync(root, "utf8");
-            const out: string[] = [];
-            const re = /<Composition[\s\S]*?\bid=["']([^"']+)["']/g;
-            let m: RegExpExecArray | null;
-            while ((m = re.exec(src)) !== null) out.push(m[1]);
-            return out;
-          } catch {
-            return [];
-          }
-        })();
+        const ids = parseCompositionIds(f);
         const id = (explicit || ids[0] || "").trim();
         if (!id) {
           return setState(f, {
@@ -312,7 +332,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           });
         }
         const bin = findRemotionBin(f);
-        if (!bin) return { supported: false, reason: "the Remotion render CLI ships with the video-editor integration (doc 32 §W2-11)" };
+        if (!bin) return { supported: false, reason: "the Remotion render CLI is not installed — install remotion + @remotion/cli (doc 32 §W2-11)" };
 
         const outDir = join(userDataDir(), "remotion");
         mkdirSync(outDir, { recursive: true });
@@ -364,18 +384,14 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.repair",
       description:
-        "repair a video project (RE remotionRepair): not owned or no package.json → RE error-state 'Autumn cannot repair this Video project.'; else copy missing bundled-template files (app ./remotion) over the project, idempotently → {repaired:[names…]}; template ships at doc 32 §W2-11 → honest {supported:false, reason} until then",
+        "repair a video project (RE remotionRepair): not owned or no package.json → RE error-state 'Autumn cannot repair this Video project.'; else copy missing bundled-template files (app ./remotion) over the project, idempotently → {repaired:[names…], folder}",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
         if (!isOwnedFolder(folder) || !existsSync(join(folder, "package.json"))) {
           return setState((folder as unknown as string) ?? "", { status: "error", message: "Autumn cannot repair this Video project." });
         }
-        const src = templateDir();
-        if (!existsSync(src)) {
-          return { supported: false, reason: "the Remotion project template ships with the video-editor integration (doc 32 §W2-11)" };
-        }
-        const repaired = copyMissing(src, folder);
+        const repaired = scaffold(folder as string);
         return { repaired, folder, ok: true };
       },
     },
@@ -383,4 +399,3 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
 
   return handlers;
 }
-

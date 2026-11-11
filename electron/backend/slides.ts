@@ -32,6 +32,11 @@
 // (deck mode, doc §2h) or the folder state (RE shape). Closing the window
 // (real "closed" trigger) marks the record inactive. No manifest event exists
 // for this namespace, so state updates are file/in-memory only.
+//
+// W2-11 (FULL): `create` now scaffolds a REAL deck project into the folder —
+// `slides.json` (the deck's content) + `index.html` (the same deck engine) —
+// so a created deck can really be started in FOLDER mode. The scaffold is
+// idempotent and never overwrites an existing deck.
 
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -61,6 +66,27 @@ function slugify(name: string | undefined, fallback: string): string {
   return (
     (name || fallback).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || fallback
   );
+}
+
+/**
+ * Scaffold a REAL deck project into `folder`: `slides.json` (the deck's
+ * content) + `index.html` (the deck engine). Idempotent — an existing deck
+ * is never overwritten.
+ */
+export function scaffoldDeck(folder: string, title = "Untitled deck", slides: unknown[] = []): string[] {
+  const written: string[] = [];
+  mkdirSync(folder, { recursive: true });
+  const jsonFile = join(folder, "slides.json");
+  if (!existsSync(jsonFile)) {
+    writeFileSync(jsonFile, JSON.stringify({ title, slides }, null, 2), "utf8");
+    written.push("slides.json");
+  }
+  const htmlFile = join(folder, "index.html");
+  if (!existsSync(htmlFile)) {
+    writeFileSync(htmlFile, renderDeckHtml(title, slides), "utf8");
+    written.push("index.html");
+  }
+  return written;
 }
 
 // ---------------------------------------------------------------------------
@@ -229,6 +255,8 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
           ? join(parent as string, freeChildName(parent as string, "slides"))
           : join(projectsRoot(), `${slug}-${randomUUID().slice(0, 8)}-slides`);
         mkdirSync(folder, { recursive: true });
+        // A created deck is a REAL project: slides.json + index.html.
+        scaffoldDeck(folder, name ?? "Untitled deck", Array.isArray(obj.slides) ? obj.slides : []);
         return folder;
       },
     },
@@ -290,8 +318,11 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
             message: "This slide deck has no index.html yet — add a Slides block or create one with slides.create.",
           });
         }
+        // The deck's own slides.json (when present) names the deck.
+        const meta = loadJson<{ title?: string }>(join(folder as string, "slides.json"), {});
+        const deckTitle = typeof meta.title === "string" && meta.title ? meta.title : "Autumn Slides";
         const url = pathToFileURL(entry).toString();
-        const win = openFullscreen(url, "Autumn Slides", folder as string);
+        const win = openFullscreen(url, `${deckTitle} — Autumn Slides`, folder as string);
         if (!win) {
           return setState(folder as string, {
             status: "error",

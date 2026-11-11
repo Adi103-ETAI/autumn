@@ -35,6 +35,7 @@ function fakeProc() {
     killed: false,
     pid: 77,
     on(ev, cb) { (ls[ev] ||= []).push(cb); return proc; },
+    stdout: { on(ev, cb) { (ls[`stdout:${ev}`] ||= []).push(cb); } },
     stderr: { on(ev, cb) { (ls[`stderr:${ev}`] ||= []).push(cb); } },
     kill() { proc.killed = true; (ls.exit || []).forEach((cb) => cb(null)); return true; },
     emitExit(code) { (ls.exit || []).forEach((cb) => cb(code)); },
@@ -53,6 +54,14 @@ function build(overrides = {}) {
       spawn: (command, args, opts) => {
         const proc = fakeProc();
         state.spawns.push({ command, args, opts, proc });
+        // The stream probe (`ffmpeg -hide_banner -i <file>`) answers at once
+        // with an audio stream — the fake video has one.
+        if (args.includes("-hide_banner")) {
+          setImmediate(() => {
+            proc.emitStderr("  Stream #0:1: Audio: aac (LC)\n");
+            proc.emitExit(0);
+          });
+        }
         return proc;
       },
     },
@@ -160,6 +169,7 @@ test("subtitle: ffmpeg absent → {supported:false, reason}; present → real sp
   const bins = fakeBin();
   await withPath(bins, async () => {
     const p = call("video.subtitle", { path: input, srtPath: srt });
+    await new Promise((r) => setImmediate(r));
     assert.equal(state.spawns.length, 1);
     const { command, args, proc } = state.spawns[0];
     assert.equal(path.basename(command), "ffmpeg");
@@ -211,8 +221,12 @@ test("bgm: positional (input, audioPath) — the audio arg must never be read as
   const bins = fakeBin();
   await withPath(bins, async () => {
     const p = call("video.bgm", { args: [input, audio] });
-    assert.equal(state.spawns.length, 1, "ffmpeg must spawn for a valid positional pair");
-    const { args, proc } = state.spawns[0];
+    // The first spawn is the stream probe (ffmpeg -i <file>), the second is
+    // the real mix.
+    await new Promise((r) => setImmediate(r));
+    const mix = state.spawns.find((s) => s.args.includes("-filter_complex"));
+    assert.ok(mix, "ffmpeg must really run the mix for a valid positional pair");
+    const { args, proc } = mix;
     assert.equal(args[args.indexOf("-i") + 1], input, "first -i is the video");
     assert.equal(args[args.lastIndexOf("-i") + 1], audio, "second -i is the audio");
     assert.ok(args.includes("-filter_complex"));

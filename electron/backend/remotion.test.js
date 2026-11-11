@@ -82,6 +82,22 @@ async function withPath(dir, fn) {
   }
 }
 
+/**
+ * Run `fn` with the Remotion CLI explicitly absent (AUTUMN_REMOTION_BIN="") —
+ * the honest "this machine has no Remotion" state, independent of what is
+ * installed on the test box.
+ */
+async function withoutRemotionCli(fn) {
+  const saved = process.env.AUTUMN_REMOTION_BIN;
+  process.env.AUTUMN_REMOTION_BIN = "";
+  try {
+    return await fn();
+  } finally {
+    if (saved === undefined) delete process.env.AUTUMN_REMOTION_BIN;
+    else process.env.AUTUMN_REMOTION_BIN = saved;
+  }
+}
+
 /** A temp dir with a fake `remotion` executable (all platform names). */
 function fakeBinDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-remo-"));
@@ -106,7 +122,7 @@ test("id surface: 7 remotion ids, all in the manifest, none boundary", () => {
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("create: RE slug + uuid8 + '-remotion' under the projects root; nested video-2 under an owned parent", async () => {
+test("create: RE slug + uuid8 + '-remotion' under the projects root; the template is scaffolded in", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -114,6 +130,13 @@ test("create: RE slug + uuid8 + '-remotion' under the projects root; nested vide
     assert.ok(folder.startsWith(root + path.sep));
     assert.match(path.basename(folder), /^autumn-[0-9a-f]{8}-remotion$/);
     assert.ok(fs.existsSync(folder));
+    // The bundled template really lands in the project.
+    assert.ok(fs.existsSync(path.join(folder, "package.json")));
+    assert.ok(fs.existsSync(path.join(folder, "src", "Root.tsx")));
+    assert.ok(fs.existsSync(path.join(folder, "src", "index.ts")));
+    assert.ok(fs.existsSync(path.join(folder, "remotion.config.ts")));
+    const ids = await call("remotion.compositions", folder);
+    assert.deepEqual(ids, ["Caption", "PromoCard", "EndCard"], "the template's compositions are really there");
 
     const named = await call("remotion.create", { name: "My Clip" });
     assert.match(path.basename(named), /^my-clip-[0-9a-f]{8}-remotion$/);
@@ -167,9 +190,9 @@ test("start: non-owned → RE error-state; no CLI (empty PATH) → {supported:fa
 
     const folder = path.join(root, "studio");
     fs.mkdirSync(folder, { recursive: true });
-    const gated = await withPath("", () => call("remotion.start", folder));
+    const gated = await withoutRemotionCli(() => call("remotion.start", folder));
     assert.equal(gated.supported, false, "no CLI → capability absence, not a fake studio");
-    assert.match(gated.reason, /W2-11/);
+    assert.match(gated.reason, /Remotion/i);
     assert.equal((await call("remotion.status", folder)).status, "idle", "gate must not leave a running state");
   });
 });
@@ -205,9 +228,11 @@ test("start: fake CLI → real spawn, running state with port/url; busy returns 
       assert.equal((await call("remotion.status", folder)).running, false);
     });
 
-    // stop on an owned folder that became empty → RE rmSync cleanup
-    const doomed = await call("remotion.create", { name: "doomed" });
-    assert.ok(fs.existsSync(doomed));
+    // stop on an owned folder that became empty → RE rmSync cleanup. A created
+    // project now holds the template, so the cleanup is asserted on a folder
+    // that really is empty.
+    const doomed = path.join(root, "doomed-project");
+    fs.mkdirSync(doomed, { recursive: true });
     await call("remotion.stop", doomed);
     assert.ok(!fs.existsSync(doomed), "empty owned folder removed, like RE");
 
@@ -244,9 +269,9 @@ test("render: ownership + no-composition + no-CLI gates before any spawn", async
       "<Composition id=\"EndCard\" component={End} durationInFrames={30} fps={30} width={1920} height={1080} />",
       "utf8",
     );
-    const gated = await withPath("", () => call("remotion.render", folder));
+    const gated = await withoutRemotionCli(() => call("remotion.render", folder));
     assert.equal(gated.supported, false);
-    assert.match(gated.reason, /W2-11/);
+    assert.match(gated.reason, /Remotion/i);
     assert.equal(state.spawns.length, 0, "no spawn on any gate");
   });
 });
@@ -315,7 +340,7 @@ test("render: positional (folder, composition) — composition must not be read 
   });
 });
 
-test("repair: no package.json → RE refusal; owned + package.json but no bundled template → {supported:false} W2-11", async () => {
+test("repair: no package.json → RE refusal; a broken project really gets the template back", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -329,12 +354,18 @@ test("repair: no package.json → RE refusal; owned + package.json but no bundle
     assert.equal(noPkg.status, "error");
     assert.match(noPkg.message, /Autumn cannot repair this Video project\./);
 
+    // A project that lost its sources is really repaired (idempotent).
     const pkg = path.join(root, "pkgproj");
-    fs.mkdirSync(pkg, { recursive: true });
+    fs.mkdirSync(path.join(pkg, "src"), { recursive: true });
     fs.writeFileSync(path.join(pkg, "package.json"), JSON.stringify({ name: "pkgproj" }), "utf8");
-    const gated = await call("remotion.repair", pkg);
-    assert.equal(gated.supported, false, "template ships at W2-11 — honest gate");
-    assert.match(gated.reason, /W2-11/);
+    const repaired = await call("remotion.repair", pkg);
+    assert.ok(repaired.repaired.length > 0, "the missing template files are really copied back");
+    assert.ok(repaired.repaired.includes("src/Root.tsx"));
+    assert.ok(fs.existsSync(path.join(pkg, "src", "Root.tsx")));
+    assert.ok(fs.existsSync(path.join(pkg, "remotion.config.ts")));
+
+    const again = await call("remotion.repair", pkg);
+    assert.deepEqual(again.repaired, [], "repair is idempotent — nothing missing the second time");
   });
 });
 
@@ -350,7 +381,7 @@ test("registry-level: every remotion id dispatch-resolves", async () => {
   });
 });
 
-test("findRemotionBin: project-local node_modules/.bin first, then PATH, else null", async () => {
+test("findRemotionBin: project-local bin first, then PATH, then the app's own install", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const folder = path.join(root, "binproj");
@@ -368,6 +399,25 @@ test("findRemotionBin: project-local node_modules/.bin first, then PATH, else nu
       assert.ok(viaPath, "falls back to PATH");
       assert.equal(path.basename(viaPath).replace(/\.cmd$/, ""), "remotion");
     });
-    assert.equal(await withPath("", () => findRemotionBin(folder)), null, "nowhere to find it → null");
+
+    // The app's own install is the last resort (it ships with autumn).
+    const appBin = path.join(__dirname, "..", "..", "node_modules", ".bin", process.platform === "win32" ? "remotion.cmd" : "remotion");
+    if (fs.existsSync(appBin)) {
+      const viaApp = findRemotionBin(folder);
+      assert.ok(viaApp, "the app's own Remotion install is used as the last resort");
+    }
+
+    // AUTUMN_REMOTION_BIN pins the CLI — an empty value means "none here".
+    assert.equal(await withoutRemotionCli(() => findRemotionBin(folder)), null, "explicitly no CLI → null");
+    const pinned = path.join(folder, "pinned-remotion");
+    fs.writeFileSync(pinned, "#!/bin/sh\nexit 0\n", "utf8");
+    const saved = process.env.AUTUMN_REMOTION_BIN;
+    process.env.AUTUMN_REMOTION_BIN = pinned;
+    try {
+      assert.equal(findRemotionBin(folder), pinned, "the override wins");
+    } finally {
+      if (saved === undefined) delete process.env.AUTUMN_REMOTION_BIN;
+      else process.env.AUTUMN_REMOTION_BIN = saved;
+    }
   });
 });

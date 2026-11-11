@@ -21,6 +21,11 @@
 // which is also what keeps Windows CI from needing ffmpeg), tracked in a
 // per-input job registry, and journaled to <userData>/video/jobs.json (there is
 // no manifest event for this namespace, so the journal is the progress record).
+//
+// W2-11 (FULL): ffmpeg's stderr carries the real progress ("time=00:00:12.34")
+// — it is parsed and journaled per job (the progress record). `cancel` accepts
+// the RE's per-input shape AND a jobId, so a caller that only knows the job id
+// can still stop the run. The output paths follow the RE (next to the input).
 
 import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
@@ -63,6 +68,8 @@ interface JobRecord {
   bytes?: number;
   ms?: number;
   tail?: string;
+  /** The last progress ffmpeg reported ("time=00:00:12.34" → seconds). */
+  progressSeconds?: number;
 }
 
 const videoDir = () => join(userDataDir(), "video");
@@ -104,6 +111,15 @@ export function parseSrt(raw: string): { ok: true; cues: number } | { ok: false;
   return { ok: true, cues };
 }
 
+/**
+ * Does the file really carry an audio track? ffmpeg prints the stream table
+ * to stderr; we read it (no output file is produced). The probe runs through
+ * deps.spawn like every other child process (so it is fakeable in tests) and
+ * never hangs: a probe that does not answer within PROBE_TIMEOUT_MS falls
+ * back to "assume there is audio" (the classic mix path).
+ */
+const PROBE_TIMEOUT_MS = 5_000;
+
 export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
   const { spawn, now } = deps;
 
@@ -114,6 +130,37 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
     for (const [key, job] of live) if (key.startsWith(`${input}::`)) return job;
     return undefined;
   };
+
+  /** Does the file carry an audio track? (real ffmpeg stream table) */
+  function hasAudioTrack(bin: string, file: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      let out = "";
+      let settled = false;
+      const finish = (hasAudio: boolean) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolve(hasAudio);
+      };
+      const timer = setTimeout(() => finish(true), PROBE_TIMEOUT_MS);
+      if (typeof timer.unref === "function") timer.unref();
+      let child: ChildProcLike;
+      try {
+        child = spawn.spawn(bin, ["-hide_banner", "-i", file], {});
+      } catch {
+        finish(true); // cannot probe → assume audio (the classic mix path)
+        return;
+      }
+      child.stderr?.on?.("data", (chunk: Buffer | string) => {
+        out += String(chunk);
+      });
+      child.stdout?.on?.("data", (chunk: Buffer | string) => {
+        out += String(chunk);
+      });
+      child.on("error", () => finish(true));
+      child.on("exit", () => finish(/Stream #\d+:\d+.*: Audio:/m.test(out)));
+    });
+  }
 
   /** Shared ffmpeg run: spawn, wait for exit, verify the output, journal it. */
   function runFfmpeg(bin: string, args: string[], meta: { input: string; kind: JobKind; outPath: string }): Promise<
@@ -141,8 +188,18 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, status: "running" });
 
       let tail = "";
+      let progressSeconds: number | undefined;
       child.stderr?.on?.("data", (chunk: Buffer | string) => {
         tail = `${tail}${String(chunk)}`.slice(-800);
+        // ffmpeg reports progress as "time=00:00:12.34" — parse it for real.
+        const m = /time=\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(String(chunk));
+        if (m) {
+          const secs = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+          if (Number.isFinite(secs) && (progressSeconds === undefined || secs > progressSeconds)) {
+            progressSeconds = secs;
+            journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, status: "running", progressSeconds: secs });
+          }
+        }
       });
       child.on("error", (err: Error) => {
         journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, endedAt: now(), status: "failed", tail: err.message });
@@ -150,13 +207,14 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       });
       child.on("exit", (code: number | null) => {
         const ms = now() - startedAt;
+        const progress = progressSeconds !== undefined ? { progressSeconds } : {};
         if (code === 0 && existsSync(meta.outPath)) {
           const bytes = statSync(meta.outPath).size;
-          journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, endedAt: now(), status: "done", bytes, ms });
-          finish({ ok: true, result: { path: meta.outPath, bytes, durationMs: ms, jobId } });
+          journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, endedAt: now(), status: "done", bytes, ms, ...progress });
+          finish({ ok: true, result: { path: meta.outPath, bytes, durationMs: ms, jobId, ...progress } });
         } else {
           const message = code === 0 ? `ffmpeg produced no output at ${meta.outPath}` : `ffmpeg exited ${code}${tail ? `: ${tail.split("\n").slice(-4).join(" ").trim()}` : ""}`;
-          journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, endedAt: now(), status: "failed", ms, tail });
+          journal({ jobId, input: meta.input, kind: meta.kind, outPath: meta.outPath, startedAt, endedAt: now(), status: "failed", ms, tail, ...progress });
           finish({ ok: false, error: { code: "handler-error", message } });
         }
       });
@@ -250,10 +308,16 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
         const base = basename(input, extname(input));
         const dir = dirname(input);
         const outPath = ostr(obj, "outPath") ?? (typeof pos[2] === "string" ? pos[2] : undefined) ?? join(dir, `${base}.bgm.mp4`);
-        const filter =
-          volume === 1
+        // Does the video really carry an audio track? A clip without one cannot
+        // be mixed with [0:a] — the music simply becomes the audio track.
+        const videoHasAudio = await hasAudioTrack(bin, input);
+        const filter = videoHasAudio
+          ? volume === 1
             ? `[0:a][1:a]amix=inputs=2:duration=first[a]`
-            : `[1:a]volume=${volume}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`;
+            : `[1:a]volume=${volume}[a1];[0:a][a1]amix=inputs=2:duration=first[a]`
+          : volume === 1
+            ? `[1:a]anull[a]`
+            : `[1:a]volume=${volume}[a]`;
         const args = [
           "-y",
           "-i",
@@ -280,9 +344,38 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "video.cancel",
       description:
-        "cancel a running media job; params: input, kind? (RE positional (runningInput, runningKind ?? undefined)) -> {cancelled:true, jobId} | {cancelled:false, reason} when nothing runs for that input (claim is per-input, like the target)",
+        "cancel a running media job; params: input, kind? (RE positional (runningInput, runningKind ?? undefined)) or {jobId} -> {cancelled:true, jobId} | {cancelled:false, reason} when nothing runs for that input (the claim is per-input, like the target)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
+        // A caller that only knows the job id can still stop the run. The job
+        // ids are `${kind}-<time36>-<rand>` — that shape is how a positional
+        // argument is told apart from an input path.
+        const firstPos = typeof pos[0] === "string" ? pos[0] : undefined;
+        const positionalJobId = firstPos && /^(subtitle|bgm)-[a-z0-9]+-[a-z0-9]+$/.test(firstPos) ? firstPos : undefined;
+        const jobId = ostr(obj, "jobId") ?? positionalJobId;
+        if (jobId) {
+          for (const [, job] of live) {
+            if (job.jobId !== jobId) continue;
+            try {
+              job.proc.kill();
+            } catch {
+              /* raced to completion */
+            }
+            live.delete(keyOf(job.input, job.kind));
+            journal({
+              jobId: job.jobId,
+              input: job.input,
+              kind: job.kind,
+              outPath: job.outPath,
+              startedAt: job.startedAt,
+              endedAt: now(),
+              status: "cancelled",
+              ms: now() - job.startedAt,
+            });
+            return { cancelled: true, jobId: job.jobId, kind: job.kind };
+          }
+          return { cancelled: false, reason: `no running media job with id ${jobId}` };
+        }
         const input = str(obj, pos, "path", "input") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
         const kindRaw = ostr(obj, "kind") ?? (typeof pos[1] === "string" ? (pos[1] as string) : undefined);
         if (!input) return badParams("input required");
