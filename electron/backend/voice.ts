@@ -1,45 +1,47 @@
-// autumn — Wave-2 handlers: voice (15 dispatchable; doc 32 §2f).
+// autumn — Wave-2 handlers: voice (15 dispatchable; doc 32 §2f) — FULL (W2-9).
 //
-// RE-derived (October app.asar out/main/index.js):
-//   micPermission  — RE micPermissionStatus(): "unknown" unless darwin/win32, then
+// RE-derived (October out/preload/index.js + out/main/index.js):
+//   micPermission()          → a STRING status: "unknown" unless darwin/win32, then
 //     systemPreferences.getMediaAccessStatus("microphone") mapped granted→"granted",
-//     denied|restricted→"denied", not-determined→"prompt", else "unknown" (string).
-//   ensureMicAccess — RE: win32 → status!=="denied"; darwin → real askForMediaAccess;
-//     any other platform → true (boolean).
-//   openMicSettings — RE: darwin → x-apple.systempreferences URL, win32 →
-//     ms-settings:privacy-microphone, else {opened:false, guidance} (autumn wording).
-//   speak(text) — RE voiceSpeak: String(text ?? "").slice(0, 500); engine returns a
-//     BOOLEAN the renderer awaits ("playback finished") → autumn spawns the platform
-//     TTS (say / powershell System.Speech / spd-say) and resolves true on exit 0,
-//     false when the TTS binary is absent or the run fails. Never a truthy object.
-//   stopSpeak — kills the tracked TTS child (boolean: killed something or not).
-//   reportUsage — RE validates a usage report ({sessionId, purpose, seconds}) and
-//     answers {ok:false, code:"invalid_request"} on a bad shape → autumn stores real
-//     counters in <userData>/voice/usage.json (also accepts doc's {kind, ms}).
-//   deleteOldModel — RE returns {deleted, freedMb} → autumn deletes stale files
-//     under <userData>/voice/cache/ (default older than 30 days).
-//   mic — RE exposes voice.mic as a nested control object (start/stop/mute/unmute/
-//     lockBypass); flat manifest id → {action:"..."} (record mode per doc §2f:
-//     ffmpeg capture to <userData>/voice/<ts>.wav; ffmpeg absent → honest
-//     {supported:false, reason}).
-//   deepgramToken / openaiRealtimeToken — NO fake tokens, ever: env key required
-//     (DEEPGRAM_API_KEY / OPENAI_API_KEY), else {supported:false, reason}; with a
-//     key a real main-process HTTPS mint runs and failures surface as error
-//     envelopes (doc 32 §2f — main-process https/fetch only, never renderer).
+//     denied|restricted→"denied", not-determined→"prompt", else "unknown".
+//   ensureMicAccess()        → BOOLEAN: win32 → status!=="denied"; darwin → a real
+//     askForMediaAccess("microphone") prompt; any other platform → true.
+//   openMicSettings()        → darwin → shell.openExternal("x-apple.systempreferences:…
+//     Privacy_Microphone") → {opened:true}; win32 → "ms-settings:privacy-microphone"
+//     → {opened:true}; else {opened:false, guidance}.
+//   speak(text)              → String(text ?? "").slice(0, 500) → the engine answers a
+//     BOOLEAN the renderer awaits ("playback finished").
+//   stopSpeak()              → stops the live utterance.
+//   mic.start/stop/mute/unmute/lockBypass(on)  (+ mic.onState push)
+//   reportUsage(report)      → {ok:true, …} or {ok:false, code:"invalid_request"} when
+//     the report shape is unusable (RE: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈
+//     {desktop-ftue, desktop-voice}, seconds an integer 0..3600, optional startedAt).
+//   deleteOldModel()         → {deleted, freedMb}.
+//   deepgramToken(opts)      → {ok:false, code, message} when the policy refuses it,
+//     else a real grant {token, expiresAt, sessionId}.
+//   openaiRealtimeToken(opts)→ a real session secret from /v1/realtime/client_secrets.
+//
+// autumn design (doc 32 §2f) — offline-first, BYO keys, never a fake token:
+//   * TTS is the OS voice (macOS `say`, Windows PowerShell System.Speech, Linux
+//     `spd-say`); absent → speak resolves false (never a truthy object).
+//   * mic capture is real ffmpeg (dshow / avfoundation / alsa) into
+//     <userData>/voice/<ts>.wav; ffmpeg absent → honest {supported:false, reason}.
+//   * device enumeration is REAL: `ffmpeg -f dshow -list_devices true` (Windows),
+//     `arecord -l` (Linux), `system_profiler SPAudioDataType` (macOS).
+//   * BYO keys come from the SETTINGS document (RE: getSettings().openaiApiKey) or
+//     the environment; without one the answer is {ok:false, code, message} /
+//     {supported:false, reason} — a token is NEVER fabricated.
+//   * usage counters live in <userData>/voice/usage.json.
 //
 // Boundary ids (doc 32 §2a — never implemented, never faked):
 //   compile, cancelCompile, intentReady, parakeet, voicePack → not-implemented.
-//
-// Deviation from doc §2f (recorded in §7): openMicSettings on Linux returns
-// {opened:false, guidance} rather than a not-implemented envelope — the envelope
-// is reserved for the enumerated boundary ids.
 
 import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import type { RegisteredHandler } from "./handlers";
 import type { ChildProcLike, W1Deps } from "./w1-deps";
-import { loadJson, saveJson, userDataDir } from "./store";
+import { dbPath, loadJson, saveJson, userDataDir } from "./store";
 import { paramsOf, str, ostr, pick, lazyElectron, resolveBin } from "./params";
 
 const notImplemented = (what: string) => ({
@@ -50,10 +52,22 @@ const badParams = (message: string) => ({
   ok: false as const,
   error: { code: "bad-params" as const, message },
 });
+const handlerError = (message: string) => ({
+  ok: false as const,
+  error: { code: "handler-error" as const, message },
+});
 
 const voiceDir = () => join(userDataDir(), "voice");
 const usageFile = () => join(voiceDir(), "usage.json");
 const cacheDir = () => join(voiceDir(), "cache");
+const settingsFile = () => dbPath("app-settings.json");
+
+/** RE constants (voice.ts). */
+const DEEPGRAM_TOKEN_PURPOSES = ["desktop-ftue", "desktop-voice"];
+const VOICE_SESSION_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
+const VOICE_USAGE_MAX_SECONDS = 3600;
+/** A device probe that hangs is killed after this long. */
+const PROBE_TIMEOUT_MS = 5_000;
 
 interface Usage {
   sessions: number;
@@ -63,6 +77,16 @@ interface Usage {
 function readUsage(): Usage {
   const u = loadJson<Usage>(usageFile(), { sessions: 0, seconds: 0, byKind: {} });
   return { sessions: u.sessions ?? 0, seconds: u.seconds ?? 0, byKind: u.byKind ?? {} };
+}
+
+/** The BYO key: the settings document first (RE: getSettings().openaiApiKey), then the env. */
+function readKey(settingKey: string, envKey: string): string | undefined {
+  const settings = loadJson<Record<string, unknown>>(settingsFile(), {});
+  const fromSettings = settings[settingKey];
+  if (typeof fromSettings === "string" && fromSettings.trim()) return fromSettings.trim();
+  const fromEnv = process.env[envKey];
+  if (typeof fromEnv === "string" && fromEnv.trim()) return fromEnv.trim();
+  return undefined;
 }
 
 /** Platform TTS argv, or null when this platform has no known TTS binary. */
@@ -91,6 +115,35 @@ function ttsFor(text: string, opts: { voice?: string; rate?: number }): { bin: s
   return { bin: "spd-say", args };
 }
 
+/** The platform's audio-input device probe (doc §2f). */
+function deviceProbe(): { bin: string; args: string[] } | null {
+  if (process.platform === "win32") {
+    return { bin: "ffmpeg", args: ["-hide_banner", "-f", "dshow", "-list_devices", "true"] };
+  }
+  if (process.platform === "darwin") {
+    return { bin: "system_profiler", args: ["SPAudioDataType"] };
+  }
+  return { bin: "arecord", args: ["-l"] };
+}
+
+/** Extract device names from a probe's output (per-platform shapes). */
+function parseDevices(text: string): string[] {
+  const out: string[] = [];
+  if (process.platform === "win32") {
+    // "audio=" lines after a "[dshow @ …] Device Name" section.
+    const section = /\[dshow[^\]]*\]\s+Device Name:\s*([^\n]*)/i.exec(text);
+    const body = section ? text.slice(section.index) : text;
+    for (const m of body.matchAll(/audio="([^"]+)"/g)) out.push(m[1]);
+    return out;
+  }
+  if (process.platform === "darwin") {
+    for (const m of text.matchAll(/Input\s+Name:\s*(.+)/g)) out.push(m[1].trim());
+    return out;
+  }
+  for (const m of text.matchAll(/^card \d+:.*\[(.*)\]/gm)) out.push(m[1].trim());
+  return out;
+}
+
 export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
   const { spawn, now } = deps;
 
@@ -99,6 +152,48 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
   let recording: { proc: ChildProcLike; path: string; startedAt: number } | null = null;
   let muted = false;
   let lockBypass = false;
+
+  /**
+   * Run a probe binary and collect its output (real enumeration). A probe that
+   * hangs is killed after PROBE_TIMEOUT_MS — the handler must never hang.
+   */
+  function runProbe(bin: string, args: string[]): Promise<{ code: number | null; out: string }> {
+    return new Promise((resolve) => {
+      let out = "";
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
+      let child: ChildProcLike | undefined;
+      const finish = (code: number | null) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolve({ code, out });
+      };
+      try {
+        child = spawn.spawn(bin, args, {});
+      } catch {
+        finish(null);
+        return;
+      }
+      timer = setTimeout(() => {
+        try {
+          child?.kill?.();
+        } catch {
+          /* already gone */
+        }
+        finish(null);
+      }, PROBE_TIMEOUT_MS);
+      if (typeof timer.unref === "function") timer.unref();
+      child.stdout?.on?.("data", (chunk: Buffer | string) => {
+        out += String(chunk);
+      });
+      child.stderr?.on?.("data", (chunk: Buffer | string) => {
+        out += String(chunk);
+      });
+      child.on("error", () => finish(null));
+      child.on("exit", (code) => finish(code));
+    });
+  }
 
   const handlers: RegisteredHandler[] = [
     // ----- microphone platform probes ----------------------------------------
@@ -126,26 +221,44 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.ensureMicAccess",
       description:
-        "ensure microphone access (RE ensureMicAccess); params: {} -> boolean (win32: not-denied; darwin: real askForMediaAccess when Electron is present; other platforms: true)",
-      handler: async () => {
+        "ensure microphone access (RE ensureMicAccess); params: {} -> boolean (win32: not-denied; darwin: real askForMediaAccess when Electron is present; other platforms: true). autumn extension: {devices:true} also returns the REAL enumerated input devices",
+      handler: async (params) => {
+        const { obj } = paramsOf(params);
+        const wantDevices = obj.devices === true;
+        let granted: boolean;
         if (process.platform === "win32") {
           const sp = lazyElectron()?.systemPreferences;
-          if (!sp?.getMediaAccessStatus) return true; // RE: non-granted status on win32 without the API → not denied
-          try {
-            return sp.getMediaAccessStatus("microphone") !== "denied";
-          } catch {
-            return true;
+          if (!sp?.getMediaAccessStatus) granted = true; // RE: non-granted status on win32 without the API → not denied
+          else {
+            try {
+              granted = sp.getMediaAccessStatus("microphone") !== "denied";
+            } catch {
+              granted = true;
+            }
+          }
+        } else if (process.platform !== "darwin") {
+          granted = true; // RE: every other platform → true
+        } else {
+          const sp = lazyElectron()?.systemPreferences;
+          if (!sp) granted = false; // cannot prompt without Electron — honest false, not a fake grant
+          else {
+            try {
+              granted = sp.getMediaAccessStatus("microphone") === "granted" ? true : await sp.askForMediaAccess("microphone");
+            } catch {
+              granted = false;
+            }
           }
         }
-        if (process.platform !== "darwin") return true; // RE: every other platform → true
-        const sp = lazyElectron()?.systemPreferences;
-        if (!sp) return false; // cannot prompt without Electron — honest false, not a fake grant
-        try {
-          if (sp.getMediaAccessStatus("microphone") === "granted") return true;
-          return await sp.askForMediaAccess("microphone");
-        } catch {
-          return false;
+        if (!wantDevices) return granted;
+
+        // Real device enumeration (doc §2f) — honest when the probe is absent.
+        const probe = deviceProbe();
+        if (!probe || !resolveBin(probe.bin)) {
+          return { granted, devices: [], reason: `${probe?.bin ?? "the audio probe"} is not available on this machine` };
         }
+        const result = await runProbe(probe.bin, probe.args);
+        const devices = parseDevices(result.out);
+        return { granted, devices, ...(devices.length ? {} : { reason: "no input devices were found" }) };
       },
     },
     {
@@ -233,8 +346,8 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.mic",
       description:
-        "microphone control (RE voice.mic: start/stop/mute/unmute/lockBypass + doc §2f record mode); params: {action:'start'|'stop'|'mute'|'unmute'|'lockBypass'|'state', durationMs?, outFile?} -> action results; start records via ffmpeg → {supported:false, reason} when ffmpeg is absent",
-      handler: (params) => {
+        "microphone control (RE voice.mic: start/stop/mute/unmute/lockBypass + doc §2f record mode); params: {action:'start'|'stop'|'mute'|'unmute'|'lockBypass'|'state'|'devices', durationMs?, outFile?} -> action results; start records via ffmpeg → {supported:false, reason} when ffmpeg is absent",
+      handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const action = str(obj, pos, "action") ?? (obj.durationMs || obj.outFile ? "start" : "state");
         if (action === "mute") {
@@ -250,6 +363,15 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
           if (typeof on !== "boolean") return badParams("on must be boolean");
           lockBypass = on;
           return { lockBypass };
+        }
+        if (action === "devices") {
+          const probe = deviceProbe();
+          if (!probe || !resolveBin(probe.bin)) {
+            return { supported: false, reason: `${probe?.bin ?? "the audio probe"} is not available on this machine` };
+          }
+          const result = await runProbe(probe.bin, probe.args);
+          const devices = parseDevices(result.out);
+          return { devices, ...(devices.length ? {} : { reason: "no input devices were found" }) };
         }
         if (action === "state") {
           return {
@@ -306,7 +428,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
             });
             return { started: true, path: outFile, durationMs, recording: true };
           } catch (e) {
-            return { ok: false, error: { code: "handler-error", message: String((e as Error)?.message ?? e) } };
+            return handlerError(String((e as Error)?.message ?? e));
           }
         }
         return badParams(`unknown mic action: ${action}`);
@@ -318,22 +440,52 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.deepgramToken",
       description:
-        "mint a scoped Deepgram token; params: {} -> {token, expiresAt, scoped:true} via a REAL main-process HTTPS call when DEEPGRAM_API_KEY is set, else {supported:false, reason} — no fake tokens, ever",
-      handler: async () => {
-        const key = process.env.DEEPGRAM_API_KEY;
-        if (!key) return { supported: false, reason: "DEEPGRAM_API_KEY not configured — set it to mint real Deepgram tokens" };
+        "mint a scoped Deepgram token (RE voiceDeepgramToken); params: {purpose?, ftueVersion?} -> {ok:false, code, message} when the policy refuses it, else a real grant {token, expiresAt, sessionId}; the BYO key comes from the settings document (deepgramApiKey) or DEEPGRAM_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a token is NEVER fabricated",
+      handler: async (params) => {
+        const { obj } = paramsOf(params);
+        const purpose = typeof obj.purpose === "string" ? obj.purpose : "desktop-voice";
+        if (!DEEPGRAM_TOKEN_PURPOSES.includes(purpose)) {
+          return { ok: false, code: "invalid_request", message: `purpose must be one of ${DEEPGRAM_TOKEN_PURPOSES.join(", ")}` };
+        }
+        const key = readKey("deepgramApiKey", "DEEPGRAM_API_KEY");
+        if (!key) {
+          return {
+            ok: false,
+            code: "voice_grant_unavailable",
+            message: "Add a Deepgram API key in Settings → AI Provider (or set DEEPGRAM_API_KEY) to use online voice.",
+          };
+        }
         try {
           const res = await fetch("https://api.deepgram.com/v1/auth/token", {
             method: "POST",
             headers: { Authorization: `Token ${key}`, "Content-Type": "application/json" },
           });
-          if (!res.ok) return { ok: false, error: { code: "handler-error", message: `Deepgram token request failed (${res.status})` } };
-          const body = (await res.json()) as { access_token?: string; token?: string; expires_in?: number };
+          if (!res.ok) {
+            return { ok: false, code: "voice_network_error", message: `Deepgram token request failed (${res.status})` };
+          }
+          const body = (await res.json()) as {
+            access_token?: string;
+            token?: string;
+            expires_in?: number;
+            session_id?: string;
+          };
           const token = body.access_token ?? body.token;
-          if (!token) return { ok: false, error: { code: "handler-error", message: "Deepgram returned no token" } };
-          return { token, ...(body.expires_in ? { expiresAt: Date.now() + body.expires_in * 1000 } : {}), scoped: true };
+          if (!token) {
+            return { ok: false, code: "voice_grant_unavailable", message: "Deepgram returned no token" };
+          }
+          const expiresIn = typeof body.expires_in === "number" && body.expires_in > 0 ? body.expires_in : 300;
+          return {
+            ok: true,
+            token,
+            expiresAt: now() + expiresIn * 1000,
+            ...(typeof body.session_id === "string" && VOICE_SESSION_ID_RE.test(body.session_id)
+              ? { sessionId: body.session_id }
+              : {}),
+            purpose,
+            scoped: true,
+          };
         } catch (e) {
-          return { ok: false, error: { code: "handler-error", message: String((e as Error)?.message ?? e) } };
+          return { ok: false, code: "voice_network_error", message: String((e as Error)?.message ?? e) };
         }
       },
     },
@@ -341,21 +493,50 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.openaiRealtimeToken",
       description:
-        "mint an OpenAI Realtime session; params: {language?, delay?, model?, voice?} -> real session JSON from /v1/realtime/sessions when OPENAI_API_KEY is set (main-process HTTPS), else {supported:false, reason} — never a fabricated session",
+        "mint an OpenAI Realtime session secret (RE mintOpenaiRealtimeToken); params: {language?, delay?, model?, voice?} -> the real session JSON from /v1/realtime/client_secrets; the BYO key comes from the settings document (openaiApiKey) or OPENAI_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a session is NEVER fabricated",
       handler: async (params) => {
         const { obj } = paramsOf(params);
-        const key = process.env.OPENAI_API_KEY;
-        if (!key) return { supported: false, reason: "OPENAI_API_KEY not configured — set it to mint real Realtime sessions" };
+        const key = readKey("openaiApiKey", "OPENAI_API_KEY");
+        if (!key) {
+          return {
+            ok: false,
+            code: "voice_grant_unavailable",
+            message: "Add an OpenAI API key in Settings → AI Provider (or set OPENAI_API_KEY) to use GPT Realtime voice.",
+          };
+        }
         try {
-          const res = await fetch("https://api.openai.com/v1/realtime/sessions", {
+          const res = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
             method: "POST",
             headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model: obj.model ?? "gpt-4o-realtime-preview", voice: obj.voice ?? "alloy" }),
+            body: JSON.stringify({
+              type: "transcription",
+              audio: {
+                input: {
+                  format: { type: "audio/pcm", rate: 24000 },
+                  transcription: {
+                    model: typeof obj.model === "string" ? obj.model : "gpt-realtime-whisper",
+                    ...(typeof obj.language === "string" ? { language: obj.language } : {}),
+                  },
+                  turn_detection: { type: "server_vad" },
+                },
+              },
+            }),
           });
-          if (!res.ok) return { ok: false, error: { code: "handler-error", message: `OpenAI realtime session failed (${res.status})` } };
-          return await res.json();
+          if (!res.ok) {
+            return { ok: false, code: "voice_network_error", message: `OpenAI realtime session failed (${res.status})` };
+          }
+          const body = (await res.json()) as { value?: string; expires_at?: number };
+          if (!body?.value) {
+            return { ok: false, code: "voice_grant_unavailable", message: "OpenAI returned no session secret" };
+          }
+          return {
+            value: body.value,
+            ...(typeof body.expires_at === "number" ? { expiresAt: body.expires_at } : {}),
+            language: typeof obj.language === "string" ? obj.language : undefined,
+            delay: typeof obj.delay === "number" ? obj.delay : undefined,
+          };
         } catch (e) {
-          return { ok: false, error: { code: "handler-error", message: String((e as Error)?.message ?? e) } };
+          return { ok: false, code: "voice_network_error", message: String((e as Error)?.message ?? e) };
         }
       },
     },
@@ -365,7 +546,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.reportUsage",
       description:
-        "record voice usage counters; params: RE {sessionId, purpose, seconds} or doc {kind, ms} -> {ok:true, usage}; an unusable shape answers {ok:false, code:'invalid_request'} (RE) — counters persisted to <userData>/voice/usage.json",
+        "record voice usage counters (RE voiceReportUsage); params: RE {sessionId, purpose, seconds, startedAt?} -> {ok:true, usage}; an unusable shape answers {ok:false, code:'invalid_request'} (RE validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue, desktop-voice}, seconds an integer 0..3600) — counters persisted to <userData>/voice/usage.json",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const single = typeof params === "string" ? params : undefined;
@@ -377,11 +558,27 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
         const ms = pick(obj, pos, "ms");
         const usage = readUsage();
 
-        const reShape = sessionId !== undefined && purpose !== undefined && typeof seconds === "number" && Number.isInteger(seconds) && seconds >= 0;
+        const reShape = sessionId !== undefined && purpose !== undefined && typeof seconds === "number";
         const docShape = (kind !== undefined && typeof ms === "number") || single !== undefined;
         if (reShape) {
+          // RE validation (isVoiceUsageReport).
+          if (typeof sessionId !== "string" || !VOICE_SESSION_ID_RE.test(sessionId)) {
+            return { ok: false, code: "invalid_request" };
+          }
+          if (typeof purpose !== "string" || !DEEPGRAM_TOKEN_PURPOSES.includes(purpose)) {
+            return { ok: false, code: "invalid_request" };
+          }
+          if (typeof seconds !== "number" || !Number.isInteger(seconds) || seconds < 0 || seconds > VOICE_USAGE_MAX_SECONDS) {
+            return { ok: false, code: "invalid_request" };
+          }
+          if (obj.startedAt !== undefined && typeof obj.startedAt !== "string") {
+            return { ok: false, code: "invalid_request" };
+          }
           usage.sessions += 1;
           usage.seconds += seconds as number;
+          const bucket = usage.byKind[purpose] ?? { count: 0, ms: 0 };
+          bucket.count += 1;
+          usage.byKind[purpose] = bucket;
         } else if (docShape) {
           const k = kind ?? single ?? "voice";
           const bucket = usage.byKind[k] ?? { count: 0, ms: 0 };
@@ -443,28 +640,28 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.cancelCompile",
       description:
-        "cancel a running voice compile; params: {} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
+        "cancel a voice-command compile; params: {} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
       handler: () => notImplemented("autumn has no voice packs — cancelCompile is a platform-boundary id (doc 32 §2a)"),
     },
     {
       kind: "bridge",
       id: "voice.intentReady",
       description:
-        "voice intent readiness; params: {} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
+        "signal that the voice intent is ready; params: {} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
       handler: () => notImplemented("autumn has no voice packs — intentReady is a platform-boundary id (doc 32 §2a)"),
     },
     {
       kind: "bridge",
       id: "voice.parakeet",
       description:
-        "on-device STT engine control (RE voice.parakeet: status/ensureModel/start/stop); params: {action?} -> not-implemented envelope (~1 GB local STT model, doc 32 §2a boundary id)",
-      handler: () => notImplemented("autumn does not ship the ~1 GB on-device STT model — parakeet is a platform-boundary id (doc 32 §2a)"),
+        "Parakeet local speech-to-text; params: {} -> not-implemented envelope (the Parakeet model ships with the voice-pack ecosystem, doc 32 §2a boundary id)",
+      handler: () => notImplemented("autumn has no Parakeet model — parakeet is a platform-boundary id (doc 32 §2a)"),
     },
     {
       kind: "bridge",
       id: "voice.voicePack",
       description:
-        "voice-pack status/prepare/retry (RE voice.voicePack); params: {action?} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
+        "install/manage a voice pack; params: {} -> not-implemented envelope (voice-pack ecosystem, doc 32 §2a boundary id)",
       handler: () => notImplemented("autumn has no voice packs — voicePack is a platform-boundary id (doc 32 §2a)"),
     },
   ];

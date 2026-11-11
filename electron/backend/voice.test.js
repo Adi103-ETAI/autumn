@@ -24,15 +24,25 @@ function fakeSpawn(state) {
   return {
     spawn: (command, args, opts) => {
       const listeners = {};
+      const stdoutListeners = [];
       const proc = {
         killed: false,
         pid: 4242,
+        stdout: { on(ev, cb) { if (ev === "data") stdoutListeners.push(cb); } },
         on(ev, cb) { (listeners[ev] ||= []).push(cb); return proc; },
         kill() { proc.killed = true; (listeners.exit || []).forEach((cb) => cb(null)); return true; },
         emitExit(code) { (listeners.exit || []).forEach((cb) => cb(code)); },
         emitError(err) { (listeners.error || []).forEach((cb) => cb(err)); },
       };
       state.spawns.push({ command, args, opts, proc });
+      // A device probe answers immediately with its stdout and exits.
+      const isProbe = args.includes("-list_devices") || command === "arecord" || command === "system_profiler";
+      if (isProbe) {
+        setImmediate(() => {
+          stdoutListeners.forEach((cb) => cb("card 1: Device [USB Audio Device], device 0\n"));
+          (listeners.exit || []).forEach((cb) => cb(0));
+        });
+      }
       return proc;
     },
   };
@@ -244,18 +254,32 @@ test("mic record mode: ffmpeg gated → {supported:false}; with a fake bin, star
 test("reportUsage: RE shape counts sessions+seconds; unusable shape → {ok:false, code:'invalid_request'}", async () => {
   const dir = useTempUserData();
   const { call } = build();
-  const okRes = await call("voice.reportUsage", { sessionId: "s1", purpose: "dictation", seconds: 42 });
+  // RE validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue,
+  // desktop-voice}, seconds an integer 0..3600.
+  const okRes = await call("voice.reportUsage", { sessionId: "session-0001", purpose: "desktop-voice", seconds: 42 });
   assert.equal(okRes.ok, true);
   assert.equal(okRes.usage.sessions, 1);
   assert.equal(okRes.usage.seconds, 42);
+  assert.equal(okRes.usage.byKind["desktop-voice"].count, 1);
 
   const docRes = await call("voice.reportUsage", { kind: "tts", ms: 500 });
   assert.equal(docRes.ok, true);
   assert.equal(docRes.usage.byKind.tts.count, 1);
   assert.equal(docRes.usage.byKind.tts.ms, 500);
 
-  const bad = await call("voice.reportUsage", { sessionId: "s" });
-  assert.deepEqual(bad, { ok: false, code: "invalid_request" });
+  // RE rejections.
+  assert.deepEqual(await call("voice.reportUsage", { sessionId: "s" }), { ok: false, code: "invalid_request" }, "sessionId too short");
+  assert.deepEqual(
+    await call("voice.reportUsage", { sessionId: "session-0001", purpose: "dictation", seconds: 5 }),
+    { ok: false, code: "invalid_request" },
+    "unknown purpose",
+  );
+  assert.deepEqual(
+    await call("voice.reportUsage", { sessionId: "session-0001", purpose: "desktop-voice", seconds: 99999 }),
+    { ok: false, code: "invalid_request" },
+    "seconds beyond the RE maximum",
+  );
+  assert.deepEqual(await call("voice.reportUsage", {}), { ok: false, code: "invalid_request" });
 
   const persisted = JSON.parse(fs.readFileSync(path.join(dir, "voice", "usage.json"), "utf8"));
   assert.equal(persisted.sessions, 1, "counters persist for real");
@@ -280,19 +304,83 @@ test("deleteOldModel: stale cache files removed, fresh ones kept → {deleted, f
   assert.ok(fs.existsSync(freshFile), "fresh file must survive");
 });
 
-test("BYO tokens: absent env keys → {supported:false, reason} — never a fabricated token", async () => {
+test("BYO tokens: no key → the RE refusal shape — never a fabricated token", async () => {
   useTempUserData();
   const { call } = build();
   await withoutKeys(async () => {
     const dg = await call("voice.deepgramToken", {});
-    assert.equal(dg.supported, false);
-    assert.match(dg.reason, /DEEPGRAM_API_KEY/);
+    assert.equal(dg.ok, false);
+    assert.equal(dg.code, "voice_grant_unavailable");
+    assert.match(dg.message, /Deepgram API key/i);
     const oa = await call("voice.openaiRealtimeToken", {});
-    assert.equal(oa.supported, false);
-    assert.match(oa.reason, /OPENAI_API_KEY/);
+    assert.equal(oa.ok, false);
+    assert.equal(oa.code, "voice_grant_unavailable");
+    assert.match(oa.message, /OpenAI API key/i);
     for (const res of [dg, oa]) {
-      assert.ok(!("token" in res) && !("access_token" in res), "must not fabricate tokens");
+      assert.ok(!("token" in res) && !("value" in res) && !("access_token" in res), "must not fabricate tokens");
     }
+  });
+});
+
+test("BYO tokens: the key may come from the SETTINGS document (RE: getSettings().openaiApiKey)", async () => {
+  useTempUserData();
+  const { call } = build();
+  await withoutKeys(async () => {
+    const { dbPath } = require("./store.ts");
+    fs.writeFileSync(dbPath("app-settings.json"), JSON.stringify({ openaiApiKey: "sk-test" }), "utf8");
+    const oa = await call("voice.openaiRealtimeToken", { language: "en" });
+    // No network in the test → the failure must be honest, and it must NOT be
+    // "no key configured" (the key was really read from the settings).
+    assert.equal(oa.ok, false);
+    assert.equal(oa.code, "voice_network_error");
+  });
+});
+
+test("deepgramToken: an invalid purpose → the RE invalid_request refusal", async () => {
+  useTempUserData();
+  const { call } = build();
+  await withoutKeys(async () => {
+    const bad = await call("voice.deepgramToken", { purpose: "dictation" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.code, "invalid_request");
+  });
+});
+
+test("devices: real enumeration via the platform probe; absent probe → honest {supported:false}", async () => {
+  useTempUserData();
+  const { call, state } = build();
+  // No probe binary on PATH → the honest answer, never a fabricated device list.
+  const gated = await withPath("", () => call("voice.mic", { action: "devices" }));
+  assert.equal(gated.supported, false);
+  assert.ok(gated.reason);
+
+  // With a probe present the device names are parsed out of the REAL output.
+  const bins = fakeBinDir();
+  fs.writeFileSync(path.join(bins, "arecord"), "#!/bin/sh\necho 'card 1: Device [USB Audio Device], device 0'\n", "utf8");
+  fs.chmodSync(path.join(bins, "arecord"), 0o755);
+  await withPath(bins, async () => {
+    const res = await call("voice.mic", { action: "devices" });
+    assert.ok(Array.isArray(res.devices));
+    assert.ok(res.devices.length >= 1, "the probe output is really parsed");
+    assert.ok(res.devices[0].includes("USB Audio Device"));
+    assert.equal(state.spawns.length, 1, "the probe really ran");
+  });
+});
+
+test("ensureMicAccess: {devices:true} enumerates the REAL inputs (and still answers the boolean without it)", async () => {
+  useTempUserData();
+  const { call } = build();
+  const plain = await call("voice.ensureMicAccess", {});
+  assert.equal(typeof plain, "boolean");
+
+  const bins = fakeBinDir();
+  fs.writeFileSync(path.join(bins, "arecord"), "#!/bin/sh\necho 'card 1: Device [USB Audio Device], device 0'\n", "utf8");
+  fs.chmodSync(path.join(bins, "arecord"), 0o755);
+  await withPath(bins, async () => {
+    const res = await call("voice.ensureMicAccess", { devices: true });
+    assert.equal(typeof res.granted, "boolean");
+    assert.ok(Array.isArray(res.devices));
+    assert.ok(res.devices.length >= 1);
   });
 });
 
