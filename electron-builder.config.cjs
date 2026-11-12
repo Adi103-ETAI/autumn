@@ -176,6 +176,10 @@ module.exports = {
   },
   compression: "maximum",
   removePackageScripts: true,
-  npmRebuild: true,
+  // The native modules we ship are N-API (node-pty) or prebuilt binaries
+  // (Prisma's query engine, sharp) — they load as shipped. Rebuilding them
+  // needs Visual Studio on Windows and distutils on macOS, and failed on CI
+  // (and on any machine without a full C++ toolchain).
+  npmRebuild: false,
   buildDependenciesFromSource: false,
 };
