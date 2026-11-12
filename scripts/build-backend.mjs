@@ -50,6 +50,11 @@ const result = await build({
     "ws",
     "remotion",
     "@remotion/cli",
+    // The on-device STT runtime is OPTIONAL: it is not a dependency (it
+    // would add ~30 MB to every installer), it is fetched on demand into the
+    // user-data dir. The bundle keeps the require() and the runtime answers
+    // "not available" when the module is absent.
+    "sherpa-onnx-node",
   ],
   tsconfig: join(root, "tsconfig.json"),
   logLevel: "info",
