@@ -32,7 +32,7 @@ function check(label, ok, detail = "") {
 }
 
 console.log("[pack:check] 1. the electron-builder config");
-const builderConfig = require(join(root, "electron-builder.config.cjs"));
+const builderConfig = require(join(root, "electron-builder.cjs"));
 check("appId", !!builderConfig.appId, builderConfig.appId);
 check("productName", builderConfig.productName === "Autumn", builderConfig.productName);
 check("windows targets", (builderConfig.win?.target ?? []).some((t) => t.target === "nsis"), "nsis + zip");

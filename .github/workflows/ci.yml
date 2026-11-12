@@ -96,7 +96,11 @@ jobs:
         run: npm run build:backend
 
       - name: package
-        run: npx electron-builder ${{ matrix.flags }} --publish never
+        # --config is REQUIRED: without it electron-builder auto-discovers a
+        # config file and silently falls back to its DEFAULTS (output "dist/",
+        # npmRebuild on) — which built the wrong artifact names and tried to
+        # rebuild native modules the CI machine has no toolchain for.
+        run: npx electron-builder --config electron-builder.cjs ${{ matrix.flags }} --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
