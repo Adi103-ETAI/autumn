@@ -46,6 +46,7 @@ import { makeVideoHandlers } from "./video";
 import { makeSlidesHandlers } from "./slides";
 import { makeRemotionHandlers } from "./remotion";
 import { makeStorageHandlers } from "./storage";
+import { makeSupermemoryHandlers } from "./supermemory";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -184,6 +185,7 @@ const W2_FACTORIES = [
   makeSlidesHandlers,
   makeRemotionHandlers,
   makeStorageHandlers,
+  makeSupermemoryHandlers,
 ];
 
 /**
