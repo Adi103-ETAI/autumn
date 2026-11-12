@@ -59,10 +59,12 @@ module.exports = {
   appId: APP_ID,
   productName: APP_NAME,
   copyright: "Autumn",
-  // Keep the installers out of the repo tree.
+  // Keep the installers out of the repo tree. `build` is gitignored and is
+  // where electron-builder writes the icons it generates (icon.ico, icon.icns)
+  // — pointing buildResources at the tracked assets/ would dirty the repo.
   directories: {
     output: "release",
-    buildResources: "assets",
+    buildResources: "build",
   },
   // The Next server is EXECUTED by node (ELECTRON_RUN_AS_NODE) — it cannot live
   // inside the asar, so it ships as a resource next to app.asar.
@@ -176,8 +178,4 @@ module.exports = {
   removePackageScripts: true,
   npmRebuild: true,
   buildDependenciesFromSource: false,
-  electronDownload: {
-    // Keep the download off the default mirror problem the RE hit.
-    cache: path.join(__dirname, ".cache", "electron"),
-  },
 };

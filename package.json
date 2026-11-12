@@ -15,13 +15,13 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "electron:dev": "electron . --no-sandbox --disable-gpu",
-    "electron:build": "npm run pack:files && npm run build && npm run build:backend && electron-builder",
+    "electron:build": "npm run pack:files && npm run build && npm run build:backend && electron-builder --config electron-builder.config.cjs",
     "dist": "npm run electron:build",
     "build:backend": "node scripts/build-backend.mjs",
-    "electron:pack": "npm run pack:files && npm run build && npm run build:backend && electron-builder --dir",
-    "electron:build:win": "npm run pack:files && npm run build && npm run build:backend && electron-builder --win --x64",
-    "electron:build:mac": "npm run pack:files && npm run build && npm run build:backend && electron-builder --mac",
-    "electron:build:linux": "npm run pack:files && npm run build && npm run build:backend && electron-builder --linux",
+    "electron:pack": "npm run pack:files && npm run build && npm run build:backend && electron-builder --config electron-builder.config.cjs --dir",
+    "electron:build:win": "npm run pack:files && npm run build && npm run build:backend && electron-builder --config electron-builder.config.cjs --win --x64",
+    "electron:build:mac": "npm run pack:files && npm run build && npm run build:backend && electron-builder --config electron-builder.config.cjs --mac",
+    "electron:build:linux": "npm run pack:files && npm run build && npm run build:backend && electron-builder --config electron-builder.config.cjs --linux",
     "pack:check": "node scripts/compute-packaging-files.mjs && node scripts/check-packaging.mjs",
     "pack:files": "node scripts/compute-packaging-files.mjs",
     "postinstall": "prisma generate"
@@ -124,5 +124,5 @@
     "typescript": "^5"
   },
   "description": "Autumn \u2014 your local-first AI desktop",
-  "author": "Adi103-ETAI"
+  "author": "Aditya <adi.singh1426@gmail.com>"
 }
