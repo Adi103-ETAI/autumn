@@ -71,6 +71,13 @@ export interface ShellDep {
   openPath(p: string): Promise<string>;
   showItemInFolder(p: string): void;
   openExternal(url: string): Promise<void>;
+  /**
+   * electron.shell.trashItem — move a path to the OS trash.
+   * OPTIONAL: headless fakes (and any runtime without the Electron shell)
+   * simply do not provide it; the finder then falls back to the platform's
+   * own trash folder (Wave 3, doc 35 §4).
+   */
+  trashItem?(p: string): Promise<void>;
 }
 
 /** electron.clipboard — faked in headless tests. */

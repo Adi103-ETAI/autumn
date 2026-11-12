@@ -107,6 +107,11 @@ function realW1Deps(emit: (id: string, payload: unknown) => void): W1Deps {
         const { shell } = require("electron");
         await shell.openExternal(url);
       },
+      trashItem: async (p: string) => {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { shell } = require("electron");
+        await shell.trashItem(p);
+      },
     },
     clipboard: {
       readText: () => {

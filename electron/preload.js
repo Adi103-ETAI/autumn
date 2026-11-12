@@ -15,7 +15,7 @@
 //
 // sandbox:false in webPreferences is what lets this preload require local modules.
 
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const { buildFacade, CALL, EVENT, INSPECT } = require("./ipc/facade");
 const PRIVATE_OPS = require("./ipc/private-ops");
 const manifest = require("./ipc/manifest.json");
@@ -49,6 +49,23 @@ const facade = buildFacade({
   inspect: () => ipcRenderer.invoke(INSPECT),
   privateOps: PRIVATE_OPS,
 });
+
+// `pathForFile` is PRELOAD-LOCAL in the RE (and must be here too): Electron 32
+// removed the non-standard `File.path`, and `webUtils.getPathForFile` only
+// works in this process — a dropped file that should be IMPORTED (rather than
+// read as bytes) has to come through here. Returns "" for a drag that is not
+// a real OS file (an image dragged out of a web page), which callers filter
+// out. The backend keeps a path-normalising handler under the same id (the
+// facade contract requires one), but the preload-local one is the real thing.
+const pathForFile = (file) => {
+  try {
+    return webUtils.getPathForFile(file);
+  } catch {
+    return "";
+  }
+};
+facade.files.pathForFile = pathForFile;
+facade.fs.pathForFile = pathForFile;
 
 contextBridge.exposeInMainWorld("autumn", facade);
 // Compatibility alias for ported target-renderer code (see header).
