@@ -9,8 +9,12 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   // Native modules must NOT be bundled into the server build — keep them
-  // external so node-pty / @prisma/client load at runtime inside Electron.
-  serverExternalPackages: ["node-pty", "@prisma/client", "prisma"],
+  // external so node-pty loads at runtime inside Electron.
+  //
+  // The Prisma client is generated into prisma/generated (a normal directory
+  // inside the repo, so electron-builder actually ships it) — it is bundled
+  // with the app and carries its own query engine.
+  serverExternalPackages: ["node-pty", "prisma"],
 };
 
 export default nextConfig;

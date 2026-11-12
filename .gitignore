@@ -107,3 +107,11 @@ Caddyfile
 tipcard-sticky-verify.png
 sticky-verify.png
 sticky-fresh.png
+
+# autumn — build artifacts
+/release/
+/.cache/
+# the Prisma client is GENERATED (prisma/schema.prisma -> prisma/generated)
+/prisma/generated/
+# the packaging keep-list is computed from the installed tree
+/assets/packaging-files.json

@@ -110,7 +110,11 @@ export function scanSkills(roots: string[]): Skill[] {
 /** Mirror of store.STARTER_SKILLS (read defensively; never throws). */
 function starterSkills(): Array<{ id: string; name: string; description: string }> {
   try {
-    const { STARTER_SKILLS } = require("../../lib/autumn/store");
+    // The "@/..." alias is rewritten to src/ by the ts-register hook (the
+    // relative path "../../lib/..." pointed outside the repo and always threw).
+    // The catalogue lives in its own dependency-free module: store.ts pulls in
+    // React/sonner, which must never load in the Electron main process.
+    const { STARTER_SKILLS } = require("@/lib/autumn/starter-skills");
     return (STARTER_SKILLS as Array<{ id: string; name: string; description: string }>) ?? [];
   } catch {
     return [];

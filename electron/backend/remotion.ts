@@ -51,6 +51,7 @@ import type { RegisteredHandler } from "./handlers";
 import type { ChildProcLike, W1Deps } from "./w1-deps";
 import { userDataDir } from "./store";
 import { paramsOf, str, ostr, resolveBin, isOwnedFolder, projectsRoot } from "./params";
+import { findRemotionBinInApp } from "./packaging";
 
 type StudioState = {
   folder: string;
@@ -92,6 +93,10 @@ function freeChildName(parent: string, name: string): string {
  *      the render both run against the app's install),
  *   3. PATH.
  * Null when none exists — the honest gate for studio/render.
+ *
+ * The app's own copy is shipped UNPACKED (it is spawned as a child process,
+ * which cannot run from inside an asar) — packaging.ts maps it to the real
+ * path on disk.
  */
 export function findRemotionBin(folder?: string): string | null {
   const override = process.env.AUTUMN_REMOTION_BIN;
@@ -106,12 +111,8 @@ export function findRemotionBin(folder?: string): string | null {
       if (existsSync(p)) return p;
     }
   }
-  // The app's own install (this module lives in <app>/electron/backend).
-  const appBin = join(__dirname, "..", "..", "node_modules", ".bin");
-  for (const ext of exts) {
-    const p = join(appBin, `remotion${ext}`);
-    if (existsSync(p)) return p;
-  }
+  const found = findRemotionBinInApp();
+  if (found) return found;
   return resolveBin("remotion");
 }
 

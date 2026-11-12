@@ -4,6 +4,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // The generated client is written into a NORMAL directory inside the repo
+  // (not the hidden node_modules/.prisma): electron-builder copies the app's
+  // own files, so a normal path is what actually ends up in the installer.
+  // The client is self-contained (its own query engine + schema.prisma).
+  output   = "./generated"
 }
 
 datasource db {

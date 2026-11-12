@@ -213,36 +213,11 @@ export const CANVAS_BACKGROUNDS: CanvasBackground[] = [
   },
 ];
 
-export const STARTER_SKILLS: Omit<Skill, "installed" | "installedAt">[] = [
-  {
-    id: "website-cloner",
-    name: "Website Cloner",
-    description: "Pixel-perfect clone of any website into a real Next.js project (the /clone-website skill).",
-    icon: "🌐",
-    color: "text-sky-400",
-  },
-  {
-    id: "gsd",
-    name: "Get Shit Done (GSD)",
-    description: "Set up GSD — a spec-driven workflow that plans a roadmap and ships phase by phase.",
-    icon: "🚀",
-    color: "text-amber-400",
-  },
-  {
-    id: "screenshot-to-code",
-    name: "Screenshot to Code",
-    description: "Turn any screenshot into clean, responsive Tailwind + React components.",
-    icon: "📸",
-    color: "text-fuchsia-400",
-  },
-  {
-    id: "api-designer",
-    name: "API Designer",
-    description: "Design, document, and scaffold REST/GraphQL APIs from a natural-language spec.",
-    icon: "🔌",
-    color: "text-emerald-400",
-  },
-];
+// The starter catalogue lives in its own dependency-free module (the Electron
+// main process reads it too) — re-exported here for the renderer.
+import { STARTER_SKILLS } from "./starter-skills";
+export { STARTER_SKILLS };
+export type { StarterSkill } from "./starter-skills";
 
 export const STARTER_NOTIFICATIONS: AppNotification[] = [
   {
