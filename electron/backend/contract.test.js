@@ -238,9 +238,10 @@ test("contract(W2): every Wave-2 handler is bridge-kind, described, and unique a
 
 test("contract(W2): every boundary id dispatches and answers the not-implemented envelope", async () => {
   registerAll();
+  // The voice-pack boundary ids were IMPLEMENTED in Wave 3 (doc 35 §6) — they
+  // are real now, so they are no longer boundary ids.
   const BOUNDARY = [
     "backends.convexAuthStatus", "backends.convexCreate", "backends.convexLogin",
-    "voice.compile", "voice.cancelCompile", "voice.intentReady", "voice.parakeet", "voice.voicePack",
     "runtime.installOctober", "runtime.removeOctober",
   ];
   for (const id of BOUNDARY) {
@@ -249,6 +250,17 @@ test("contract(W2): every boundary id dispatches and answers the not-implemented
     assert.equal(env.ok, false, `${id} must fail honestly`);
     assert.equal(env.error.code, "not-implemented", `${id} must be the boundary envelope`);
     assert.ok(env.error.message.length > 10, `${id} needs an explanatory message`);
+  }
+});
+
+test("contract(W3): the voice-pack ids are implemented, not boundary ids", async () => {
+  registerAll();
+  const IMPLEMENTED = ["voice.compile", "voice.cancelCompile", "voice.intentReady", "voice.parakeet", "voice.voicePack"];
+  for (const id of IMPLEMENTED) {
+    assert.ok(reg.has("bridge", id), `${id} must dispatch`);
+    const env = await reg.dispatch({ kind: "bridge", id, params: { action: "status", utterance: "hello" } });
+    assert.equal(env.ok, true, `${id} must resolve`);
+    assert.notEqual(env.error?.code, "not-implemented", `${id} must not be a boundary id any more`);
   }
 });
 

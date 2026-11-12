@@ -169,25 +169,112 @@ export function extractZip(entries: ZipEntry[], dir: string): string[] {
   return written;
 }
 
-/** Unpack a .tar.bz2 (the Parakeet archive) — guarded like the RE's. */
-export async function extractTarBz2(file: string, dest: string): Promise<string[]> {
-  const { spawnSync } = require("node:child_process");
-  mkdirSync(dest, { recursive: true });
-  const res = spawnSync("tar", ["-xjf", file, "-C", dest], { encoding: "utf8" });
-  if (res.error) throw new Error(`tar failed: ${res.error.message}`);
-  if (res.status !== 0) throw new Error(`tar failed (${res.status}): ${(res.stderr || "").slice(-400)}`);
-  // Guard the result: nothing may have escaped the destination.
-  const written: string[] = [];
-  const walk = (dir: string, prefix: string): void => {
-    for (const entry of require("node:fs").readdirSync(dir, { withFileTypes: true })) {
-      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
-      if (entry.isSymbolicLink()) throw new Error(`unsafe archive entry (link): ${rel}`);
-      if (entry.isDirectory()) walk(join(dir, entry.name), rel);
-      else written.push(rel);
+/** One entry of a tar archive. */
+export interface TarEntry {
+  path: string;
+  data: Buffer;
+  directory: boolean;
+}
+
+const readTarString = (block: Buffer, offset: number, length: number): string => {
+  const slice = block.subarray(offset, offset + length);
+  const end = slice.indexOf(0);
+  return slice.toString("utf8", 0, end === -1 ? slice.length : end);
+};
+
+/**
+ * Read a tar archive. Pure JS (no `tar` binary), so it works the same on
+ * Windows, macOS and Linux.
+ *
+ * Safety: a hard/symbolic link entry is refused outright (the RE's
+ * `safeParakeetArchiveEntry` does the same), and every path is checked with
+ * `safeArchivePath` — no absolute paths, no `..`.
+ */
+export function readTar(buf: Buffer): TarEntry[] {
+  const entries: TarEntry[] = [];
+  let offset = 0;
+  let longName: string | null = null;
+  while (offset + 512 <= buf.length) {
+    const header = buf.subarray(offset, offset + 512);
+    let empty = true;
+    for (let i = 0; i < 512; i++) {
+      if (header[i] !== 0) {
+        empty = false;
+        break;
+      }
     }
-  };
-  walk(dest, "");
-  for (const rel of written) safeArchivePath(rel);
+    if (empty) break; // the end-of-archive marker
+    const name = readTarString(header, 0, 100);
+    const prefix = readTarString(header, 345, 155);
+    const size = parseInt(readTarString(header, 124, 12).trim() || "0", 8) || 0;
+    const typeflag = String.fromCharCode(header[156] || 0);
+    offset += 512;
+    const dataEnd = Math.min(offset + size, buf.length);
+    const data = buf.subarray(offset, dataEnd);
+    offset += Math.ceil(size / 512) * 512;
+
+    if (typeflag === "L") {
+      longName = data.toString("utf8").replace(/\0+$/, "");
+      continue;
+    }
+    if (typeflag === "x" || typeflag === "g") {
+      // A pax extended header: it may carry the real path.
+      const pax = data.toString("utf8");
+      const m = /\d+ path=([^\n]+)\n/.exec(pax);
+      if (m) longName = m[1];
+      continue;
+    }
+    const full = longName ?? (prefix ? `${prefix}/${name}` : name);
+    longName = null;
+    if (typeflag === "1" || typeflag === "2") {
+      throw new Error(`unsafe archive entry (link): ${full}`);
+    }
+    if (typeflag === "5") {
+      entries.push({ path: safeArchivePath(full), data: Buffer.alloc(0), directory: true });
+      continue;
+    }
+    entries.push({ path: safeArchivePath(full), data: Buffer.from(data), directory: false });
+  }
+  return entries;
+}
+
+/** Decompress a .bz2 buffer (pure JS — the RE uses `unbzip2-stream` too). */
+export async function bunzip2(buf: Buffer): Promise<Buffer> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const unbzip2 = require("unbzip2-stream");
+  // The module IS the factory (CJS); some builds wrap it in `.createBzip2`.
+  const createBzip2 = typeof unbzip2 === "function" ? unbzip2 : unbzip2.createBzip2;
+  const chunks: Buffer[] = [];
+  const stream = createBzip2();
+  await new Promise<void>((resolve, reject) => {
+    stream.on("data", (c: Buffer) => chunks.push(Buffer.from(c)));
+    stream.on("end", () => resolve());
+    stream.on("error", reject);
+    stream.end(buf);
+  });
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Unpack a .tar.bz2 (the Parakeet archive) — guarded like the RE's: nothing
+ * may escape the destination, and no link entries are accepted.
+ */
+export async function extractTarBz2(file: string, dest: string): Promise<string[]> {
+  const raw = readFileSync(file);
+  const tar = await bunzip2(raw);
+  const entries = readTar(tar);
+  mkdirSync(dest, { recursive: true });
+  const written: string[] = [];
+  for (const entry of entries) {
+    const target = join(dest, entry.path);
+    if (entry.directory) {
+      mkdirSync(target, { recursive: true });
+      continue;
+    }
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, entry.data);
+    written.push(entry.path);
+  }
   return written;
 }
 

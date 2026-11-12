@@ -118,15 +118,80 @@ test("id surface: 15 voice ids, all in the manifest; the 5 boundary ids are hand
   for (const id of BOUNDARY) assert.ok(handlers.some((h) => h.id === id), `${id} must dispatch`);
 });
 
-test("boundary: the 5 voice-pack ecosystem ids → not-implemented envelopes", async () => {
+test("the 5 voice ids are REAL now (Wave 3): no boundary envelope anywhere", async () => {
   useTempUserData();
   const { dispatch } = build();
   for (const id of BOUNDARY) {
-    const env = await dispatch(id, { action: "status" });
-    assert.equal(env.ok, false, `${id} must fail`);
-    assert.equal(env.error.code, "not-implemented", `${id} must be the boundary envelope`);
-    assert.match(env.error.message, /boundary id/);
+    const env = await dispatch(id, { action: "status", utterance: "hello" });
+    assert.equal(env.ok, true, `${id} must resolve`);
+    assert.notEqual(env.error?.code, "not-implemented", `${id} must not be a boundary id any more`);
   }
+});
+
+test("voice.voicePack: the neutral pack status, and it NEVER downloads on a status read", async () => {
+  useTempUserData();
+  const { call, state } = build();
+  const status = await call("voice.voicePack", { action: "status" });
+  assert.equal(status.version, 1);
+  assert.equal(status.engine, "sherpa");
+  assert.equal(status.asrModel, "parakeet-tdt-0.6b-v2");
+  assert.ok(["idle", "preparing", "ready", "error", "unsupported"].includes(status.state));
+  assert.equal(status.components.asr, "pending");
+  assert.equal(status.components.vad, "not-supported");
+  assert.equal(state.spawns.length, 0, "a status read never spawns anything");
+});
+
+test("voice.parakeet: the legacy status alias — no model means 'absent', never a fake", async () => {
+  useTempUserData();
+  const { call } = build();
+  const status = await call("voice.parakeet", { action: "status" });
+  assert.equal(status.model, "absent");
+  assert.equal(status.modelName, "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8");
+  assert.match(status.sha256, /^[0-9a-f]{64}$/);
+  assert.match(status.installRoot, /voice-models$/);
+});
+
+test("voice.intentReady: honest about the local provider", async () => {
+  useTempUserData();
+  const { call } = build({ spawner: { HARNESS_BIN: {}, runAgent: async () => ({ text: "", simulated: true }) } });
+  const res = await call("voice.intentReady", {});
+  assert.equal(res.ready, false);
+  assert.match(res.reason, /harness/);
+});
+
+test("voice.compile: without a local provider it asks — it never invents an intent", async () => {
+  useTempUserData();
+  const { call } = build({ spawner: { HARNESS_BIN: {}, runAgent: async () => ({ text: "", simulated: true }) } });
+  const res = await call("voice.compile", { utterance: "open the finder" });
+  assert.equal(res.kind, "ask");
+  assert.equal(res.fallback, true);
+  assert.match(res.reason, /harness|provider/);
+});
+
+test("voice.compile: a real local provider's JSON answer becomes steps", async () => {
+  useTempUserData();
+  const { call } = build({
+    spawner: {
+      HARNESS_BIN: { "claude-code": "claude" },
+      runAgent: async () => ({
+        text: '{"version":1,"kind":"actions","actions":[{"do":"open_finder","params":{}}],"say":"opening"}',
+        simulated: false,
+      }),
+    },
+  });
+  const res = await call("voice.compile", { utterance: "open the finder" });
+  assert.equal(res.kind, "steps");
+  assert.equal(res.steps.length, 1);
+  assert.equal(res.steps[0].do, "open_finder");
+  assert.equal(res.say, "opening");
+});
+
+test("voice.cancelCompile: honest about whether anything was running", async () => {
+  useTempUserData();
+  const { call } = build();
+  const res = await call("voice.cancelCompile", {});
+  assert.equal(res.ok, true);
+  assert.equal(res.cancelled, false);
 });
 
 test("micPermission: string status; headless (no Electron API) is honest 'unknown'", async () => {

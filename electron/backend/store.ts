@@ -78,16 +78,28 @@ export function useTempUserData(t?: { after?: (fn: () => void) => void }): strin
   return dir;
 }
 
+/**
+ * The dirs to remove when the process exits. ONE exit listener for all of
+ * them (a listener per dir would trip the MaxListeners warning).
+ */
+const exitCleanupDirs = new Set<string>();
+let exitHookInstalled = false;
+
 /** Remove a directory when the process exits (never throws). */
 export function removeOnExit(dir: string): void {
-  const cleanup = () => {
-    try {
-      rmSync(dir, { recursive: true, force: true });
-    } catch {
-      /* best effort — the OS reclaims tmpfs anyway */
+  exitCleanupDirs.add(dir);
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.on("exit", () => {
+    for (const d of exitCleanupDirs) {
+      try {
+        rmSync(d, { recursive: true, force: true });
+      } catch {
+        /* best effort — the OS reclaims tmpfs anyway */
+      }
     }
-  };
-  process.once("exit", cleanup);
+    exitCleanupDirs.clear();
+  });
 }
 
 export function exists(p: string): boolean {
