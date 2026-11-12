@@ -18,8 +18,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A push to a branch that has an open PR fires BOTH the push and the
+# pull_request event — two identical runs, two identical installers. Keying
+# the group on the COMMIT sha makes them one: the second run (the pull_request
+# one, which is what gates the merge) cancels the first.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
