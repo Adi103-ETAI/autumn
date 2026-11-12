@@ -12,6 +12,7 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
   existsSync,
   mkdtempSync,
@@ -56,11 +57,18 @@ export function dbPath(name: string): string {
   return join(dbDir(), name);
 }
 
-/** Test helper: point AUTUMN_USER_DATA_DIR at a fresh temp dir. */
+/**
+ * Test helper: point AUTUMN_USER_DATA_DIR at a fresh temp dir.
+ *
+ * The dir is removed when the process exits. The test suite writes a LOT
+ * into these dirs (the Remotion CLI alone downloads a ~350 MB headless shell
+ * into a project), and a full tmpfs takes every other test down with it.
+ */
 export function useTempUserData(t?: { after?: (fn: () => void) => void }): string {
   const dir = mkdtempSync(join(tmpdir(), "autumn-userdata-"));
   const prev = process.env.AUTUMN_USER_DATA_DIR;
   process.env.AUTUMN_USER_DATA_DIR = dir;
+  removeOnExit(dir);
   if (t?.after) {
     t.after(() => {
       if (prev === undefined) delete process.env.AUTUMN_USER_DATA_DIR;
@@ -68,6 +76,18 @@ export function useTempUserData(t?: { after?: (fn: () => void) => void }): strin
     });
   }
   return dir;
+}
+
+/** Remove a directory when the process exits (never throws). */
+export function removeOnExit(dir: string): void {
+  const cleanup = () => {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      /* best effort — the OS reclaims tmpfs anyway */
+    }
+  };
+  process.once("exit", cleanup);
 }
 
 export function exists(p: string): boolean {

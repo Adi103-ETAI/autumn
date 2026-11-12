@@ -11,7 +11,8 @@ const EXPECTED_IDS = [
   "sessions.historyDetail", "sessions.historyPage", "sessions.importBatchCancel",
   "sessions.importBatchRetry", "sessions.importBatchStart", "sessions.importBatchStatus",
   "sessions.importBindDocument", "sessions.importLibrary", "sessions.importSession",
-  "sessions.importedList", "sessions.library", "sessions.peekChat", "sessions.read",
+  "sessions.importedList", "sessions.library", "sessions.list", "sessions.peekChat",
+  "sessions.read", "sessions.search",
 ];
 
 function build(overrides = {}) {
@@ -57,9 +58,9 @@ function build(overrides = {}) {
 
 beforeEach(() => reg.reset());
 
-test("id surface: exactly the 16 dispatchable sessions ids, all in the manifest", () => {
+test("id surface: exactly the 18 dispatchable sessions ids, all in the manifest", () => {
   const { handlers } = build();
-  assert.equal(handlers.length, 16);
+  assert.equal(handlers.length, 18);
   assert.deepEqual(handlers.map((h) => h.id).sort(), [...EXPECTED_IDS].sort());
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
@@ -95,13 +96,27 @@ test("sessions.peekChat reads db.message rows", async () => {
   assert.equal(res.messages[0].text, "hello world");
 });
 
-test("sessions.engineStatus / folderFacts derive from real rows", async () => {
+test("sessions.engineStatus derives from real rows", async () => {
   const { call } = build();
   const status = await call("sessions.engineStatus", { engine: "codex" });
   assert.deepEqual(status, { engine: "codex", status: "active", sessionCount: 1 });
-  const facts = await call("sessions.folderFacts", { canvasId: "c" });
-  assert.equal(facts.facts.sessionCount, 1);
-  assert.deepEqual(facts.facts.engines, ["codex"]);
+});
+
+test("sessions.folderFacts reports what kind of folder each path is", async () => {
+  const os = require("node:os");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-facts-"));
+  const { call } = build();
+  const facts = await call("sessions.folderFacts", { paths: [dir, path.join(dir, "ghost")] });
+  assert.equal(facts.facts.length, 2);
+  assert.equal(facts.facts[0].kind, "folder");
+  assert.equal(facts.facts[0].path, dir);
+  assert.equal(typeof facts.facts[0].home, "boolean");
+  assert.equal(facts.facts[1].kind, "missing");
+  // The relative path is ignored (the RE's rule).
+  const onlyRelative = await call("sessions.folderFacts", { paths: ["relative/path"] });
+  assert.deepEqual(onlyRelative.facts, []);
 });
 
 test("sessions.importSession creates a session row and emits onImportBatch", async () => {
@@ -120,10 +135,38 @@ test("sessions.importBatchStart creates a session and emits started", async () =
   assert.equal(batch[1].stage, "started");
 });
 
-test("honest-minimal surface: importLibrary empty, library supported:false", async () => {
+test("the library index is real: it is written, read back and survives a reload", async () => {
   const { call } = build();
-  assert.deepEqual(await call("sessions.importLibrary", { canvasId: "c", source: "lib" }), { imported: 0, reason: "no library import pipeline in autumn" });
-  assert.deepEqual(await call("sessions.library", { canvasId: "c" }), { supported: false, items: [], reason: "no library store in autumn" });
+  const before = await call("sessions.library", {});
+  assert.ok(Array.isArray(before.sessions));
+  const imported = await call("sessions.importLibrary", {});
+  assert.equal(typeof imported.imported, "number");
+  assert.equal(typeof imported.total, "number");
+  assert.ok(Array.isArray(imported.warnings));
+  const after = await call("sessions.library", {});
+  assert.ok(Array.isArray(after.sessions));
+});
+
+test("a damaged library index is preserved, not ignored", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { useTempUserData } = require("./store.ts");
+  const dir = useTempUserData();
+  const file = path.join(dir, "session-library.json");
+  fs.writeFileSync(file, "{ not json", "utf8");
+  const { call } = build();
+  const res = await call("sessions.library", {});
+  assert.deepEqual(res.sessions, [], "a damaged index yields no rows");
+  assert.equal(res.warnings.length, 1, "the damage is reported");
+  const preserved = fs.readdirSync(dir).filter((f) => f.includes("corrupt"));
+  assert.equal(preserved.length, 1, "the damaged file is preserved for diagnosis");
+});
+
+test("cancelLibraryImport answers honestly when no scan is running", async () => {
+  const { call } = build();
+  const res = await call("sessions.cancelLibraryImport", {});
+  assert.equal(res.ok, true);
+  assert.equal(res.cancelled, false, "nothing was running, so nothing was cancelled");
 });
 
 test("registry dispatch round-trip wraps payloads and passes envelopes through", async () => {

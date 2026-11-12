@@ -151,6 +151,11 @@ test(
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-remotion-"));
   const saved = process.env.AUTUMN_PROJECTS_DIR;
   process.env.AUTUMN_PROJECTS_DIR = root;
+  // The Remotion CLI downloads a ~350 MB headless shell into the project —
+  // it MUST be removed again, or the tmpfs fills up and every other test
+  // fails with ENOSPC.
+  const { removeOnExit } = require("./store.ts");
+  removeOnExit(root);
   try {
     const folder = await call("remotion.create", { name: "integration" });
     assert.ok(fs.existsSync(path.join(folder, "src", "Root.tsx")));
@@ -176,6 +181,7 @@ test("slides: a created deck is a REAL project on disk (slides.json + index.html
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-slides-"));
   const saved = process.env.AUTUMN_PROJECTS_DIR;
   process.env.AUTUMN_PROJECTS_DIR = root;
+  require("./store.ts").removeOnExit(root);
   try {
     const handlers = makeSlidesHandlers({ emit: () => {}, now: () => Date.now() });
     const byId = Object.fromEntries(handlers.map((h) => [h.id, h]));

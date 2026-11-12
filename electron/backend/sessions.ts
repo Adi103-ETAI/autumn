@@ -1,11 +1,32 @@
-// autumn — Wave-1 handlers: sessions (16 dispatchable + sessions.onImportBatch push; doc 31).
+// autumn — handlers: sessions (18 dispatchable + the sessions.onImportBatch
+// push; doc 31 for the DB-backed ids, doc 35 §5 for the portable library).
 //
-// Backing is REAL Prisma: Session (messages stored as a JSON array string,
-// same convention as Canvas.state). `onImportBatch` is a push producer, not a
-// handler. Registered by index.ts; do not edit shared files.
+// Two layers, both real:
+//
+//   * the DB layer (Wave 1) — the Session rows (messages stored as a JSON
+//     array string, the same convention as Canvas.state);
+//   * the PORTABLE layer (Wave 3) — the sessions the OTHER agents already
+//     wrote on this machine (Claude Code, Codex, Pi, Amp, Grok). The RE
+//     discovers them, indexes them in a library file and lets the user
+//     browse, search and import them; autumn does the same, over the local
+//     stores, with the RE's layouts and bounds.
+//
+// `onImportBatch` is a push producer, not a handler.
 
 import type { RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
+import {
+  defaultRoots,
+  discoverPortableSessions,
+  folderFactRoots,
+  folderFacts,
+  libraryEntryKey,
+  libraryWarningText,
+  readSessionLibrary,
+  searchPortableSessions,
+  writeSessionLibrary,
+  type LibraryEntry,
+} from "./portable-sessions";
 
 const badParams = (message: string) => ({
   ok: false as const,
@@ -27,16 +48,23 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
   const importProgress = (sessionId: string, stage: string, progress: number, detail?: Record<string, unknown>) =>
     emit("sessions.onImportBatch", { sessionId, stage, progress, ts: now(), ...(detail ?? {}) });
 
+  /** The running library scan (cancellable). */
+  let libraryImport: { abort: AbortController } | null = null;
+
   const handlers: RegisteredHandler[] = [
     {
       kind: "bridge",
       id: "sessions.cancelLibraryImport",
       description:
-        "cancel a library import; params: { importId } -> { ok: true } (no active imports tracked; documented no-op)",
-      schema: (p) => (typeof p?.importId === "string" ? { ok: true } : { ok: false, message: "importId required" }),
+        "cancel a running library scan; params: { importId? } -> { ok: true, cancelled } (the scan really stops; the index keeps what it already found)",
+      schema: (p) =>
+        p?.importId === undefined || typeof p.importId === "string"
+          ? { ok: true }
+          : { ok: false, message: "importId optional string" },
       handler: (p) => {
-        if (typeof p?.importId !== "string") return badParams("importId required");
-        return { ok: true, importId: p.importId, cancelled: true };
+        if (p?.importId !== undefined && typeof p.importId !== "string") return badParams("importId must be a string");
+        const cancelled = libraryImport?.abort.abort() ?? false;
+        return { ok: true, cancelled };
       },
     },
     {
@@ -56,12 +84,18 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.folderFacts",
       description:
-        "folder facts for a session; params: { canvasId } -> { facts: {} } (derived from session rows)",
-      schema: (p) => (validCanvas(p?.canvasId) ? { ok: true } : { ok: false, message: "canvasId required" }),
+        "what kind of folder each path is; params: { paths[] } -> [{path, root, name, kind, home, temporary, driveRoot, system}] — kind is folder | repository | missing (the RE's folder facts, so the UI can warn about importing from a temp folder)",
+      schema: (p) => (Array.isArray(p?.paths) ? { ok: true } : { ok: false, message: "paths[] required" }),
       handler: async (p) => {
-        if (!validCanvas(p.canvasId)) return badParams("canvasId required");
-        const sessions = await db.session.findMany({ where: { canvasId: p.canvasId } });
-        return { canvasId: p.canvasId, facts: { sessionCount: sessions.length, engines: [...new Set(sessions.map((s: any) => s.engine))] } };
+        if (!Array.isArray(p?.paths)) return badParams("paths[] required");
+        const facts = folderFacts(p.paths, folderFactRoots());
+        const sessions = await db.session.findMany({ where: { canvasId: "default" } });
+        return {
+          facts,
+          // autumn's own addition: the session counts of the default canvas.
+          sessionCount: sessions.length,
+          engines: [...new Set(sessions.map((s: any) => s.engine))],
+        };
       },
     },
     {
@@ -180,9 +214,45 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.importLibrary",
       description:
-        "import a library; params: { canvasId, source } -> { imported: number } (no library pipeline; documented empty)",
-      schema: (p) => (validCanvas(p?.canvasId) && typeof p?.source === "string" ? { ok: true } : { ok: false, message: "canvasId and source required" }),
-      handler: () => ({ imported: 0, reason: "no library import pipeline in autumn" }),
+        "scan the local agent session stores and index them; params: { canvasId? } -> { imported, total, warnings } — the real Claude Code / Codex / Pi / Amp / Grok stores are read and the index is written to <userData>/session-library.json (a damaged index is preserved, not ignored)",
+      schema: (p) =>
+        p?.canvasId === undefined || validCanvas(p.canvasId)
+          ? { ok: true }
+          : { ok: false, message: "canvasId optional string" },
+      handler: async () => {
+        if (libraryImport) return { ok: false, error: "a library scan is already running" };
+        const abort = new AbortController();
+        libraryImport = { abort };
+        const warnings: string[] = [];
+        try {
+          const previous = readSessionLibrary();
+          const entries = new Map<string, LibraryEntry>();
+          for (const row of previous) entries.set(libraryEntryKey(row), row);
+          const warning = libraryWarningText();
+          if (warning) warnings.push(warning);
+          const discovered = discoverPortableSessions(defaultRoots(), new Set());
+          let added = 0;
+          for (const session of discovered) {
+            if (abort.signal.aborted) break;
+            const entry: LibraryEntry = {
+              sessionId: session.sessionId,
+              sourceId: session.harness,
+              title: session.title,
+              lastActive: session.lastActive,
+              harness: session.harness,
+              cwd: session.cwd,
+              sizeBytes: session.sizeBytes,
+            };
+            const key = libraryEntryKey(entry);
+            if (!entries.has(key)) added++;
+            entries.set(key, entry);
+          }
+          if (!abort.signal.aborted) writeSessionLibrary([...entries.values()]);
+          return { imported: added, total: entries.size, warnings, cancelled: abort.signal.aborted };
+        } finally {
+          libraryImport = null;
+        }
+      },
     },
     {
       kind: "bridge",
@@ -223,9 +293,27 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.library",
       description:
-        "library listing; params: { canvasId? } -> { supported:false, items: [] } (no library store)",
-      schema: (p) => (p?.canvasId === undefined || validCanvas(p.canvasId) ? { ok: true } : { ok: false, message: "canvasId optional string" }),
-      handler: () => ({ supported: false, items: [], reason: "no library store in autumn" }),
+        "the session library index; params: { canvasId? } -> { sessions: [...], warnings } — the index <userData>/session-library.json holds (the sessions the other agents wrote on this machine)",
+      schema: (p) =>
+        p?.canvasId === undefined || validCanvas(p.canvasId)
+          ? { ok: true }
+          : { ok: false, message: "canvasId optional string" },
+      handler: () => {
+        const sessions = readSessionLibrary();
+        const warning = libraryWarningText();
+        return {
+          sessions: sessions.map((row) => ({
+            sessionId: row.sessionId,
+            sourceId: row.sourceId,
+            harness: row.harness,
+            title: row.title,
+            lastActive: row.lastActive,
+            cwd: row.cwd ?? null,
+            sizeBytes: row.sizeBytes ?? 0,
+          })),
+          warnings: warning ? [warning] : [],
+        };
+      },
     },
     {
       kind: "bridge",
@@ -244,6 +332,49 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
           select: { id: true, role: true, text: true, createdAt: true },
         });
         return { nodeId: p.nodeId, messages: rows.map((r: any) => ({ id: r.id, role: r.role, text: r.text, ts: r.createdAt.getTime() })) };
+      },
+    },
+    {
+      kind: "bridge",
+      id: "sessions.list",
+      description:
+        "the portable sessions of the local agent stores; params: { engine? } -> [{harness, sessionId, title, cwd, cwdExists, lastActive, sizeBytes, tracked}] — the real Claude Code / Codex / Pi / Amp / Grok transcripts found on this machine, newest first (the RE's discovery, with its bounds)",
+      schema: (p) =>
+        p?.engine === undefined || validEngine(p.engine)
+          ? { ok: true }
+          : { ok: false, message: "engine optional string" },
+      handler: async (p) => {
+        if (p?.engine !== undefined && !validEngine(p.engine)) return badParams("engine must be a string");
+        const tracked = new Set<string>();
+        try {
+          const rows = await db.session.findMany({ select: { externalId: true } });
+          for (const row of rows) if (row?.externalId) tracked.add(row.externalId);
+        } catch {
+          /* the tracked set is a nicety, not a requirement */
+        }
+        const sessions = discoverPortableSessions(defaultRoots(), tracked);
+        if (!p?.engine) return sessions;
+        const wanted = p.engine;
+        return sessions.filter((s) => s.harness === wanted || s.harness === wanted.replace("_code", ""));
+      },
+    },
+    {
+      kind: "bridge",
+      id: "sessions.search",
+      description:
+        "search the portable sessions; params: { pattern } -> [{harness, sessionId, title, cwd, lastActive, hits[]}] — the title / cwd / id matches AND the matching transcript lines (the RE's search, with its bounds)",
+      schema: (p) => (typeof p?.pattern === "string" ? { ok: true } : { ok: false, message: "pattern required (string)" }),
+      handler: async (p) => {
+        if (typeof p?.pattern !== "string") return badParams("pattern required");
+        const pattern = p.pattern.slice(0, 200);
+        const tracked = new Set<string>();
+        try {
+          const rows = await db.session.findMany({ select: { externalId: true } });
+          for (const row of rows) if (row?.externalId) tracked.add(row.externalId);
+        } catch {
+          /* the tracked set is a nicety, not a requirement */
+        }
+        return searchPortableSessions(pattern, defaultRoots(), tracked);
       },
     },
     {

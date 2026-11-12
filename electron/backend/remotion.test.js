@@ -62,6 +62,9 @@ function build(overrides = {}) {
 
 async function withProjectsRoot(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-projects-"));
+  // The Remotion CLI downloads a ~350 MB headless shell into a project —
+  // the temp dir MUST be removed again (a full tmpfs breaks every test).
+  require("./store.ts").removeOnExit(dir);
   const saved = process.env.AUTUMN_PROJECTS_DIR;
   process.env.AUTUMN_PROJECTS_DIR = dir;
   try {
@@ -101,6 +104,7 @@ async function withoutRemotionCli(fn) {
 /** A temp dir with a fake `remotion` executable (all platform names). */
 function fakeBinDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-remo-"));
+  require("./store.ts").removeOnExit(dir);
   for (const name of ["remotion", "remotion.cmd"]) {
     const p = path.join(dir, name);
     fs.writeFileSync(p, "#!/bin/sh\nexit 0\n", "utf8");
