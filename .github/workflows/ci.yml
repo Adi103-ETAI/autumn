@@ -37,11 +37,15 @@ jobs:
         run: node scripts/check-types.mjs
       - name: tests
         run: npm test
+      - name: bundle the electron backend
+        run: npm run build:backend
       - name: packaging contract
         run: npm run pack:check
 
   build:
-    name: build (${{ matrix.label }})
+    # The matrix values are appended by GitHub automatically
+    # ("build (windows-latest)", …) — a job name cannot interpolate them.
+    name: build installer
     needs: check
     runs-on: ${{ matrix.os }}
     strategy:
