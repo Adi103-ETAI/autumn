@@ -179,7 +179,9 @@ test("voice.compile: a real local provider's JSON answer becomes steps", async (
       }),
     },
   });
-  const res = await call("voice.compile", { utterance: "open the finder" });
+  // The harness is named explicitly, so the test does not depend on which
+  // agent CLIs happen to be installed on the machine running it.
+  const res = await call("voice.compile", { utterance: "open the finder", harness: "claude-code" });
   assert.equal(res.kind, "steps");
   assert.equal(res.steps.length, 1);
   assert.equal(res.steps[0].do, "open_finder");
