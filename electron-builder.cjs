@@ -28,7 +28,7 @@ const path = require("node:path");
 /** The app's own product identity. */
 const APP_NAME = "Autumn";
 const APP_ID = "com.autumn.desktop";
-const PUBLISH = { provider: "github", owner: "Adi103-ETAI", repo: "autumn" };
+const PUBLISH = { provider: "github", owner: "adiisinghh", repo: "autumn" };
 
 /** The icon: a 512×512 PNG is enough — electron-builder converts it to
  *  .ico (Windows) and .icns (macOS) itself. */

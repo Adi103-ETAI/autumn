@@ -128,7 +128,7 @@ export function makeUpdateHandlers(deps: W1Deps): RegisteredHandler[] {
       autoUpdater.autoDownload = false;
       autoUpdater.autoInstallOnAppQuit = true;
       try {
-        autoUpdater.setFeedURL({ provider: "github", owner: "Adi103-ETAI", repo: "autumn" });
+        autoUpdater.setFeedURL({ provider: "github", owner: "adiisinghh", repo: "autumn" });
       } catch {
         /* feed unset → checkForUpdates errors, surfaced as handler-error */
       }
