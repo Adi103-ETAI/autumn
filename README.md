@@ -2,19 +2,6 @@
   <img src="assets/autumn_banner.png" alt="Autumn — spatial" />
 </p>
 
-<pre align="center">
-         _    _ _______ _    _ __  __ _   _ 
-    /\  | |  | |__   __| |  | |  \/  | \ | |
-   /  \ | |  | |  | |  | |  | | \  / |  \| |
-  / /\ \| |  | |  | |  | |  | | |\/| | . ` |
- / ____ \ |__| |  | |  | |__| | |  | | |\  |
-/_/    \_\____/   |_|   \____/|_|  |_|_| \_|
-</pre>
-
-<p align="center">
-  <strong>A local-first spatial desktop for AI coding agents.</strong>
-</p>
-
 <p align="center">
   <a href="docs/README.md">Documentation</a> ·
   <a href="docs/development.md">Development</a> ·
