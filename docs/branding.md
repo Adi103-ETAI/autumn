@@ -8,8 +8,9 @@ Autumn's brand is a **maple leaf** and the word **AUTUMN**. Nothing else.
 
 | Asset | File | Use |
 |---|---|---|
-| The mark | `public/nature.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark, the README. |
+| The mark | `public/nature.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark. |
 | The installer icon | `assets/icon.png` (512×512, transparent) | The source for the Windows `.ico` and the macOS `.icns` that `electron-builder` generates. |
+| The banner | `assets/header/logo-{light,dark}.svg` | The README's header: the leaf in pixel art plus the AUTUMN logotype, in a light and a dark variant. |
 | The wordmark | `brand/autumn-ascii.txt` | The README, the release notes, anywhere a terminal is. |
 
 The mark is **one leaf** — the crimson one. It is never redrawn, never
@@ -17,15 +18,25 @@ recoloured and never put in a rounded box.
 
 ## The header
 
-The README opens with the mark, the wordmark and the promise:
+The README opens with the banner — the leaf in pixel art next to the
+logotype — and it follows the reader's theme:
 
 ```html
-<p align="center">
-  <img src="public/nature.png" alt="Autumn" width="120" />
-</p>
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
+    <img src="assets/header/logo-light.svg" alt="Autumn" width="560">
+  </picture>
+</div>
+```
 
-<h1 align="center">Autumn</h1>
+The mark in the banner is the leaf **in pixel art**, sampled from the real
+`nature.png` — 21×21 cells, each carrying the average colour of that part of
+the leaf, so the gradient and the veins survive the pixelation.
 
+Under the banner comes the ASCII wordmark:
+
+```html
 <pre align="center">
          _    _ _______ _    _ __  __ _   _
     /\  | |  | |__   __| |  | |  \/  | \ | |
@@ -108,5 +119,6 @@ against it — the glow is `rgba(245,158,11,0.45)`.
 | Browser tab / PWA icon | `src/app/layout.tsx` |
 | The app's brand mark | `src/components/autumn/AutumnLogo.tsx` |
 | The installer's icon | `assets/icon.png` → `electron-builder.cjs` |
+| The README's banner | `assets/header/logo-{light,dark}.svg` |
 | The README | `README.md` |
 | The empty canvas | `src/components/autumn/CanvasView.tsx` (the mark + the ASCII wordmark) |

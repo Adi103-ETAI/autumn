@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="public/nature.png" alt="Autumn" width="120" />
-</p>
-
-<h1 align="center">Autumn</h1>
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
+    <img src="assets/header/logo-light.svg" alt="Autumn" width="560">
+  </picture>
+</div>
 
 <pre align="center">
          _    _ _______ _    _ __  __ _   _ 
