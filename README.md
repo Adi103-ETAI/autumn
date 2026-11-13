@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
-    <img src="assets/header/logo-light.svg" alt="Autumn" width="520">
+    <img src="assets/header/logo-light.svg" alt="Autumn" width="560">
   </picture>
   <br>
   <picture>
