@@ -3,11 +3,11 @@
 import Image from "next/image";
 
 /**
- * AutumnLogo — the maple-leaf brand mark.
+ * AutumnLogo — the brand mark.
  *
- * Renders the maple-leaf PNG (`/maple-leaf.png`) as the Autumn logo.
- * The leaf itself carries the autumn colour palette (amber/orange), so no
- * gradient container is needed — just a subtle glow for depth.
+ * Renders the leaf PNG (`/nature.png`) as the Autumn logo.
+ * The leaf carries the autumn colour palette, so no gradient container is
+ * needed — just a subtle glow for depth.
  *
  * Usage:
  *   <AutumnLogo size={32} />           // top bar / headers
@@ -29,7 +29,7 @@ export function AutumnLogo({
 }) {
   return (
     <Image
-      src="/maple-leaf.png"
+      src="/nature.png"
       alt="Autumn"
       width={size}
       height={size}

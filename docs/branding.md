@@ -4,55 +4,50 @@ Autumn's brand is a **maple leaf** and the word **AUTUMN**. Nothing else.
 
 ## The mark
 
-![the Autumn maple leaf](../public/maple-leaf.png)
+![the Autumn leaf](../public/nature.png)
 
 | Asset | File | Use |
 |---|---|---|
-| The mark | `public/maple-leaf.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark, the installer icon. |
+| The mark | `public/nature.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark, the README. |
 | The installer icon | `assets/icon.png` (512×512, transparent) | The source for the Windows `.ico` and the macOS `.icns` that `electron-builder` generates. |
-| The header | `assets/header/logo-{light,dark}.svg` | The README's wordmark — the leaf in pixel art plus the AUTUMN logotype, in a light and a dark variant. |
-| The tagline | `assets/header/tagline-{light,dark}.svg` | The one-line promise under the header. |
-| The badges | `assets/header/button-*.svg` | The navigation pills under the header. |
-| The callout | `assets/header/callout-{light,dark}.svg` | The pointer to the agent CLIs. |
 | The wordmark | `brand/autumn-ascii.txt` | The README, the release notes, anywhere a terminal is. |
+
+The mark is **one leaf** — the crimson one. It is never redrawn, never
+recoloured and never put in a rounded box.
 
 ## The header
 
-The README opens with a centred header that swaps with the reader's theme:
+The README opens with the mark, the wordmark and the promise:
 
 ```html
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
-    <img src="assets/header/logo-light.svg" alt="Autumn" width="520">
-  </picture>
-  <br>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/header/tagline-dark.svg">
-    <img src="assets/header/tagline-light.svg" alt="…" width="520">
-  </picture>
-</div>
+<p align="center">
+  <img src="public/nature.png" alt="Autumn" width="120" />
+</p>
+
+<h1 align="center">Autumn</h1>
+
+<pre align="center">
+         _    _ _______ _    _ __  __ _   _
+    /\  | |  | |__   __| |  | |  \/  | \ | |
+   /  \ | |  | |  | |  | |  | | \  / |  \| |
+  / /\ \| |  | |  | |  | |  | | |\/| | . ` |
+ / ____ \ |__| |  | |  | |__| | |  | | |\  |
+/_/    \_\____/   |_|   \____/|_|  |_|_| \_|
+</pre>
 ```
 
-Every header asset exists in a **light** and a **dark** variant, and the dark one
-is chosen with `prefers-color-scheme`.
+The ASCII wordmark is the same artwork as `brand/autumn-ascii.txt`, so the
+README and the terminal agree.
 
-The mark in the header is the leaf **in pixel art**, sampled from the real
-`maple-leaf.png` — 21×21 cells, each carrying the average colour of that part
-of the leaf, so the gradient and the veins survive. The chat bubble other
-Autumn projects use is replaced by the leaf.
+## The palette
 
-The palette in the header:
+The leaf carries the palette, so the UI borrows from it.
 
-| | |
-|---|---|
-| The accent | `#F97316` (the leaf orange) — the buttons, the highlighted words. |
-| The deep shade | `#C2410C` (the leaf's veins). |
-| The ink | `#111111` light, `#EDEDED` dark. |
-| The muted ink | `#555555` light, `#A1A1A1` dark. |
-
-The logotype is set in Inter (with the system stack as the fallback), weight
-800, `letter-spacing="-3"`.
+| Token | Value | Used for |
+|---|---|---|
+| Crimson | `#C8102E` → `#E31B23` | The leaf's body. |
+| Deep maroon | `#7B1A22` → `#5C1017` | The leaf's shadowed lobes and veins. |
+| Amber | `#F59E0B` | The accent in the app's chrome: active state, highlights. |
 
 Both PNGs are the same artwork. The in-app mark is rendered by
 `src/components/autumn/AutumnLogo.tsx`:
@@ -63,7 +58,7 @@ Both PNGs are the same artwork. The in-app mark is rendered by
 <AutumnLogo size={80} priority />  // above the fold
 ```
 
-`public/maple-leaf.png` is also what `src/app/layout.tsx` registers as the icon
+`public/nature.png` is also what `src/app/layout.tsx` registers as the icon
 and the Apple touch icon, so the browser tab, the taskbar and the installer all
 show the same leaf.
 
@@ -114,3 +109,4 @@ against it — the glow is `rgba(245,158,11,0.45)`.
 | The app's brand mark | `src/components/autumn/AutumnLogo.tsx` |
 | The installer's icon | `assets/icon.png` → `electron-builder.cjs` |
 | The README | `README.md` |
+| The empty canvas | `src/components/autumn/CanvasView.tsx` (the mark + the ASCII wordmark) |
