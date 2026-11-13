@@ -4,18 +4,18 @@ Autumn's brand is a **maple leaf** and the word **AUTUMN**. Nothing else.
 
 ## The mark
 
-![the Autumn leaf](../public/nature.png)
+![the Autumn mark](../public/autumn-icon.png)
 
 | Asset | File | Use |
 |---|---|---|
-| The mark | `public/nature.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark. |
+| The mark | `public/autumn-icon.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark. |
 | The installer icon | `assets/icon.png` (512×512, transparent) | The source for the Windows `.ico` and the macOS `.icns` that `electron-builder` generates. |
 | The banner | `assets/autumn_banner.png` | The README's header: the leaf, the AUTUMN logotype and the promise. |
 | The logotype | `assets/header/logo-{light,dark}.svg` | The leaf in pixel art plus the AUTUMN logotype, in a light and a dark variant. |
 | The wordmark | `brand/autumn-ascii.txt` | The app's empty canvas, the release notes, anywhere a terminal is. |
 
-The mark is **one leaf** — the crimson one. It is never redrawn, never
-recoloured and never put in a rounded box.
+The mark is **one leaf** — the autumn one, in crimson, orange and amber. It
+is never redrawn, never recoloured and never put in a rounded box.
 
 ## The header
 
@@ -48,8 +48,8 @@ swap it:
 ```
 
 The mark in the logotype is the leaf **in pixel art**, sampled from the real
-`nature.png` — 21×21 cells, each carrying the average colour of that part of
-the leaf, so the gradient and the veins survive the pixelation.
+`autumn-icon.png` — 21×21 cells, each carrying the average colour of that part
+of the leaf, so the gradient and the veins survive the pixelation.
 
 Under the banner comes the ASCII wordmark:
 
@@ -73,9 +73,10 @@ The leaf carries the palette, so the UI borrows from it.
 
 | Token | Value | Used for |
 |---|---|---|
-| Crimson | `#C8102E` → `#E31B23` | The leaf's body. |
-| Deep maroon | `#7B1A22` → `#5C1017` | The leaf's shadowed lobes and veins. |
-| Amber | `#F59E0B` | The accent in the app's chrome: active state, highlights. |
+| Crimson | `#C8102E` → `#E31B23` | The leaf's shadowed lobes. |
+| Deep maroon | `#7B1A22` → `#5C1017` | The leaf's darkest veins. |
+| Orange | `#F97316` → `#EA580C` | The leaf's body. |
+| Amber | `#FBBF24` → `#F59E0B` | The leaf's highlights, and the accent in the app's chrome. |
 
 Both PNGs are the same artwork. The in-app mark is rendered by
 `src/components/autumn/AutumnLogo.tsx`:
@@ -86,7 +87,7 @@ Both PNGs are the same artwork. The in-app mark is rendered by
 <AutumnLogo size={80} priority />  // above the fold
 ```
 
-`public/nature.png` is also what `src/app/layout.tsx` registers as the icon
+`public/autumn-icon.png` is also what `src/app/layout.tsx` registers as the icon
 and the Apple touch icon, so the browser tab, the taskbar and the installer all
 show the same leaf.
 
