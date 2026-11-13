@@ -10,7 +10,49 @@ Autumn's brand is a **maple leaf** and the word **AUTUMN**. Nothing else.
 |---|---|---|
 | The mark | `public/maple-leaf.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark, the installer icon. |
 | The installer icon | `assets/icon.png` (512×512, transparent) | The source for the Windows `.ico` and the macOS `.icns` that `electron-builder` generates. |
+| The header | `assets/header/logo-{light,dark}.svg` | The README's wordmark — the leaf in pixel art plus the AUTUMN logotype, in a light and a dark variant. |
+| The tagline | `assets/header/tagline-{light,dark}.svg` | The one-line promise under the header. |
+| The badges | `assets/header/button-*.svg` | The navigation pills under the header. |
+| The callout | `assets/header/callout-{light,dark}.svg` | The pointer to the agent CLIs. |
 | The wordmark | `brand/autumn-ascii.txt` | The README, the release notes, anywhere a terminal is. |
+
+## The header
+
+The README opens with a centred header that swaps with the reader's theme:
+
+```html
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
+    <img src="assets/header/logo-light.svg" alt="Autumn" width="520">
+  </picture>
+  <br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/header/tagline-dark.svg">
+    <img src="assets/header/tagline-light.svg" alt="…" width="520">
+  </picture>
+</div>
+```
+
+Every header asset exists in a **light** and a **dark** variant, and the dark one
+is chosen with `prefers-color-scheme`.
+
+The mark in the header is the leaf **in pixel art**, sampled from the real
+`maple-leaf.png` — 21×21 cells, each carrying the average colour of that part
+of the leaf, so the gradient and the veins survive. The chat bubble other
+Autumn projects use is replaced by the leaf.
+
+The palette in the header:
+
+| | |
+|---|---|
+| The accent | `#F97316` (the leaf orange) — the buttons, the highlighted words. |
+| The deep shade | `#C2410C` (the leaf's veins). |
+| The ink | `#111111` light, `#EDEDED` dark. |
+| The muted ink | `#555555` light, `#A1A1A1` dark. |
+
+The logotype is set in Inter (with the system stack as the fallback), weight
+800, `letter-spacing="-3"`.
 
 Both PNGs are the same artwork. The in-app mark is rendered by
 `src/components/autumn/AutumnLogo.tsx`:
