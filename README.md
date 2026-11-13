@@ -142,8 +142,8 @@ subscriptions, generated so it can never drift from the code.
 
 ## Author
 
-**Aditya** — <adi.singh1426@gmail.com>
+**Aditya** — <adi.singh1426@gmail.com> · [@adiisinghh](https://github.com/adiisinghh)
 
 ## License
 
-See [`LICENSE`](LICENSE).
+[MIT](LICENSE) — see the file.
