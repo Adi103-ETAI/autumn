@@ -1,36 +1,25 @@
 // Autumn — Agent runner (client-side driver).
-// Mirrors October's runAgent() dispatch: takes a chat node + task, calls the
-// /api/agent/run endpoint, streams the response into the agent's messages,
-// and routes any [autumn-bus] message_peer handoffs to /api/bus + emits pulses.
+// Mirrors Autumn's runAgent() dispatch: takes a chat node + task, calls the
+// agent-run op through the bridge, streams the response into the agent's
+// messages, and routes any [autumn-bus] message_peer handoffs through the
+// bus bridge + emits pulses.
 
 "use client";
 
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { AutumnNode, ChatNodeData } from "@/lib/autumn/types";
 import { PERSONA_BY_ID } from "@/lib/autumn/personas";
+import { api, call, BridgeError } from "@/lib/autumn/bridge";
 import { toast } from "sonner";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Hard ceiling on how long a single agent run may block the UI. If the
-// backend (or the LLM proxy behind /api/agent/run) hasn't answered by then,
-// we abort, fall back to a synthesized response, and dismiss the loading
-// toast — so the "X is working…" indicator can never spin forever.
+// backend (or the LLM proxy behind the agent-run op) hasn't answered by
+// then, we abort, fall back to a synthesized response, and dismiss the
+// loading toast — so the "X is working…" indicator can never spin forever.
 const RUN_TIMEOUT_MS = 45_000;
 const toastId = (nodeId: string) => `agent-run-${nodeId}`;
-
-/** Abort a fetch after `ms`, rejecting with an AbortError. */
-function fetchWithTimeout(
-  input: string,
-  init: RequestInit = {},
-  ms: number,
-): Promise<Response> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetch(input, { ...init, signal: ctrl.signal }).finally(() =>
-    clearTimeout(timer),
-  );
-}
 
 export async function runAgentForNode(nodeId: string, task?: string) {
   const store = useAutumnStore.getState();
@@ -73,7 +62,7 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   });
 
   // Log a session-start event so the per-agent execution history panel
-  // can show this run. Fire-and-forget POST to /api/logs.
+  // can show this run. Fire-and-forget activity-log entry.
   store.pushActivity({
     kind: "agent_session_start",
     text: `${persona.name} started: ${taskSummary}`,
@@ -92,15 +81,12 @@ export async function runAgentForNode(nodeId: string, task?: string) {
   // 1) Fetch peer context from the bus (drains the inbox).
   let peerContext = "";
   try {
-    const r = await fetchWithTimeout(
-      `/api/bus?op=pre-prompt&canvas=${encodeURIComponent(store.canvasId)}&node=${encodeURIComponent(nodeId)}`,
-      { method: "GET" },
+    const j = await call<{ injection?: string; drained?: boolean }>(
+      "__core.bus.query",
+      { op: "pre-prompt", canvas: store.canvasId, node: nodeId },
       8_000,
     );
-    if (r.ok) {
-      const j = await r.json();
-      peerContext = j.injection ?? "";
-    }
+    peerContext = j.injection ?? "";
   } catch {
     /* ignore — peer context is best-effort */
   }
@@ -125,35 +111,29 @@ export async function runAgentForNode(nodeId: string, task?: string) {
 
   store.setAgentStatus(nodeId, "working", "Working on it…");
 
-  // 3) Call the agent runner. Guarded by an AbortController so a hung
-  //    backend can never leave the "X is working…" toast spinning forever.
+  // 3) Call the agent runner. Guarded by a hard client-side timeout so a
+  //    hung backend can never leave the "X is working…" toast spinning forever.
   let text = "";
   let errored = false;
   try {
-    const r = await fetchWithTimeout(
-      "/api/agent/run",
+    const j = await api.agentRun(
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personaId: persona.id,
-          harness: data.harness,
-          task: finalTask,
-          peerContext,
-          connectedPeers,
-          history: data.messages.slice(-6),
-        }),
+        personaId: persona.id,
+        harness: data.harness as string,
+        task: finalTask,
+        canvasId: store.canvasId,
+        peerContext,
+        connectedPeers,
+        history: data.messages.slice(-6),
       },
       RUN_TIMEOUT_MS,
     );
-    if (!r.ok) throw new Error(`agent/run ${r.status}`);
-    const j = await r.json();
     text = j.text ?? "";
   } catch (err) {
     console.error("[runAgent]", err);
     errored = true;
     const aborted =
-      err instanceof DOMException && err.name === "AbortError";
+      err instanceof BridgeError && err.code === "timeout";
     text = aborted
       ? `⚠️ Timed out waiting for the reasoning backend after ${Math.round(
           RUN_TIMEOUT_MS / 1000,
@@ -166,6 +146,22 @@ export async function runAgentForNode(nodeId: string, task?: string) {
     await streamText(nodeId, msgId, text);
   } catch (err) {
     console.error("[runAgent] streamText failed:", err);
+  }
+
+  // 4b) Persist the run output as an Artifact (Wave-1 artifacts.*). Best-effort:
+  //     the agent run must never fail because the artifact store did.
+  try {
+    if (text.trim() && !errored) {
+      await api.artifacts.save({
+        canvasId: useAutumnStore.getState().canvasId,
+        name: `${persona.name} — ${finalTask.slice(0, 60)}`,
+        content: text,
+        kind: "text",
+        meta: { nodeId, personaId: persona.id, task: finalTask },
+      });
+    }
+  } catch (err) {
+    console.warn("[runAgent] artifact save failed:", err);
   }
 
   store.updateAgentMessage(nodeId, msgId, { streaming: false });
@@ -404,18 +400,19 @@ function deliverPeerMessage(
 ) {
   const store = useAutumnStore.getState();
 
-  // POST to the bus (records the inbox for the peer).
-  fetch("/api/bus?op=message_peer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  // Send via the bus (records the inbox for the peer). Fire-and-forget —
+  // the handler returns {delivered, from, to, id, ts} but nothing here
+  // consumed the old response body, so errors stay swallowed.
+  api.bus
+    .mutate({
+      op: "message_peer",
       canvasId: store.canvasId,
       fromNodeId,
       toNodeId,
       peer: toNodeId,
       message,
-    }),
-  }).catch(() => {});
+    })
+    .catch(() => {});
 
   // Push a visual pulse on the edge.
   store.pushPulse({

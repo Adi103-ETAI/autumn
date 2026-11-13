@@ -1,14 +1,73 @@
 // Autumn — Prisma schema (SQLite)
-// Mirrors October's data model: desktop_canvases, bus_state, desktop_code_sync.
+// Mirrors Autumn's data model: desktop_canvases, bus_state, desktop_code_sync.
 // We add: Node, Edge, Task, Message, AgentLog for richer querying.
 
 generator client {
   provider = "prisma-client-js"
+  // The generated client is written into a NORMAL directory inside the repo
+  // (not the hidden node_modules/.prisma): electron-builder copies the app's
+  // own files, so a normal path is what actually ends up in the installer.
+  // The client is self-contained (its own query engine + schema.prisma).
+  output   = "./generated"
 }
 
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+// Wave 1: versioned artifact store (artifacts.* bridge namespace).
+// Plain `canvasId` string (no FK): artifacts may outlive a canvas row, and the
+// artifacts handlers treat canvas scoping as a soft key.
+model Artifact {
+  id        String   @id @default(cuid())
+  canvasId  String   @default("default")
+  nodeId    String?
+  name      String
+  kind      String   @default("file") // file | text | html | image
+  path      String?                   // on-disk path when file-backed
+  content   String?                   // inline content when small
+  version   Int      @default(1)
+  retired   Boolean  @default(false)
+  meta      String   @default("{}")   // JSON: source, usage, mime, ...
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions ArtifactVersion[]
+
+  @@index([canvasId, name])
+}
+
+// Immutable snapshot per artifact version (save/restore/deleteVersions).
+model ArtifactVersion {
+  id         String   @id @default(cuid())
+  artifactId String
+  artifact   Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  version    Int
+  content    String?
+  path       String?
+  meta       String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([artifactId])
+}
+
+// Wave 1: agent session persistence (sessions.* bridge namespace).
+// `messages` is a JSON array string (same convention as Canvas.state).
+model Session {
+  id         String   @id @default(cuid())
+  canvasId   String   @default("default")
+  nodeId     String?
+  engine     String   @default("codex") // codex | claude | opencode | gemini | ...
+  externalId String?                    // imported target session id
+  title      String   @default("")
+  path       String?                    // on-disk transcript path, when known
+  messages   String   @default("[]")    // JSON: [{role, text, ts}]
+  meta       String   @default("{}")    // JSON: model, tokens, importedFrom, ...
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([canvasId, engine])
 }
 
 model Canvas {
@@ -81,6 +140,19 @@ model Message {
   createdAt  DateTime @default(now())
 
   @@index([canvasId, nodeId])
+}
+
+// AutumnBus peer registry (mirrors Autumn's bus session/stop/list_peers).
+// Kept FK-free (plain canvasId) so bus ops never fail on a missing canvas row.
+model BusPeer {
+  canvasId String
+  nodeId   String
+  name     String
+  status   String   @default("live") // live | offline | thinking | working | ...
+  lastSeen DateTime @default(now())
+
+  @@id([canvasId, nodeId])
+  @@index([canvasId])
 }
 
 model AgentLog {

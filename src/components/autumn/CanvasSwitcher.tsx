@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useAutumnStore } from "@/lib/autumn/store";
 import type { CanvasPreset } from "@/lib/autumn/types";
+import { api } from "@/lib/autumn/bridge";
 import {
   Dialog,
   DialogContent,
@@ -84,9 +85,7 @@ export function CanvasSwitcher({
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch("/api/canvas", { method: "GET" });
-      if (!r.ok) throw new Error(`list ${r.status}`);
-      const j = await r.json();
+      const j = await api.canvas.load<{ canvases?: SavedCanvas[] }>();
       setList(j.canvases ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed to list");
@@ -106,9 +105,7 @@ export function CanvasSwitcher({
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
+      await api.canvas.remove(id);
       void refresh();
     } catch {
       /* ignore */

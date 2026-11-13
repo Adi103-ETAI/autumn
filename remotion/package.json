@@ -1,0 +1,21 @@
+{
+  "name": "autumn-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Autumn video-editor template \u2014 three compositions (Caption, PromoCard, EndCard).",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render",
+    "bundle": "remotion bundle"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.518",
+    "remotion": "4.0.518",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.4.5"
+  }
+}

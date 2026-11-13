@@ -1,5 +1,5 @@
 // Autumn — seed canvas. Loaded on first visit so the user sees a working workshop
-// instead of an empty canvas. Mirrors the October onboarding experience.
+// instead of an empty canvas. Mirrors the Autumn onboarding experience.
 
 import type { AutumnNode, AutumnEdge, AutumnTask } from "./types";
 import { PERSONA_BY_ID } from "./personas";

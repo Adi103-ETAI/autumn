@@ -1,6 +1,6 @@
 // Autumn — Zustand store (client).
 // Holds canvas state, task board, pulses, commander chat history, recent actions.
-// Mirrors October's `useAppStore` (see 09-renderer-deep-dive.md) but trimmed to
+// Mirrors Autumn's `useAppStore` (see 09-renderer-deep-dive.md) but trimmed to
 // the parts we actually need for the web demo.
 
 "use client";
@@ -21,11 +21,13 @@ import type {
 import {
   PERSONA_BY_ID,
   nextPersona,
+  nextUnusedPersona,
   personaByName,
   resolvePersonaName,
 } from "./personas";
 import { defaultModelFor } from "./harness-meta";
 import { buildSeedCanvas } from "./seed";
+import { api, BridgeError } from "@/lib/autumn/bridge";
 
 export interface ActivityEntry {
   id: string;
@@ -84,7 +86,7 @@ export interface Workspace {
 export type AgentConnectionStatus = "not_yet" | "waiting" | "connected";
 
 export interface AgentConnection {
-  id: string; // "claude-code" | "codex" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini" | "cline"
+  id: string; // "github-cli" | "claude-code" | "codex" | "cursor" | "grok" | "opencode" | "hermes" | "pi" | "gemini"
   name: string;
   description: string;
   vendor: string;
@@ -92,15 +94,15 @@ export interface AgentConnection {
 }
 
 export const CODING_AGENTS: Omit<AgentConnection, "status">[] = [
+  { id: "github-cli", name: "GitHub CLI", description: "Clone, push, and create PRs.", vendor: "GitHub" },
   { id: "claude-code", name: "Claude Code", description: "Anthropic's terminal coding agent.", vendor: "Anthropic" },
   { id: "codex", name: "Codex", description: "OpenAI's coding agent.", vendor: "OpenAI" },
-  { id: "cursor", name: "Cursor", description: "AI-first code editor with agent mode.", vendor: "Cursor" },
+  { id: "cursor", name: "Cursor", description: "Cursor's CLI coding agent.", vendor: "Cursor" },
   { id: "grok", name: "Grok", description: "xAI's coding agent.", vendor: "xAI" },
   { id: "opencode", name: "opencode", description: "Open-source terminal coding agent — no sign-in needed.", vendor: "Open source" },
-  { id: "hermes", name: "Hermes Agent", description: "Nous Research's coding agent.", vendor: "Nous Research" },
-  { id: "cline", name: "Cline", description: "Open-source coding agent.", vendor: "Open source" },
-  { id: "pi", name: "Pi", description: "Inflection's coding assistant.", vendor: "Inflection" },
   { id: "gemini", name: "Gemini", description: "Google's coding agent.", vendor: "Google" },
+  { id: "hermes", name: "Hermes", description: "Nous Research's coding agent.", vendor: "Nous Research" },
+  { id: "pi", name: "Pi", description: "Inflection's coding assistant.", vendor: "Inflection" },
 ];
 
 // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder types ----
@@ -140,7 +142,16 @@ export interface AiFinderResult {
   score: number; // 0..1 relevance
 }
 
-// October-style scenic photographic canvas backgrounds.
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  kind: "info" | "success" | "warning" | "agent";
+  read: boolean;
+  createdAt: number;
+}
+
+// Autumn-style scenic photographic canvas backgrounds.
 // Each has an id, label, and a CSS background (gradient swatch + optional image url).
 export interface CanvasBackground {
   id: string;
@@ -202,34 +213,36 @@ export const CANVAS_BACKGROUNDS: CanvasBackground[] = [
   },
 ];
 
-export const STARTER_SKILLS: Omit<Skill, "id" | "installedAt" | "installed">[] = [
+// The starter catalogue lives in its own dependency-free module (the Electron
+// main process reads it too) — re-exported here for the renderer.
+import { STARTER_SKILLS } from "./starter-skills";
+export { STARTER_SKILLS };
+export type { StarterSkill } from "./starter-skills";
+
+export const STARTER_NOTIFICATIONS: AppNotification[] = [
   {
-    id: "website-cloner",
-    name: "Website Cloner",
-    description: "Pixel-perfect clone of any website into a real Next.js project (the /clone-website skill).",
-    icon: "🌐",
-    color: "text-sky-400",
+    id: "n1",
+    title: "Claude Code finished",
+    body: "design.md was scaffolded and 4 components generated in 1m 12s.",
+    kind: "agent",
+    read: false,
+    createdAt: Date.now() - 1000 * 60 * 4,
   },
   {
-    id: "gsd",
-    name: "Get Shit Done (GSD)",
-    description: "Set up GSD — a spec-driven workflow that plans a roadmap and ships phase by phase.",
-    icon: "🚀",
-    color: "text-amber-400",
+    id: "n2",
+    title: "New skill available",
+    body: "“Website Cloner” can be installed from the Skills tab.",
+    kind: "info",
+    read: false,
+    createdAt: Date.now() - 1000 * 60 * 22,
   },
   {
-    id: "screenshot-to-code",
-    name: "Screenshot to Code",
-    description: "Turn any screenshot into clean, responsive Tailwind + React components.",
-    icon: "📸",
-    color: "text-fuchsia-400",
-  },
-  {
-    id: "api-designer",
-    name: "API Designer",
-    description: "Design, document, and scaffold REST/GraphQL APIs from a natural-language spec.",
-    icon: "🔌",
-    color: "text-emerald-400",
+    id: "n3",
+    title: "Bus traffic recorded",
+    body: "Hermes → Claude Code exchanged 3 messages.",
+    kind: "success",
+    read: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 2,
   },
 ];
 
@@ -296,7 +309,7 @@ export interface AutumnStore {
   isAgentRunning: Record<string, boolean>; // nodeId -> running
 
   // ui
-  rightPanelTab: "commander" | "tasks" | "bus" | "stats";
+  rightPanelTab: "commander" | "tasks" | "bus" | "stats" | "git";
   isListening: boolean; // voice
   showHelp: boolean;
   commandHistory: string[]; // recent user commands for quick-chips
@@ -328,6 +341,13 @@ export interface AutumnStore {
 
   // minimap + edge labels (Task 4-c)
   showMinimap: boolean;
+  showGrid: boolean; // dotted canvas background on/off (toggled from MinimapPanel)
+  snapToGrid: boolean; // snap nodes to 20x20 grid on drag
+  minimapCollapsed: boolean; // whether the minimap preview box is collapsed
+
+  // Floating "Project chat" panel above the dock (Autumn-style).
+  projectChatOpen: boolean;
+  projectChatMinimized: boolean;
 
   // Round 9 — canvas themes + bus message detail dialog
   canvasTheme: "autumn" | "midnight" | "forest" | "neon";
@@ -345,7 +365,7 @@ export interface AutumnStore {
   // ---- actions ----
   setCanvasName: (name: string) => void;
   setSelectedNode: (id: string | null) => void;
-  setRightPanelTab: (t: "commander" | "tasks" | "bus" | "stats") => void;
+  setRightPanelTab: (t: "commander" | "tasks" | "bus" | "stats" | "git") => void;
   setListening: (v: boolean) => void;
   setShowHelp: (v: boolean) => void;
   setSettingsNode: (id: string | null) => void;
@@ -397,6 +417,14 @@ export interface AutumnStore {
 
   // minimap + edge labels (Task 4-c)
   setShowMinimap: (v: boolean) => void;
+  setShowGrid: (v: boolean) => void;
+  setSnapToGrid: (v: boolean) => void;
+  setMinimapCollapsed: (v: boolean) => void;
+
+  // Floating "Project chat" panel above the dock.
+  setProjectChatOpen: (v: boolean) => void;
+  setProjectChatMinimized: (v: boolean) => void;
+  toggleProjectChat: () => void;
   updateEdgeLabel: (edgeId: string, label: string) => void;
   selectAllNodes: () => void;
 
@@ -423,9 +451,11 @@ export interface AutumnStore {
   createBlankWorkspace: (name?: string) => string;
 
   // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
-  // Left sidebar (4 tabs, mirrors October's Resources/Skills/Backends/Design)
+  // Left sidebar (6 tabs: Resources/Skills/Backends/Design/Chat/Notifications)
   leftSidebarOpen: boolean;
-  leftSidebarTab: "resources" | "skills" | "backends" | "design";
+  leftSidebarTab: "resources" | "skills" | "backends" | "design" | "chat" | "notifications";
+  // Right panel collapse (Tasks / Bus / Stats sidebar)
+  rightPanelOpen: boolean;
   // Resources — project context files shared with all agents
   projectFiles: ProjectFile[];
   // Skills — installable skills (Website Cloner, GSD, ...)
@@ -434,7 +464,7 @@ export interface AutumnStore {
   backends: Backends;
   // design.md — single source of truth for the canvas design system
   designMd: string;
-  // Canvas scenic photographic backgrounds (October uses Mediterranean villas/sea/gardens)
+  // Canvas scenic photographic backgrounds (Autumn uses Mediterranean villas/sea/gardens)
   canvasBackgroundId: string;
   // Voice input (mic → project chat)
   voiceSetupOpen: boolean;
@@ -443,17 +473,24 @@ export interface AutumnStore {
   // Third-party apps integration modal (Shopify/Lovable/Figma/Shortcut/Post Bridge/Canvas)
   appsModalOpen: boolean;
   connectedApps: string[];
+  // Agent picker panel (popover above the bottom dock — agent + app grid)
+  agentPickerOpen: boolean;
   // AI Finder — natural-language file search overlay
   aiFinderOpen: boolean;
   aiFinderQuery: string;
   aiFinderResults: AiFinderResult[];
+  // Notifications — bell tab in the left sidebar
+  notifications: AppNotification[];
 
   setLeftSidebarOpen: (v: boolean) => void;
   toggleLeftSidebar: () => void;
-  setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design") => void;
+  setLeftSidebarTab: (t: "resources" | "skills" | "backends" | "design" | "chat" | "notifications") => void;
+  // Right panel collapse
+  setRightPanelOpen: (v: boolean) => void;
+  toggleRightPanel: () => void;
   addProjectFile: (file: Omit<ProjectFile, "id" | "addedAt">) => void;
   removeProjectFile: (id: string) => void;
-  addSkill: (skill: Omit<Skill, "id" | "installedAt" | "installed">) => void;
+  addSkill: (skill: Omit<Skill, "installedAt" | "installed">) => void;
   removeSkill: (id: string) => void;
   toggleSkillInstall: (id: string) => void;
   addBackend: (category: "data" | "ai", name: string) => void;
@@ -466,10 +503,16 @@ export interface AutumnStore {
   setVoiceEnabled: (v: boolean) => void;
   setVoiceTranscript: (t: string) => void;
   setAppsModalOpen: (v: boolean) => void;
+  setAgentPickerOpen: (v: boolean) => void;
+  toggleAgentPicker: () => void;
   toggleApp: (id: string) => void;
   setAiFinderOpen: (v: boolean) => void;
   setAiFinderQuery: (q: string) => void;
   runAiFinder: (q: string) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
+  pushNotification: (n: Omit<AppNotification, "id" | "read" | "createdAt">) => void;
 
   addNode: (node: Partial<AutumnNode> & { kind: NodeKind }) => string;
   updateNode: (id: string, patch: Partial<AutumnNode>) => void;
@@ -479,6 +522,7 @@ export interface AutumnStore {
   renameNode: (id: string, name: string) => void;
 
   connectNodes: (from: string, to: string, kind?: "bus" | "navigation") => void;
+  spawnAgentTerminal: (chatNodeId: string) => string | null;
   disconnectNodes: (from: string, to: string) => void;
 
   addTask: (description: string, afterIds?: number[]) => string;
@@ -531,7 +575,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   recentActions: [],
   isCommanderThinking: false,
   isAgentRunning: {},
-  rightPanelTab: "commander",
+  rightPanelTab: "tasks",
   isListening: false,
   showHelp: false,
   commandHistory: [],
@@ -570,6 +614,13 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   // minimap + edge labels (Task 4-c)
   showMinimap: true,
+  showGrid: true,
+  snapToGrid: false,
+  minimapCollapsed: false,
+
+  // Floating "Project chat" panel above the dock (closed by default).
+  projectChatOpen: false,
+  projectChatMinimized: false,
 
   // Round 9 — canvas themes + bus message detail + run all
   canvasTheme: "autumn",
@@ -727,7 +778,9 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   // ---- Phase 2: left sidebar / backgrounds / voice / apps / finder ----
-  leftSidebarOpen: true,
+  leftSidebarOpen: false,
+  // Right panel collapsed by default - opens on demand.
+  rightPanelOpen: false,
   leftSidebarTab: "resources",
   projectFiles: [
     { id: "pf1", name: "README.md", category: "doc", size: 4200, source: "repo", addedAt: Date.now() - 86400000 },
@@ -737,18 +790,22 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   skills: STARTER_SKILLS.map((s) => ({ ...s, id: s.id, installed: false })),
   backends: { website: "localhost:3000", data: [], ai: [] },
   designMd: "",
-  canvasBackgroundId: "autumn-dots",
+  canvasBackgroundId: "midnight-villa",
   voiceSetupOpen: false,
   voiceEnabled: false,
   voiceTranscript: "",
   appsModalOpen: false,
   connectedApps: [],
+  agentPickerOpen: false,
   aiFinderOpen: false,
   aiFinderQuery: "",
   aiFinderResults: [],
+  notifications: STARTER_NOTIFICATIONS.map((n) => ({ ...n })),
 
   setLeftSidebarOpen: (v) => set({ leftSidebarOpen: v }),
   toggleLeftSidebar: () => set((s) => ({ leftSidebarOpen: !s.leftSidebarOpen })),
+  setRightPanelOpen: (v) => set({ rightPanelOpen: v }),
+  toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setLeftSidebarTab: (t) => set({ leftSidebarTab: t, leftSidebarOpen: true }),
   addProjectFile: (file) =>
     set((s) => ({
@@ -800,6 +857,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   setVoiceEnabled: (v) => set({ voiceEnabled: v }),
   setVoiceTranscript: (t) => set({ voiceTranscript: t }),
   setAppsModalOpen: (v) => set({ appsModalOpen: v }),
+  setAgentPickerOpen: (v) => set({ agentPickerOpen: v }),
+  toggleAgentPicker: () => set((s) => ({ agentPickerOpen: !s.agentPickerOpen })),
   toggleApp: (id) =>
     set((s) => ({
       connectedApps: s.connectedApps.includes(id)
@@ -836,10 +895,43 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     results.sort((a, b) => b.score - a.score);
     set({ aiFinderResults: results.slice(0, 12), aiFinderQuery: q });
   },
+  markNotificationRead: (id) =>
+    set((s) => ({
+      notifications: s.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n,
+      ),
+    })),
+  markAllNotificationsRead: () =>
+    set((s) => ({
+      notifications: s.notifications.map((n) => ({ ...n, read: true })),
+    })),
+  clearNotifications: () => set({ notifications: [] }),
+  pushNotification: (n) =>
+    set((s) => ({
+      notifications: [
+        {
+          ...n,
+          id: `n${Date.now()}`,
+          read: false,
+          createdAt: Date.now(),
+        },
+        ...s.notifications,
+      ],
+    })),
 
   setCanvasName: (name) => set({ canvasName: name }),
   setSelectedNode: (id) => set({ selectedNodeId: id }),
-  setRightPanelTab: (t) => set({ rightPanelTab: t }),
+  setRightPanelTab: (t) => {
+    // The Commander chat tab was removed from the right sidebar (chat now
+    // lives in the floating ProjectChatDock above the dock). Redirect any
+    // legacy "open commander" calls to open the floating project chat so
+    // the 10+ entry points (HelpDialog, MenuBar, ChatNode, etc.) still work.
+    if (t === "commander") {
+      set({ projectChatOpen: true, projectChatMinimized: false });
+      return;
+    }
+    set({ rightPanelTab: t });
+  },
   setListening: (v) => set({ isListening: v }),
   setShowHelp: (v) => set({ showHelp: v }),
   setSettingsNode: (id) => set({ settingsNodeId: id }),
@@ -867,19 +959,15 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     set({ activityLog: [] });
     // Also clear the persisted logs for the current canvas.
     const cid = get().canvasId;
-    fetch(`/api/logs?canvas=${encodeURIComponent(cid)}`, { method: "DELETE" }).catch(
-      () => {},
-    );
+    api.activity.clear(cid).catch(() => {});
   },
   loadActivity: async (canvasId) => {
     try {
-      const r = await fetch(
-        `/api/logs?canvas=${encodeURIComponent(canvasId)}&limit=200`,
-        { method: "GET" },
-      );
-      if (!r.ok) return;
-      const j = await r.json();
-      const entries: ActivityEntry[] = (j.entries ?? []).map(
+      const res = await api.activity.snapshot<{ entries: any[] }>({
+        canvas: canvasId,
+        limit: 200,
+      });
+      const entries: ActivityEntry[] = (res.entries ?? []).map(
         (e: {
           id: string;
           ts: number;
@@ -1043,6 +1131,19 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   },
 
   setShowMinimap: (v) => set({ showMinimap: v }),
+  setShowGrid: (v) => set({ showGrid: v }),
+  setSnapToGrid: (v) => set({ snapToGrid: v }),
+  setMinimapCollapsed: (v) => set({ minimapCollapsed: v }),
+
+  // Floating "Project chat" panel above the dock.
+  setProjectChatOpen: (v) => set({ projectChatOpen: v, projectChatMinimized: false }),
+  setProjectChatMinimized: (v) => set({ projectChatMinimized: v }),
+  toggleProjectChat: () =>
+    set((s) => ({
+      // If fully closed → open expanded. If open → close. If minimized → expand.
+      projectChatOpen: s.projectChatMinimized ? true : !s.projectChatOpen,
+      projectChatMinimized: false,
+    })),
   updateEdgeLabel: (edgeId, label) =>
     set((s) => ({
       edges: s.edges.map((e) => (e.id === edgeId ? { ...e, label } : e)),
@@ -1116,6 +1217,11 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   removeNodes: (ids) => {
     const idSet = new Set(ids);
     const removed = get().nodes.filter((n) => idSet.has(n.id));
+    for (const r of removed) {
+      if (r.kind === "terminal") {
+        api.terminal.kill({ node: r.id }).catch(() => {});
+      }
+    }
     set((s) => ({
       nodes: s.nodes.filter((n) => !idSet.has(n.id)),
       edges: s.edges.filter((e) => !idSet.has(e.source) && !idSet.has(e.target)),
@@ -1265,13 +1371,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
           taskSeq: s.taskSeq,
         }),
       };
-      const r = await fetch("/api/canvas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) throw new Error(`save ${r.status}`);
-      const j = await r.json();
+      const j = await api.canvas.save(payload);
       set({ isSaving: false, lastSavedAt: Date.now(), canvasId: j.id ?? s.canvasId });
       get().pushActivity({
         kind: "canvas_saved",
@@ -1290,9 +1390,14 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
   loadCanvas: async (id) => {
     set({ isSaving: true, saveError: null });
     try {
-      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
-      if (!r.ok) throw new Error(`load ${r.status}`);
-      const j = await r.json();
+      let j: any;
+      try {
+        j = await api.canvas.load({ id });
+      } catch (e) {
+        // The old route answered 404 here; the bridge reports it as a not-found error.
+        if (e instanceof BridgeError && e.code === "not-found") throw new Error(`load 404`);
+        throw e;
+      }
       const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
       set({
         canvasId: j.id ?? id,
@@ -1323,18 +1428,18 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   duplicateCanvas: async (id) => {
     try {
-      const r = await fetch(`/api/canvas?id=${encodeURIComponent(id)}`, { method: "GET" });
-      if (!r.ok) throw new Error(`fetch ${r.status}`);
-      const j = await r.json();
+      let j: any;
+      try {
+        j = await api.canvas.load({ id });
+      } catch (e) {
+        // The old route answered 404 here; the bridge reports it as a not-found error.
+        if (e instanceof BridgeError && e.code === "not-found") throw new Error(`fetch 404`);
+        throw e;
+      }
       const state = typeof j.state === "string" ? JSON.parse(j.state) : j.state;
       const newId = `canvas-${nanoid(10)}`;
       const newName = `${j.name ?? "Untitled Canvas"} (copy)`;
-      const r2 = await fetch("/api/canvas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: newId, name: newName, state: JSON.stringify(state) }),
-      });
-      if (!r2.ok) throw new Error(`dup ${r2.status}`);
+      await api.canvas.save({ id: newId, name: newName, state: JSON.stringify(state) });
       get().pushActivity({
         kind: "canvas_saved",
         text: `Duplicated canvas as "${newName}".`,
@@ -1416,12 +1521,53 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 
   addNode: (partial) => {
     const id = partial.id ?? `node-${nanoid(8)}`;
+    let data = partial.data ?? defaultDataForKind(partial.kind);
+    // Enforce unique persona for chat nodes - no duplicate Atlas/Apollo
+    if (partial.kind === "chat") {
+      const used = new Set(
+        get()
+          .nodes.filter((n) => n.kind === "chat")
+          .map((n) => (n.data as { personaId?: string }).personaId)
+          .filter(Boolean) as string[],
+      );
+      const requestedId = (partial.data as { personaId?: string } | undefined)?.personaId ?? (data as { personaId?: string }).personaId;
+      if (!requestedId || used.has(requestedId)) {
+        const p = nextUnusedPersona(used);
+        const d = { ...(data as Record<string, unknown>) } as Record<string, unknown>;
+        d.personaId = p.id;
+        // name from persona if not explicitly provided
+        const nameFromPartial = partial.name;
+        const dataWithPersona = d as { personaId: string };
+        data = dataWithPersona as typeof data;
+        // harness stays undefined (assigned via terminal)
+      }
+    }
+    // If opening a terminal, use the current workspace folder as cwd, not a hardcoded default.
+    if (partial.kind === "terminal") {
+      const ws = get().workspaces.find((w) => w.id === get().canvasId);
+      const wsDir = ws?.kind === "folder" && ws.source ? ws.source : undefined;
+      const hasExplicitDir = !!(partial.data as Record<string, unknown> | undefined)?.dir;
+      if (!hasExplicitDir) {
+        // Override legacy default "~/autumn" with workspace folder or leave undefined (server -> process.cwd())
+        const d = { ...(data as Record<string, unknown>) } as Record<string, unknown>;
+        if (wsDir) d.dir = wsDir;
+        else delete d.dir;
+        data = d as typeof data;
+      }
+    }
+    // Resolve final name - if chat and name not provided, use persona name
+    let finalName = partial.name ?? defaultNameForKind(partial.kind);
+    if (partial.kind === "chat" && !partial.name) {
+      const pid = (data as { personaId?: string }).personaId;
+      const persona = pid ? PERSONA_BY_ID[pid] : undefined;
+      if (persona) finalName = persona.name;
+    }
     const node: AutumnNode = {
       id,
       kind: partial.kind,
-      name: partial.name ?? defaultNameForKind(partial.kind),
+      name: finalName,
       position: partial.position ?? randomPosition(),
-      data: partial.data ?? defaultDataForKind(partial.kind),
+      data: data as import("./types").NodeData,
       createdAt: Date.now(),
     };
     set((s) => ({ nodes: [...s.nodes, node] }));
@@ -1449,11 +1595,14 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       ),
     })),
 
-  removeNode: (id) =>
-    set((s) => {
-      const node = s.nodes.find((n) => n.id === id);
+  removeNode: (id) => {
+    const node = get().nodes.find((n) => n.id === id);
+    if (node?.kind === "terminal") {
+      // Kill the live PTY on the server (fire-and-forget)
+      api.terminal.kill({ node: id }).catch(() => {});
+    }
+    return set((s) => {
       if (node) {
-        // Defer the activity log to after the state set.
         queueMicrotask(() =>
           get().pushActivity({
             kind: "node_removed",
@@ -1467,7 +1616,8 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
         edges: s.edges.filter((e) => e.source !== id && e.target !== id),
         selectedNodeId: s.selectedNodeId === id ? null : s.selectedNodeId,
       };
-    }),
+    });
+  },
 
   moveNode: (id, x, y) =>
     set((s) => ({
@@ -1508,6 +1658,64 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     if (kind === "bus") {
       toast(`Bus edge: ${fromName} → ${toName}`, { duration: 2500 });
     }
+  },
+
+  // Spawn a LIVE terminal node bound to a chat (agent) node. The terminal opens
+  // an interactive PTY running that agent's real CLI (claude/codex/...), so two
+  // agents show up as two independent live CLI windows — exactly like Autumn.
+  // Returns the new terminal node id (or null if one is already bound).
+  spawnAgentTerminal: (chatNodeId: string) => {
+    const chat = get().nodes.find((n) => n.id === chatNodeId);
+    if (!chat || chat.kind !== "chat") return null;
+    const d = chat.data as { harness?: string; personaId?: string; worktreePath?: string };
+    const harness = d.harness ?? "claude-code";
+    const persona = PERSONA_BY_ID[d.personaId ?? ""];
+    const name = persona?.name ?? chat.name ?? "Agent";
+
+    // Avoid duplicates: if a terminal is already bound, return it.
+    const existing = get().nodes.find(
+      (n) => n.kind === "terminal" && (n.data as { boundChatId?: string }).boundChatId === chatNodeId,
+    );
+    if (existing) {
+      get().setSelectedNode(existing.id);
+      return existing.id;
+    }
+
+    const termId = `node-${nanoid(8)}`;
+    const ws = get().workspaces.find((w) => w.id === get().canvasId);
+    const wsDir = ws?.kind === "folder" && ws.source ? ws.source : undefined;
+    const dir =
+      (d.worktreePath as string | undefined) ??
+      wsDir ??
+      (get().nodes.find((n) => n.kind === "terminal")?.data as import("./types").TerminalNodeData | undefined)?.dir ??
+      undefined;
+    const term: AutumnNode = {
+      id: termId,
+      kind: "terminal",
+      name: `${name} · CLI`,
+      position: {
+        x: (chat.position?.x ?? 0) + 340,
+        y: chat.position?.y ?? 0,
+      },
+      createdAt: Date.now(),
+      data: {
+        agent: name,
+        harness,
+        boundChatId: chatNodeId,
+        status: "working",
+        dir,
+        lines: [],
+      } as unknown as import("./types").TerminalNodeData,
+    };
+    set((s) => ({ nodes: [...s.nodes, term] }));
+    get().connectNodes(chatNodeId, termId, "bus");
+    get().setSelectedNode(termId);
+    get().pushActivity({
+      kind: "node_added",
+      text: `Spawned live CLI terminal for ${name}.`,
+      nodeId: termId,
+    });
+    return termId;
   },
 
   disconnectNodes: (from, to) =>
@@ -1617,7 +1825,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
       nodes: s.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         if (n.kind !== "chat") return n;
-        const data = n.data as { messages: AgentMessage[] };
+        const data = n.data as import("./types").ChatNodeData;
         return { ...n, data: { ...data, messages: [...data.messages, msg] } };
       }),
     }));
@@ -1628,7 +1836,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     set((s) => ({
       nodes: s.nodes.map((n) => {
         if (n.id !== nodeId || n.kind !== "chat") return n;
-        const data = n.data as { messages: AgentMessage[] };
+        const data = n.data as import("./types").ChatNodeData;
         return {
           ...n,
           data: {
@@ -1651,7 +1859,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
           ? {
               ...n,
               data: {
-                ...(n.data as Record<string, unknown>),
+                ...(n.data as unknown as Record<string, unknown>),
                 status,
                 doing: doing ?? (n.data as { doing?: string }).doing,
               } as typeof n.data,
@@ -1722,7 +1930,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
 function defaultNameForKind(kind: NodeKind): string {
   switch (kind) {
     case "chat":
-      return nextPersona().name;
+      return "Agent";
     case "terminal":
       return "Terminal";
     case "screen":
@@ -1750,10 +1958,12 @@ function defaultDataForKind(kind: NodeKind): unknown {
   switch (kind) {
     case "chat": {
       const p = nextPersona();
+      // harness is NOT tied to persona - assigned at spawn/terminal time
+      const defaultHarness = "claude-code" as const;
       return {
-        harness: p.harness,
+        harness: undefined,
         personaId: p.id,
-        model: defaultModelFor(p.harness),
+        model: defaultModelFor(defaultHarness),
         effort: "medium" as const,
         permission: "ask" as const,
         status: "idle",
@@ -1762,7 +1972,7 @@ function defaultDataForKind(kind: NodeKind): unknown {
           {
             id: `m-${nanoid(6)}`,
             role: "system" as const,
-            text: `${p.name} online · ${p.harness} · ${p.tagline}`,
+            text: `${p.name} online · ${p.tagline}`,
             ts: now,
           },
         ],
@@ -1771,7 +1981,7 @@ function defaultDataForKind(kind: NodeKind): unknown {
     case "terminal":
       return {
         status: "idle",
-        dir: "~/autumn",
+        // dir left undefined here - addNode() will fill it from current workspace folder (or server falls back to process.cwd())
         port: undefined,
         lines: [
           { text: "$ autumn shell ready", kind: "info" as const, ts: now },
@@ -1815,14 +2025,15 @@ function executeStep(
       const persona = personaArg
         ? PERSONA_BY_ID[resolvePersonaName(personaArg) ?? personaArg] ?? nextPersona()
         : nextPersona();
-      const harness = harnessArg ?? persona.harness;
+      const harness = harnessArg as import("./types").AgentHarness | undefined;
+      const model = defaultModelFor((harness as import("./types").AgentHarness) ?? "claude-code");
       const id = store.addNode({
         kind: "chat",
         name: args.name as string | undefined ?? persona.name,
         data: {
-          harness,
+          ...(harness ? { harness } : {}),
           personaId: persona.id,
-          model: defaultModelFor(harness),
+          model,
           effort: "medium",
           permission: "ask",
           status: "idle",
@@ -1831,7 +2042,7 @@ function executeStep(
             {
               id: `m-${nanoid(6)}`,
               role: "system",
-              text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+              text: harness ? `${persona.name} online · ${harness} · ${persona.tagline}` : `${persona.name} online · ${persona.tagline}`,
               ts: Date.now(),
             },
           ],
@@ -1842,7 +2053,7 @@ function executeStep(
     }
     case "add_agents": {
       const count = Math.max(1, Number(args.count ?? 1));
-      const agent = args.agent as string | undefined;
+      const agentHarness = args.agent as string | undefined;
       const surface = (args.surface as string | undefined) ?? "chat";
       let lastId: string | null = null;
       for (let i = 0; i < count; i++) {
@@ -1850,14 +2061,15 @@ function executeStep(
           lastId = store.addNode({ kind: "terminal" });
         } else {
           const persona = nextPersona();
-          const harness = agent ?? persona.harness;
+          const harness = agentHarness as import("./types").AgentHarness | undefined;
+          const model = defaultModelFor((harness as import("./types").AgentHarness) ?? "claude-code");
           lastId = store.addNode({
             kind: "chat",
             name: persona.name,
             data: {
-              harness,
+              ...(harness ? { harness } : {}),
               personaId: persona.id,
-              model: defaultModelFor(harness),
+              model,
               effort: "medium",
               permission: "ask",
               status: "idle",
@@ -1866,7 +2078,7 @@ function executeStep(
                 {
                   id: `m-${nanoid(6)}`,
                   role: "system",
-                  text: `${persona.name} online · ${harness} · ${persona.tagline}`,
+                  text: harness ? `${persona.name} online · ${harness} · ${persona.tagline}` : `${persona.name} online · ${persona.tagline}`,
                   ts: Date.now(),
                 },
               ],
@@ -2018,7 +2230,7 @@ function executeStep(
 }
 
 // ---- activity log persistence (debounced batch POST) ----
-// Maintains a pending buffer of entries and flushes to /api/logs every ~1.5s
+// Maintains a pending buffer of entries and flushes them via api.activity.record every ~1.5s
 // to avoid one HTTP request per activity event.
 let pendingLogs: ActivityEntry[] = [];
 let logFlushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2032,19 +2244,15 @@ function scheduleLogPersist(canvasId: string, entry: ActivityEntry) {
     logFlushTimer = null;
     if (batch.length === 0) return;
     try {
-      await fetch("/api/logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          canvasId,
-          entries: batch.map((e) => ({
-            kind: e.kind,
-            text: e.text,
-            nodeId: e.nodeId ?? "commander",
-            meta: e.meta,
-            ts: e.ts,
-          })),
-        }),
+      await api.activity.record({
+        canvasId,
+        entries: batch.map((e) => ({
+          kind: e.kind,
+          text: e.text,
+          nodeId: e.nodeId ?? "commander",
+          meta: e.meta,
+          ts: e.ts,
+        })),
       });
     } catch {
       /* ignore — best-effort persistence */

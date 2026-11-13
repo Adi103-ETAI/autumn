@@ -1,0 +1,144 @@
+# autumn — CI: type check, tests, and REAL installers for every OS.
+#
+# The installers are built here (not on a contributor's machine) so every
+# platform gets the RIGHT native binaries:
+#   * the Prisma query engine is platform-specific  → generated on the runner
+#   * node-pty's prebuilt .node is platform-specific → unpacked from the runner
+#   * the Remotion CLI ships the host's compositor   → the host's binary
+#
+# A tag (v*) additionally publishes the installers as a GitHub Release with
+# the latest.yml that electron-updater reads (autumn/34-packaging.md).
+
+name: CI
+
+on:
+  push:
+    branches: [main, "autumn-o*"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+# A push to a branch that has an open PR fires BOTH the push and the
+# pull_request event — two identical runs, two identical installers. Keying
+# the group on the COMMIT sha makes them one: the second run (the pull_request
+# one, which is what gates the merge) cancels the first.
+concurrency:
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (types + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: type check (electron/ must be clean)
+        run: node scripts/check-types.mjs
+      - name: tests
+        run: npm test
+      - name: bundle the electron backend
+        run: npm run build:backend
+      - name: packaging contract
+        run: npm run pack:check
+
+  build:
+    # The matrix values are appended by GitHub automatically
+    # ("build (windows-latest)", …) — a job name cannot interpolate them.
+    name: build installer
+    needs: check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows
+            flags: --win --x64
+            artifact: release/*.exe
+          - os: macos-latest
+            label: macos
+            flags: --mac --x64
+            artifact: release/*.dmg
+          - os: ubuntu-22.04
+            label: linux
+            flags: --linux --x64
+            artifact: release/*.AppImage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The electron + electron-builder downloads are big; cache them.
+      - name: cache electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: electron-${{ matrix.label }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-${{ matrix.label }}-
+
+      - run: npm ci
+
+      # The build needs the Prisma client (generated) and the packaging
+      # keep-list (computed from the installed tree).
+      - name: prisma client
+        run: npx prisma generate
+      - name: packaging file list
+        run: npm run pack:files
+
+      - name: next build + standalone staging
+        run: npm run build
+      - name: bundle the electron backend
+        run: npm run build:backend
+
+      - name: package
+        # --config is REQUIRED: without it electron-builder auto-discovers a
+        # config file and silently falls back to its DEFAULTS (output "dist/",
+        # npmRebuild on) — which built the wrong artifact names and tried to
+        # rebuild native modules the CI machine has no toolchain for.
+        run: npx electron-builder --config electron-builder.cjs ${{ matrix.flags }} --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: autumn-${{ matrix.label }}
+          # The platform's own installer plus the update metadata
+          # electron-updater reads (latest*.yml + the .blockmap).
+          path: |
+            ${{ matrix.artifact }}
+            release/latest*.yml
+            release/*.blockmap
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: publish the installers + latest.yml
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

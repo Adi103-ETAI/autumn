@@ -124,7 +124,7 @@
   }
   body {
     background-color: var(--background);
-    /* October-inspired: pure black, no warm ambient glows.
+    /* Autumn-inspired: pure black, no warm ambient glows.
        Single very faint cool vignette for depth only. */
     background-image:
       radial-gradient(at 50% 0%, oklch(0.78 0.18 55 / 0.02) 0px, transparent 55%);
@@ -407,6 +407,16 @@ kbd {
 .react-flow__minimap,
 .react-flow__panel {
   user-select: none;
+}
+
+/* Terminal - hide scrollbar but keep scroll */
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 0 !important;
+  display: none !important;
+}
+.xterm .xterm-viewport {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 /* Tab indicator dot */
@@ -749,6 +759,22 @@ textarea:focus-visible {
   );
 }
 
+/* Autumn — global macOS-style menu bar.
+   Slim (h-8), translucent dark, sits above every app stage. Subtle bottom
+   hairline + inner top highlight to echo the Autumn Desktop reference. */
+.autumn-menubar {
+  background: linear-gradient(
+    180deg,
+    oklch(0.165 0.008 55 / 92%) 0%,
+    oklch(0.145 0.007 55 / 88%) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 0 oklch(1 0 0 / 4%),
+    0 1px 0 0 oklch(0 0 0 / 30%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Right panel divider */
 .autumn-right-panel {
   background: linear-gradient(
@@ -850,6 +876,29 @@ textarea:focus-visible {
 }
 .chip-zoom-reset:hover {
   box-shadow: 0 4px 12px -4px oklch(0.78 0.18 55 / 0.4);
+}
+
+/* 6. autumn-dock-shadow — macOS-style dock depth shadow for the bottom dock. */
+.autumn-dock-shadow {
+  box-shadow:
+    0 10px 40px -10px rgba(0, 0, 0, 0.6),
+    0 4px 12px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+/* 7. autumn-dock-icon — subtle hover magnification for dock app icons. */
+.autumn-dock-icon {
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.15s ease-out;
+}
+.autumn-dock-icon:hover {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 70%
+  );
 }
 
 /* ---- Round 6 main-thread styling polish (CommanderPanel skeleton, BusTrafficCard,
@@ -1674,6 +1723,61 @@ textarea:focus-visible {
   background-clip: content-box;
 }
 
+/* ---- Autumn zoom slider (MinimapPanel) ---- */
+/* A slim horizontal range input with a warm-amber thumb. The track is muted;
+   the thumb is a small amber pill that scales on hover for better grab UX. */
+.autumn-zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.autumn-zoom-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: oklch(0.4 0.02 55 / 0.3);
+}
+.autumn-zoom-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: oklch(0.4 0.02 55 / 0.3);
+}
+.autumn-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 9999px;
+  background: oklch(0.78 0.18 55);
+  border: 1.5px solid oklch(0.95 0.06 55);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  transition: transform 120ms ease;
+}
+.autumn-zoom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.autumn-zoom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: oklch(0.78 0.18 55);
+  border: 1.5px solid oklch(0.95 0.06 55);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  transition: transform 120ms ease;
+}
+.autumn-zoom-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+.autumn-zoom-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid oklch(0.78 0.18 55);
+  outline-offset: 2px;
+}
+.autumn-zoom-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid oklch(0.78 0.18 55);
+  outline-offset: 2px;
+}
+
 /* ---- Theme switcher swatch ---- */
 .theme-swatch {
   width: 18px;
@@ -1748,3 +1852,123 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* dock-app-tile — colorful app-icon tiles (macOS/Autumn dock style). */
+.dock-app-tile {
+  position: relative;
+  isolation: isolate;
+}
+.dock-app-tile::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 0.9rem;
+  background: var(--tile-glow, transparent);
+  filter: blur(8px);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.2s ease;
+}
+.dock-app-tile:hover::after {
+  opacity: 0.7;
+}
+@keyframes dock-tile-flash {
+  0% { transform: scale(1); filter: brightness(1.6); }
+  50% { transform: scale(0.92); filter: brightness(1.3); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.dock-tile-active {
+  animation: dock-tile-flash 0.6s ease-out;
+}
+
+/* ==========================================================================
+   Autumn UI Architecture Styles (autumn_ui_analysis.md)
+   ========================================================================== */
+
+/* Autumn Node Frame */
+.autumn-window-frame {
+  background: rgba(20, 20, 24, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.autumn-window-frame:hover {
+  border-color: #3f3f46;
+}
+
+/* Selected Focus State (2px solid Focus Blue #3b82f6 with outer glow) */
+.autumn-node-selected {
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.6), 0 14px 40px -10px rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Cardinal Anchor Points (Bright Neon Green #22c55e / #00ff87) */
+.autumn-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background-color: #22c55e !important;
+  border: 2px solid #09090b !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.75), 0 0 0 2px rgba(34, 197, 94, 0.25) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+  z-index: 20 !important;
+}
+
+.autumn-handle:hover {
+  transform: scale(1.35) !important;
+  background-color: #00ff87 !important;
+  box-shadow: 0 0 12px #00ff87, 0 0 0 3px rgba(34, 197, 94, 0.4) !important;
+}
+
+/* In-Node Interactive Prompt Box */
+.autumn-prompt-container {
+  background: rgba(15, 15, 18, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.autumn-prompt-container:focus-within {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* User Message Pill Bubble */
+.autumn-user-bubble {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-radius: 12px 12px 2px 12px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* Auto-Reply Status Pill */
+.autumn-autoreply-pill {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Traffic Light Dots */
+.traffic-dot-close {
+  background-color: #ff5f56;
+}
+.traffic-dot-close:hover {
+  background-color: #e0443e;
+}
+.traffic-dot-min {
+  background-color: #ffbd2e;
+}
+.traffic-dot-min:hover {
+  background-color: #dea123;
+}
+.traffic-dot-max {
+  background-color: #27c93f;
+}
+.traffic-dot-max:hover {
+  background-color: #1aab29;
+}
+

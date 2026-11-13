@@ -1,0 +1,1538 @@
+{
+  "project": "autumn",
+  "product": {
+    "name": "Autumn",
+    "version": "1.0.0"
+  },
+  "generatedAt": "2026-11-13T10:46:54.294Z",
+  "generatedFrom": [
+    "core-methods.md",
+    "preload-api.md",
+    "renderer-usage.md"
+  ],
+  "protocol": {
+    "API_VERSION": 2,
+    "SCHEMA": 8
+  },
+  "principals": [
+    "desktop",
+    "cli",
+    "remote",
+    "local-client",
+    "capability"
+  ],
+  "counts": {
+    "bridgeNamespaces": 68,
+    "bridgeMethods": 572,
+    "coreGroups": 21,
+    "coreMethods": 129,
+    "rendererNamespaces": 69,
+    "rendererCalls": 476,
+    "nestedMembers": 691
+  },
+  "core": {
+    "groups": {
+      "agent": [
+        "agent.begin",
+        "agent.finish",
+        "agent.drop",
+        "agent.reconcile",
+        "agent.list",
+        "agent.issueCapability"
+      ],
+      "artifacts": [
+        "artifacts.query",
+        "artifacts.mutate"
+      ],
+      "bus": [
+        "bus.query",
+        "bus.mutate",
+        "bus.wait"
+      ],
+      "capability": [
+        "capability.registerEndpoint",
+        "capability.clearEndpoint",
+        "capability.bindMcp",
+        "capability.mcpAdmission",
+        "capability.revokeMcp",
+        "capability.bindHook",
+        "capability.revokeHook",
+        "capability.signalReady",
+        "capability.resetReady"
+      ],
+      "chat": [
+        "chat.append",
+        "chat.history",
+        "chat.turn.request",
+        "chat.turn.claim",
+        "chat.turn.running",
+        "chat.turn.complete",
+        "chat.turn.cancel",
+        "chat.turn.list"
+      ],
+      "cloudAgent": [
+        "cloudAgent.deliver",
+        "cloudAgent.stageDelivery",
+        "cloudAgent.settleDeliveries",
+        "cloudAgent.get",
+        "cloudAgent.list",
+        "cloudAgent.save"
+      ],
+      "core": [
+        "core.handshake",
+        "core.status",
+        "core.cancel",
+        "core.stop",
+        "core.power",
+        "core.windowState",
+        "core.stopWork",
+        "core.prepareHandoff",
+        "core.completeHandoff"
+      ],
+      "delivery": [
+        "delivery.setPolicy",
+        "delivery.clearPolicy",
+        "delivery.kick",
+        "delivery.uncertainties",
+        "delivery.automationState",
+        "delivery.resolveUncertainty",
+        "delivery.drainInbox",
+        "delivery.nodeGone",
+        "delivery.lifecycle"
+      ],
+      "devServer": [
+        "devServer.prepare",
+        "devServer.start",
+        "devServer.confirm",
+        "devServer.stop",
+        "devServer.list",
+        "devServer.preparation",
+        "devServer.snapshot",
+        "devServer.assertOwnership"
+      ],
+      "document": [
+        "document.facts",
+        "document.hold",
+        "document.release",
+        "document.forget"
+      ],
+      "facts": [
+        "facts.query",
+        "facts.mutate"
+      ],
+      "fs": [
+        "fs.list",
+        "fs.read"
+      ],
+      "git": [
+        "git.image",
+        "git.query",
+        "git.mutate"
+      ],
+      "hosted": [
+        "hosted.status",
+        "hosted.activityView",
+        "hosted.configure",
+        "hosted.discover",
+        "hosted.transferExecution",
+        "hosted.prepare",
+        "hosted.checkpoint",
+        "hosted.promote",
+        "hosted.abort"
+      ],
+      "intent": [
+        "intent.enqueue",
+        "intent.list",
+        "intent.ack"
+      ],
+      "launch": [
+        "launch.authorize"
+      ],
+      "localClient": [
+        "localClient.pending",
+        "localClient.decide",
+        "localClient.list",
+        "localClient.revoke"
+      ],
+      "remote": [
+        "remote.keepAwake.status",
+        "remote.keepAwake.setEnabled",
+        "remote.keepAwake.serving",
+        "remote.status",
+        "remote.enable",
+        "remote.disable",
+        "remote.device.activate",
+        "remote.devices",
+        "remote.revoke",
+        "remote.push.register",
+        "remote.push.unregister",
+        "remote.push.mute"
+      ],
+      "terminal": [
+        "terminal.create",
+        "terminal.input",
+        "terminal.stageImage",
+        "terminal.resize",
+        "terminal.kill",
+        "terminal.reclaimHost",
+        "terminal.confirmStopped",
+        "terminal.list",
+        "terminal.snapshot"
+      ],
+      "ui": [
+        "ui.request",
+        "ui.await",
+        "ui.list",
+        "ui.resolve",
+        "ui.cancel",
+        "ui.cancelNode",
+        "ui.command.request",
+        "ui.command.progress",
+        "ui.command.stage",
+        "ui.command.status",
+        "ui.command.await",
+        "ui.command.list",
+        "ui.command.resolve",
+        "ui.command.cancel"
+      ],
+      "worktree": [
+        "worktree.create",
+        "worktree.repair",
+        "worktree.setup",
+        "worktree.claim",
+        "worktree.remove",
+        "worktree.list"
+      ]
+    }
+  },
+  "bridge": {
+    "namespaces": {
+      "artifacts": [
+        "list",
+        "get",
+        "versions",
+        "read",
+        "usage",
+        "save",
+        "restore",
+        "deleteVersions",
+        "retire",
+        "export",
+        "reveal",
+        "catalog",
+        "previewHtml",
+        "onChanged"
+      ],
+      "cliLink": [
+        "status",
+        "install",
+        "remove"
+      ],
+      "resources": [
+        "pressure",
+        "onPressure",
+        "onProcessMemory"
+      ],
+      "settings": [
+        "get",
+        "set",
+        "resetFtue",
+        "authStatus",
+        "onSshServersChanged"
+      ],
+      "phone": [
+        "status",
+        "enable",
+        "disable",
+        "keepAwake",
+        "createPairing",
+        "pending",
+        "decide",
+        "devices",
+        "revoke",
+        "connectedApps",
+        "disconnectApp",
+        "resetIdentity",
+        "onChanged"
+      ],
+      "facts": [
+        "documentRuntime",
+        "notifications",
+        "dismissNotification",
+        "dismissAllNotifications",
+        "markNotificationSeen",
+        "latestRunUsages",
+        "nodeWorkflows",
+        "markNodeDone",
+        "deckTriage",
+        "setDeckTriage",
+        "prObservations",
+        "onChanged"
+      ],
+      "supermemory": [
+        "status",
+        "signIn",
+        "connectApiKey",
+        "signOut",
+        "selectSpace",
+        "grant",
+        "revoke",
+        "onGrantChanged"
+      ],
+      "servers": [
+        "probe",
+        "integration",
+        "hostKey",
+        "trustHost",
+        "publicKeys",
+        "createKey"
+      ],
+      "wallpapers": [
+        "list",
+        "upload",
+        "remove"
+      ],
+      "auth": [
+        "signIn",
+        "signUp",
+        "signInWithOAuth",
+        "oauthAction",
+        "resetPassword",
+        "resendConfirmation",
+        "signOut",
+        "forgetSavedSignIn",
+        "status",
+        "networkRestored",
+        "localUser",
+        "validate",
+        "onChanged"
+      ],
+      "remoteConfig": [
+        "get",
+        "onChanged"
+      ],
+      "activity": [
+        "snapshot",
+        "join",
+        "setPaused",
+        "refresh",
+        "deleteScore",
+        "record",
+        "onChanged"
+      ],
+      "providerUsage": [
+        "snapshot",
+        "refresh",
+        "onChanged"
+      ],
+      "liveblocks": [
+        "auth"
+      ],
+      "multiplayer": [
+        "requestAccess"
+      ],
+      "chats": [
+        "resolveFunding"
+      ],
+      "plan": [
+        "get",
+        "catalog",
+        "foundingOffer",
+        "foundingState",
+        "prepareCheckout",
+        "purchases",
+        "purchase",
+        "startCheckout",
+        "openPortal"
+      ],
+      "autopilot": [
+        "start",
+        "stop",
+        "retryMember",
+        "stopMember",
+        "snapshot",
+        "releaseTerminal",
+        "onChanged"
+      ],
+      "voice": [
+        "ensureMicAccess",
+        "micPermission",
+        "openMicSettings",
+        "openaiRealtimeToken",
+        "deepgramToken",
+        "reportUsage",
+        "deleteOldModel",
+        "compile",
+        "cancelCompile",
+        "intentReady",
+        "speak",
+        "stopSpeak",
+        "mic",
+        "parakeet",
+        "voicePack"
+      ],
+      "cloud": [
+        "create",
+        "save",
+        "load",
+        "openShared",
+        "loadParticipantOverlay",
+        "saveParticipantOverlay",
+        "recentShared",
+        "forgetRecentShared",
+        "shareInfo",
+        "setShared",
+        "delete",
+        "joinWorkspace"
+      ],
+      "skills": [
+        "sync",
+        "installed"
+      ],
+      "cues": [
+        "invoke",
+        "cancelInvoke",
+        "cancelCommand",
+        "list",
+        "save",
+        "remove",
+        "read",
+        "prepareCommand"
+      ],
+      "agentAuth": [
+        "logout"
+      ],
+      "models": [
+        "list"
+      ],
+      "inference": [
+        "catalog"
+      ],
+      "bus": [
+        "enabled",
+        "terminalExposure",
+        "onTerminalExposure",
+        "onReady",
+        "registerNode",
+        "setEdges",
+        "setResourceContexts",
+        "nodeRemoved",
+        "cloudSend",
+        "cancelCloudTask",
+        "consentRequests",
+        "decideConsent",
+        "consentAllowances",
+        "revokeConsent",
+        "learnCollaboratorDevice",
+        "receiveCollaboratorMessage",
+        "collaboratorMessageStatus",
+        "onConsent",
+        "resolveAttention",
+        "setDeliveryPolicy",
+        "automationPreferences",
+        "saveAutomationPreferences",
+        "pendingCounts",
+        "executionStates",
+        "onInbox",
+        "installRepo",
+        "previewUninstall",
+        "uninstall",
+        "harnessReadiness",
+        "drainInbox",
+        "resolveDeliveryUncertainty",
+        "claimProjectChatInbox",
+        "startChatTurn",
+        "deliverInbox",
+        "recentActivity",
+        "activityView",
+        "listTasks",
+        "startCloudSync",
+        "stopCloudSync",
+        "onActivity",
+        "onSyncStatus"
+      ],
+      "browser": [
+        "workspacePreview",
+        "downloads",
+        "import",
+        "history",
+        "profiles",
+        "onPresentationStopped",
+        "present",
+        "register",
+        "unregister",
+        "setLinks",
+        "clearData",
+        "capture",
+        "onActivity"
+      ],
+      "codeSync": [
+        "refresh",
+        "startHost",
+        "startGuest",
+        "guestDir",
+        "stop",
+        "removeGuestCopy",
+        "consent",
+        "setConsent",
+        "preflight",
+        "onStatus"
+      ],
+      "share": [
+        "hostSync",
+        "viewerSession",
+        "frameAttach",
+        "onHostStatus",
+        "onFrameState",
+        "onViewerSession"
+      ],
+      "backends": [
+        "list",
+        "create",
+        "update",
+        "remove",
+        "link",
+        "unlink",
+        "pending",
+        "approve",
+        "reject",
+        "query",
+        "schema",
+        "peek",
+        "ask",
+        "scaffoldClient",
+        "listOrgs",
+        "provision",
+        "localStart",
+        "localStop",
+        "localStatus",
+        "sync",
+        "convexAuthStatus",
+        "convexLogin",
+        "convexCreate"
+      ],
+      "nav": [
+        "detect"
+      ],
+      "projects": [
+        "pickFolder",
+        "recents",
+        "relocateRecent",
+        "forgetRecent",
+        "open",
+        "discoverApps",
+        "flutterRoutes",
+        "rnRoutes",
+        "openIsolated",
+        "detectPreview",
+        "create",
+        "prepareSetup",
+        "clone",
+        "scanRoutes",
+        "defaultDir",
+        "newChildLocation"
+      ],
+      "thumbnails": [
+        "capture",
+        "getMany"
+      ],
+      "canvas": [
+        "load",
+        "save",
+        "exportCanvas",
+        "importCanvas",
+        "commandResult",
+        "pendingCommands",
+        "commandProgress",
+        "stageCommand"
+      ],
+      "projectChatHistory": [
+        "read",
+        "upsert",
+        "importLegacy"
+      ],
+      "workspace": [
+        "quickRoot",
+        "scratchList",
+        "scratchCreate",
+        "scratchLoad",
+        "scratchSave",
+        "scratchDelete",
+        "scratchFinishDelete"
+      ],
+      "devServer": [
+        "start",
+        "stop",
+        "status",
+        "lanHost",
+        "enableExpoWeb"
+      ],
+      "element": [
+        "resolve"
+      ],
+      "app": [
+        "rendererMounted",
+        "reportOpenCanvas",
+        "coreHealth",
+        "onCoreHealth",
+        "presentationMotionPaused",
+        "onPresentationMotion",
+        "retryCore",
+        "toggleFullscreen",
+        "setTrafficLights",
+        "relaunch",
+        "setTrayAttention",
+        "onCoreRecovery"
+      ],
+      "agent": [
+        "answerQuestion",
+        "pendingQuestions"
+      ],
+      "remotion": [
+        "create",
+        "compositions",
+        "start",
+        "repair",
+        "stop",
+        "status",
+        "render"
+      ],
+      "slides": [
+        "create",
+        "start",
+        "stop",
+        "status"
+      ],
+      "video": [
+        "pickInput",
+        "subtitle",
+        "bgm",
+        "cancel"
+      ],
+      "oauth": [
+        "claudeLogin"
+      ],
+      "supervisor": [
+        "releaseProject",
+        "agentsHealth"
+      ],
+      "documents": [
+        "publish",
+        "hold",
+        "release",
+        "replyRemoteTurn",
+        "onRemoteTurn",
+        "onCancelRemoteTurn"
+      ],
+      "tasks": [
+        "chatViewLease",
+        "previewGuiFunding",
+        "canvasEdit",
+        "acknowledgeChatQueue",
+        "chatQueue",
+        "resumeChatQueue",
+        "removeChatQueueEntry",
+        "editChatQueueEntry",
+        "steer",
+        "forkChat",
+        "cancel",
+        "closeChatSession",
+        "closeAllChatSessions",
+        "undo",
+        "decompose",
+        "finderAsk"
+      ],
+      "files": [
+        "openTargets",
+        "openIn",
+        "editorIdentity",
+        "mutationIdentity",
+        "closeBufferChoice",
+        "saveAttachment",
+        "list",
+        "listTree",
+        "createFile",
+        "createDirectory",
+        "renameEntry",
+        "moveEntry",
+        "copyInto",
+        "trashEntry",
+        "revealEntry",
+        "openFileNode",
+        "releaseFileNode",
+        "onFileNodeChanged",
+        "readDocument",
+        "writeDocument",
+        "listProjectResources",
+        "readProjectThumbnail",
+        "read",
+        "exists",
+        "write",
+        "ensureCanvasDesign",
+        "captureScreen",
+        "scaffoldScreen",
+        "listAssets",
+        "importAssets",
+        "readGitImage",
+        "readImageThumbnail",
+        "readAssetThumbnail",
+        "materializeAssets",
+        "assetPath",
+        "listFolders",
+        "importFolder",
+        "removeFolder",
+        "addToLibrary",
+        "pathForFile"
+      ],
+      "fs": [
+        "places",
+        "browse",
+        "preview",
+        "search",
+        "reveal",
+        "open",
+        "rename",
+        "move",
+        "copyInto",
+        "trash",
+        "mkdir",
+        "pathForFile"
+      ],
+      "storage": [
+        "ensure",
+        "remotes",
+        "connect",
+        "cancelConnect",
+        "disconnect",
+        "list",
+        "importToLibrary"
+      ],
+      "find": [
+        "query",
+        "candidates",
+        "rank",
+        "recent"
+      ],
+      "diagnostics": [
+        "report",
+        "save"
+      ],
+      "clipboard": [
+        "writeText",
+        "readText",
+        "readImagePath",
+        "hasImage"
+      ],
+      "runtime": [
+        "prefetch",
+        "ensureNode",
+        "installCloudRuntime",
+        "removeCloudRuntime",
+        "onProgress"
+      ],
+      "update": [
+        "state",
+        "start",
+        "install",
+        "check"
+      ],
+      "analytics": [
+        "bootstrap",
+        "capture",
+        "flags",
+        "accessRequest"
+      ],
+      "github": [
+        "deckIssues",
+        "repoRoots",
+        "issueDetail",
+        "issueWrite"
+      ],
+      "git": [
+        "status",
+        "initializeEmpty",
+        "changes",
+        "taskChanges",
+        "stage",
+        "discard",
+        "commitAll",
+        "push",
+        "openPr",
+        "prFacts",
+        "addWorktree",
+        "removeWorktree"
+      ],
+      "worktrees": [
+        "matchFolder",
+        "reconcileRemoval",
+        "prepare",
+        "resolve",
+        "derive",
+        "repair",
+        "list",
+        "preview",
+        "autoLand",
+        "drop"
+      ],
+      "simulator": [
+        "start",
+        "stop",
+        "status"
+      ],
+      "agentAccounts": [
+        "list",
+        "beginAdd",
+        "probe",
+        "finalize",
+        "cancelPending",
+        "abandonLogin",
+        "reLogin",
+        "rename",
+        "remove",
+        "systemLogin",
+        "setAvatar"
+      ],
+      "compute": [
+        "github",
+        "overview",
+        "create",
+        "cancelCreation",
+        "get",
+        "rename",
+        "sendTask",
+        "openTerminal",
+        "controlTerminal",
+        "onTerminal",
+        "operate"
+      ],
+      "hostedMessaging": [
+        "admit",
+        "status",
+        "action"
+      ],
+      "agentConnections": [
+        "request",
+        "openSetup"
+      ],
+      "cloudAgents": [
+        "status",
+        "accounts",
+        "connectCursor",
+        "removeAccount",
+        "models",
+        "repositories",
+        "list",
+        "create",
+        "submit",
+        "reconcile",
+        "stop",
+        "onChanged"
+      ],
+      "terminal": [
+        "recoverCodexDaemon",
+        "start",
+        "restart",
+        "replace",
+        "openShell",
+        "launchAgentOnBus",
+        "interrupt",
+        "input",
+        "resize",
+        "snapshot",
+        "rawSnapshot",
+        "kill",
+        "reclaimHost",
+        "whichAgents",
+        "foreground",
+        "foregroundCached",
+        "sessionModel",
+        "dismissForkInstruction",
+        "pendingForks",
+        "openFork",
+        "peekSession",
+        "continuationCheck",
+        "seedResume",
+        "reconcileSidecar",
+        "sessionExists",
+        "sessionHistory",
+        "resumeHistory",
+        "scanExternalSessions",
+        "onData",
+        "onResync",
+        "onRuntimeState",
+        "onCwd",
+        "onFolderUnavailable",
+        "onExit",
+        "onSessionHistoryChanged",
+        "onResumeAttempt",
+        "onResumed",
+        "onResumeSettled",
+        "onForkAdopted",
+        "onInitialTaskSubmitted",
+        "onAttention",
+        "onLifecycle",
+        "onReveal"
+      ],
+      "sessions": [
+        "library",
+        "importLibrary",
+        "cancelLibraryImport",
+        "list",
+        "search",
+        "read",
+        "importSession",
+        "engineStatus",
+        "peekChat",
+        "importBatchStart",
+        "importBatchStatus",
+        "importBatchRetry",
+        "importBatchCancel",
+        "importBindDocument",
+        "importedList",
+        "historyPage",
+        "historyDetail",
+        "folderFacts",
+        "onImportBatch"
+      ],
+      "events": [
+        "onTask",
+        "onAgentQuestionResolved",
+        "onAgentQuestion",
+        "onCanvasCommand",
+        "onCanvasCommandResolved",
+        "onDevServer",
+        "onOpenAccount",
+        "onOpenCanvas",
+        "onSimulator",
+        "onAgentsHealth",
+        "onUpdate",
+        "onAnalytics",
+        "onMenuReloadPreview",
+        "onMenuCloseSurface",
+        "onMenuZoom",
+        "onVoicePtt",
+        "onAppShortcut",
+        "onBrowserFind",
+        "onIdeNavKey"
+      ]
+    }
+  },
+  "rendererUsage": {
+    "namespaces": {
+      "terminal": [
+        "dismissForkInstruction",
+        "foreground",
+        "foregroundCached",
+        "input",
+        "interrupt",
+        "kill",
+        "launchAgentOnBus",
+        "onAttention",
+        "onCwd",
+        "onData",
+        "onExit",
+        "onFolderUnavailable",
+        "onForkAdopted",
+        "onInitialTaskSubmitted",
+        "onLifecycle",
+        "onResumeSettled",
+        "onResumed",
+        "onResync",
+        "onReveal",
+        "onRuntimeState",
+        "onSessionHistoryChanged",
+        "openFork",
+        "openShell",
+        "peekSession",
+        "pendingForks",
+        "rawSnapshot",
+        "reclaimHost",
+        "reconcileSidecar",
+        "recoverCodexDaemon",
+        "replace",
+        "resize",
+        "restart",
+        "resumeHistory",
+        "scanExternalSessions",
+        "seedResume",
+        "sessionExists",
+        "sessionHistory",
+        "sessionModel",
+        "snapshot",
+        "start",
+        "whichAgents"
+      ],
+      "files": [
+        "addToLibrary",
+        "assetPath",
+        "closeBufferChoice",
+        "copyInto",
+        "createDirectory",
+        "createFile",
+        "editorIdentity",
+        "ensureCanvasDesign",
+        "exists",
+        "importAssets",
+        "importFolder",
+        "list",
+        "listAssets",
+        "listFolders",
+        "listProjectResources",
+        "listTree",
+        "materializeAssets",
+        "moveEntry",
+        "mutationIdentity",
+        "onFileNodeChanged",
+        "openFileNode",
+        "openIn",
+        "openTargets",
+        "pathForFile",
+        "read",
+        "readAssetThumbnail",
+        "readDocument",
+        "readImageThumbnail",
+        "readProjectThumbnail",
+        "releaseFileNode",
+        "removeFolder",
+        "renameEntry",
+        "revealEntry",
+        "saveAttachment",
+        "scaffoldScreen",
+        "trashEntry",
+        "write",
+        "writeDocument"
+      ],
+      "bus": [
+        "activityView",
+        "automationPreferences",
+        "cancelCloudTask",
+        "claimProjectChatInbox",
+        "consentAllowances",
+        "consentRequests",
+        "decideConsent",
+        "deliverInbox",
+        "enabled",
+        "executionStates",
+        "harnessReadiness",
+        "installRepo",
+        "learnCollaboratorDevice",
+        "nodeRemoved",
+        "cloudSend",
+        "onActivity",
+        "onConsent",
+        "pendingCounts",
+        "previewUninstall",
+        "receiveCollaboratorMessage",
+        "recentActivity",
+        "registerNode",
+        "resolveDeliveryUncertainty",
+        "revokeConsent",
+        "saveAutomationPreferences",
+        "setDeliveryPolicy",
+        "setEdges",
+        "setResourceContexts",
+        "startChatTurn",
+        "stopCloudSync",
+        "terminalExposure",
+        "uninstall"
+      ],
+      "backends": [
+        "approve",
+        "ask",
+        "convexAuthStatus",
+        "convexCreate",
+        "convexLogin",
+        "create",
+        "link",
+        "list",
+        "listOrgs",
+        "localStart",
+        "localStatus",
+        "localStop",
+        "peek",
+        "pending",
+        "provision",
+        "query",
+        "reject",
+        "remove",
+        "scaffoldClient",
+        "schema",
+        "sync",
+        "unlink",
+        "update"
+      ],
+      "sessions": [
+        "cancelLibraryImport",
+        "engineStatus",
+        "folderFacts",
+        "historyDetail",
+        "historyPage",
+        "importBatchCancel",
+        "importBatchRetry",
+        "importBatchStart",
+        "importBatchStatus",
+        "importBindDocument",
+        "importLibrary",
+        "importSession",
+        "importedList",
+        "library",
+        "onImportBatch",
+        "peekChat",
+        "read"
+      ],
+      "events": [
+        "onAgentQuestion",
+        "onAgentQuestionResolved",
+        "onAgentsHealth",
+        "onAppShortcut",
+        "onBrowserFind",
+        "onCanvasCommand",
+        "onCanvasCommandResolved",
+        "onDevServer",
+        "onMenuCloseSurface",
+        "onMenuReloadPreview",
+        "onMenuZoom",
+        "onOpenAccount",
+        "onOpenCanvas",
+        "onSimulator",
+        "onTask",
+        "onUpdate"
+      ],
+      "projects": [
+        "clone",
+        "create",
+        "defaultDir",
+        "detectPreview",
+        "discoverApps",
+        "flutterRoutes",
+        "forgetRecent",
+        "newChildLocation",
+        "open",
+        "pickFolder",
+        "prepareSetup",
+        "recents",
+        "relocateRecent",
+        "rnRoutes",
+        "scanRoutes"
+      ],
+      "artifacts": [
+        "catalog",
+        "deleteVersions",
+        "export",
+        "get",
+        "onChanged",
+        "previewHtml",
+        "read",
+        "restore",
+        "retire",
+        "reveal",
+        "save",
+        "usage",
+        "versions"
+      ],
+      "auth": [
+        "forgetSavedSignIn",
+        "localUser",
+        "networkRestored",
+        "oauthAction",
+        "onChanged",
+        "resendConfirmation",
+        "resetPassword",
+        "signIn",
+        "signInWithOAuth",
+        "signOut",
+        "signUp",
+        "status",
+        "validate"
+      ],
+      "phone": [
+        "connectedApps",
+        "createPairing",
+        "decide",
+        "devices",
+        "disable",
+        "disconnectApp",
+        "enable",
+        "keepAwake",
+        "onChanged",
+        "pending",
+        "resetIdentity",
+        "revoke",
+        "status"
+      ],
+      "tasks": [
+        "acknowledgeChatQueue",
+        "cancel",
+        "canvasEdit",
+        "chatQueue",
+        "closeChatSession",
+        "decompose",
+        "editChatQueueEntry",
+        "forkChat",
+        "previewGuiFunding",
+        "removeChatQueueEntry",
+        "resumeChatQueue",
+        "steer",
+        "undo"
+      ],
+      "voice": [
+        "compile",
+        "deepgramToken",
+        "deleteOldModel",
+        "ensureMicAccess",
+        "intentReady",
+        "mic",
+        "micPermission",
+        "openMicSettings",
+        "openaiRealtimeToken",
+        "parakeet",
+        "reportUsage",
+        "speak",
+        "voicePack"
+      ],
+      "cloud": [
+        "create",
+        "delete",
+        "forgetRecentShared",
+        "joinWorkspace",
+        "loadParticipantOverlay",
+        "openShared",
+        "recentShared",
+        "save",
+        "saveParticipantOverlay",
+        "setShared",
+        "shareInfo"
+      ],
+      "compute": [
+        "cancelCreation",
+        "controlTerminal",
+        "create",
+        "get",
+        "github",
+        "onTerminal",
+        "openTerminal",
+        "operate",
+        "overview",
+        "rename",
+        "sendTask"
+      ],
+      "app": [
+        "coreHealth",
+        "onCoreRecovery",
+        "onPresentationMotion",
+        "presentationMotionPaused",
+        "relaunch",
+        "rendererMounted",
+        "reportOpenCanvas",
+        "retryCore",
+        "setTrayAttention",
+        "toggleFullscreen"
+      ],
+      "cloudAgents": [
+        "accounts",
+        "create",
+        "list",
+        "models",
+        "onChanged",
+        "reconcile",
+        "repositories",
+        "status",
+        "stop",
+        "submit"
+      ],
+      "facts": [
+        "dismissAllNotifications",
+        "dismissNotification",
+        "documentRuntime",
+        "latestRunUsages",
+        "markNodeDone",
+        "markNotificationSeen",
+        "nodeWorkflows",
+        "notifications",
+        "onChanged",
+        "prObservations"
+      ],
+      "git": [
+        "changes",
+        "commitAll",
+        "discard",
+        "initializeEmpty",
+        "openPr",
+        "prFacts",
+        "push",
+        "stage",
+        "status",
+        "taskChanges"
+      ],
+      "browser": [
+        "capture",
+        "clearData",
+        "downloads",
+        "history",
+        "import",
+        "present",
+        "profiles",
+        "setLinks",
+        "workspacePreview"
+      ],
+      "worktrees": [
+        "autoLand",
+        "derive",
+        "drop",
+        "list",
+        "matchFolder",
+        "prepare",
+        "preview",
+        "reconcileRemoval",
+        "resolve"
+      ],
+      "codeSync": [
+        "consent",
+        "guestDir",
+        "preflight",
+        "refresh",
+        "removeGuestCopy",
+        "setConsent",
+        "startGuest",
+        "startHost"
+      ],
+      "cues": [
+        "cancelCommand",
+        "cancelInvoke",
+        "invoke",
+        "list",
+        "prepareCommand",
+        "read",
+        "remove",
+        "save"
+      ],
+      "canvas": [
+        "commandProgress",
+        "commandResult",
+        "exportCanvas",
+        "importCanvas",
+        "pendingCommands",
+        "save",
+        "stageCommand"
+      ],
+      "remotion": [
+        "compositions",
+        "create",
+        "render",
+        "repair",
+        "start",
+        "status",
+        "stop"
+      ],
+      "supermemory": [
+        "connectApiKey",
+        "grant",
+        "revoke",
+        "selectSpace",
+        "signIn",
+        "signOut",
+        "status"
+      ],
+      "workspace": [
+        "quickRoot",
+        "scratchCreate",
+        "scratchDelete",
+        "scratchFinishDelete",
+        "scratchList",
+        "scratchLoad",
+        "scratchSave"
+      ],
+      "agentAccounts": [
+        "finalize",
+        "list",
+        "probe",
+        "remove",
+        "rename",
+        "setAvatar"
+      ],
+      "autopilot": [
+        "releaseTerminal",
+        "retryMember",
+        "snapshot",
+        "start",
+        "stop",
+        "stopMember"
+      ],
+      "servers": [
+        "createKey",
+        "hostKey",
+        "integration",
+        "probe",
+        "publicKeys",
+        "trustHost"
+      ],
+      "storage": [
+        "cancelConnect",
+        "connect",
+        "ensure",
+        "importToLibrary",
+        "list",
+        "remotes"
+      ],
+      "fs": [
+        "browse",
+        "open",
+        "pathForFile",
+        "places",
+        "reveal"
+      ],
+      "plan": [
+        "foundingState",
+        "get",
+        "openPortal",
+        "purchase",
+        "startCheckout"
+      ],
+      "settings": [
+        "authStatus",
+        "get",
+        "onSshServersChanged",
+        "resetFtue",
+        "set"
+      ],
+      "devServer": [
+        "enableExpoWeb",
+        "lanHost",
+        "start",
+        "stop"
+      ],
+      "runtime": [
+        "ensureNode",
+        "installCloudRuntime",
+        "onProgress",
+        "removeCloudRuntime"
+      ],
+      "video": [
+        "bgm",
+        "cancel",
+        "pickInput",
+        "subtitle"
+      ],
+      "analytics": [
+        "bootstrap",
+        "capture",
+        "flags"
+      ],
+      "clipboard": [
+        "readImagePath",
+        "readText",
+        "writeText"
+      ],
+      "find": [
+        "candidates",
+        "rank",
+        "recent"
+      ],
+      "hostedMessaging": [
+        "action",
+        "admit",
+        "status"
+      ],
+      "projectChatHistory": [
+        "importLegacy",
+        "read",
+        "upsert"
+      ],
+      "resources": [
+        "onPressure",
+        "onProcessMemory",
+        "pressure"
+      ],
+      "wallpapers": [
+        "list",
+        "remove",
+        "upload"
+      ],
+      "agent": [
+        "answerQuestion",
+        "pendingQuestions"
+      ],
+      "agentConnections": [
+        "openSetup",
+        "request"
+      ],
+      "diagnostics": [
+        "report",
+        "save"
+      ],
+      "remoteConfig": [
+        "get",
+        "onChanged"
+      ],
+      "skills": [
+        "installed",
+        "sync"
+      ],
+      "slides": [
+        "start",
+        "status"
+      ],
+      "update": [
+        "check",
+        "state"
+      ],
+      "announcement": [
+        "$"
+      ],
+      "cliLink": [
+        "status"
+      ],
+      "collaboratorOutbox": [
+        "v1"
+      ],
+      "communityInvite": [
+        "v1"
+      ],
+      "element": [
+        "resolve"
+      ],
+      "github": [
+        "issueDetail"
+      ],
+      "liveblocks": [
+        "auth"
+      ],
+      "models": [
+        "list"
+      ],
+      "nav": [
+        "detect"
+      ],
+      "oauth": [
+        "claudeLogin"
+      ],
+      "personal": [
+        "pending"
+      ],
+      "providerUsage": [
+        "refresh"
+      ],
+      "quickOpenRecent": [
+        "v1"
+      ],
+      "recentModels": [
+        "v1"
+      ],
+      "remoteNotice": [
+        "$"
+      ],
+      "share": [
+        "frameAttach"
+      ],
+      "simulator": [
+        "start"
+      ],
+      "supervisor": [
+        "agentsHealth"
+      ],
+      "thumbnails": [
+        "capture"
+      ]
+    }
+  }
+}

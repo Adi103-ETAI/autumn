@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "Autumn is an open-source spatial canvas for orchestrating multiple AI coding agents. Speak to the Commander; spawn Atlas, Apollo, Orion, Juno; connect them with bus edges; they coordinate via message_peer.",
   keywords: [
     "Autumn",
-    "October Desktop",
+    "Autumn Desktop",
     "AI agents",
     "Claude Code",
     "Codex",
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Autumn" }],
   icons: {
     icon: [
-      { url: "/maple-leaf.png", type: "image/png", sizes: "512x512" },
+      { url: "/nature.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: [{ url: "/maple-leaf.png", sizes: "512x512" }],
+    apple: [{ url: "/nature.png", sizes: "512x512" }],
   },
 };
 

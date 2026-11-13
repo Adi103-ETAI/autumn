@@ -10,8 +10,6 @@ import {
   ReactFlowProvider,
   Background,
   BackgroundVariant,
-  Controls,
-  MiniMap,
   useReactFlow,
   type Node,
   type Edge,
@@ -22,7 +20,6 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useAutumnStore } from "@/lib/autumn/store";
-import type { NodeKind } from "@/lib/autumn/types";
 import { ChatNode } from "./nodes/ChatNode";
 import {
   TerminalNode,
@@ -34,12 +31,14 @@ import {
 } from "./nodes/OtherNodes";
 import { BusEdge, NavigationEdge } from "./edges/Edges";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { MinimapPanel } from "./MinimapPanel";
 import { CanvasBackgroundLayer } from "./CanvasBackgroundLayer";
 import { CanvasContextMenu, INITIAL_CONTEXT_MENU, type CanvasContextMenuState } from "./CanvasContextMenu";
 import { EdgeInspector } from "./EdgeInspector";
 import { QuickSpawnMenu } from "./QuickSpawnMenu";
 import { Cable, Sparkles, Bot, Terminal } from "lucide-react";
 import { AutumnLogo } from "@/components/autumn/AutumnLogo";
+import { AutumnWordmark } from "@/components/autumn/AutumnWordmark";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -58,16 +57,6 @@ const edgeTypes = {
   navigation: NavigationEdge,
 };
 
-const MINIMAP_COLORS: Record<NodeKind, string> = {
-  chat: "#a855f7",
-  terminal: "#22c55e",
-  screen: "#3b82f6",
-  sticky: "#fbbf24",
-  analytics: "#f59e0b",
-  youtube: "#8b5cf6",
-  remotion: "#0b84f3",
-};
-
 function CanvasInner() {
   const nodes = useAutumnStore((s) => s.nodes);
   const edges = useAutumnStore((s) => s.edges);
@@ -82,6 +71,8 @@ function CanvasInner() {
   const searchMatchIds = useAutumnStore((s) => s.searchMatchIds);
   const showNodeSearch = useAutumnStore((s) => s.showNodeSearch);
   const showMinimap = useAutumnStore((s) => s.showMinimap);
+  const showGrid = useAutumnStore((s) => s.showGrid);
+  const snapToGrid = useAutumnStore((s) => s.snapToGrid);
   const { fitView, setCenter, getNode, screenToFlowPosition } = useReactFlow();
   const fromNode = connectMode?.from ? nodes.find((n) => n.id === connectMode.from) : null;
   const isEmpty = nodes.length === 0;
@@ -164,6 +155,9 @@ function CanvasInner() {
         id: n.id,
         type: n.kind,
         position: n.position,
+        width: n.width,
+        height: n.height,
+        style: n.width || n.height ? { width: n.width, height: n.height } : undefined,
         data: {
           ...n.data,
           __searchMatch: showNodeSearch && searchMatchIds.includes(n.id),
@@ -201,8 +195,16 @@ function CanvasInner() {
           }
         }
       }
-      // Apply position changes back to the store.
+      // Apply position and dimension changes back to the store.
       for (const c of changes) {
+        if (c.type === "dimensions" && (c as unknown as { dimensions?: { width?: number; height?: number } }).dimensions) {
+          const dims = (c as unknown as { dimensions: { width?: number; height?: number } }).dimensions;
+          useAutumnStore.getState().updateNode(c.id, { width: dims.width, height: dims.height } as unknown as Partial<import("@/lib/autumn/types").AutumnNode>);
+          // Also trigger xterm fit after resize
+          if (dims.width && dims.height) {
+            setTimeout(() => window.dispatchEvent(new CustomEvent("autumn:terminal-resize", { detail: { id: c.id } })), 50);
+          }
+        }
         if (c.type === "position" && c.position) {
           moveNode(c.id, c.position.x, c.position.y);
         }
@@ -260,10 +262,11 @@ function CanvasInner() {
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
     clearSelection();
+    setCtxMenu((s) => ({ ...s, open: false }));
   }, [setSelectedNode, clearSelection]);
 
   const onPaneContextMenu = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | MouseEvent) => {
       e.preventDefault();
       const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       setCtxMenu({
@@ -280,7 +283,7 @@ function CanvasInner() {
   );
 
   const onNodeContextMenu = useCallback(
-    (e: React.MouseEvent, node: Node) => {
+    (e: React.MouseEvent | MouseEvent, node: Node) => {
       e.preventDefault();
       setCtxMenu({
         open: true,
@@ -322,8 +325,9 @@ function CanvasInner() {
               {/* Animated gradient border container */}
               <div className="relative rounded-2xl p-[2px] breathing-border bg-gradient-to-r from-amber-500/40 via-orange-500/20 to-amber-500/40">
                 <div className="rounded-2xl bg-[#0a0d12] border border-white/5 px-8 py-10">
-                  {/* Autumn maple-leaf logo */}
-                  <AutumnLogo size={56} glow className="mx-auto mb-5" />
+                  {/* the brand: the maple leaf + the ASCII wordmark */}
+                  <AutumnLogo size={56} glow className="mx-auto mb-3" />
+                  <AutumnWordmark className="mx-auto mb-5" />
                   <h3 className="text-xl font-semibold mb-2">Your canvas is empty</h3>
                   <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
                     Start by adding an agent or typing a command to the Commander.
@@ -388,32 +392,23 @@ function CanvasInner() {
         minZoom={0.2}
         maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
+        snapToGrid={snapToGrid}
+        snapGrid={[20, 20]}
         className="bg-transparent"
         defaultEdgeOptions={{ type: "bus" }}
         multiSelectionKeyCode={["Shift"]}
         selectNodesOnDrag={false}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="oklch(0.4 0.02 55 / 0.25)"
-        />
-        <Controls
-          className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg !backdrop-blur"
-          showInteractive={false}
-        />
-        {showMinimap && (
-          <MiniMap
-            className="!bg-card/80 !border-border/50 !rounded-lg !shadow-lg"
-            nodeColor={(n) =>
-              MINIMAP_COLORS[n.type as NodeKind] ?? "#888"
-            }
-            maskColor="oklch(0.005 0.002 55 / 0.7)"
-            pannable
-            zoomable
+        {/* Dotted canvas background — toggleable via the MinimapPanel grid button */}
+        {showGrid && (
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="oklch(0.4 0.02 55 / 0.25)"
           />
         )}
+        {showMinimap && <MinimapPanel />}
         <CanvasToolbar />
       </ReactFlow>
       <CanvasContextMenu
