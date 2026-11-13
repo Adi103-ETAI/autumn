@@ -1,24 +1,24 @@
 // autumn — Wave-2 handlers: phone (12 dispatchable + phone.onChanged push;
-// doc 32 §2g) — FULL (W2-10). The WebSocket RELAY is real now: a `ws` server
+// docs/architecture/backend.md) — FULL (W2-10). The WebSocket RELAY is real now: a `ws` server
 // on the LAN that pairs a phone by a one-time code and then streams frames.
 //
-// RE-derived (October out/main/index.js, RemoteMobileService + preload):
+// The contract:
 //   status()        → {enabled, port?, paired, since?}
 //   enable()        → generate the identity + start the listener → status
 //   disable()       → stop the listener → {…, relay:"offline"}
-//   keepAwake(enabled) → RE: non-boolean throws "enabled must be boolean"
+//   keepAwake(enabled) → non-boolean throws "enabled must be boolean"
 //   createPairing() → a pairing code (auto-enables first)
 //   pending()       → the pairing requests awaiting a decision
-//   decide(intentId, decision) → RE validates decision ∈ {approve, deny} else
+//   decide(intentId, decision) → validates decision ∈ {approve, deny} else
 //                     throws "Invalid pairing decision."; "Phone access is not
 //                     enabled." when pairing is off
 //   devices()       → the paired-device summaries
 //   revoke(bind)    → idempotent revoke
 //   connectedApps() / disconnectApp(clientId) → the connected clients
-//   resetIdentity(confirmed) → RE passes confirmed===true
+//   resetIdentity(confirmed) → passes confirmed===true
 //   phone.onChanged → the change push
 //
-// autumn design (doc 32 §2g) — a LOCAL-FIRST LAN relay:
+// autumn design (docs/architecture/backend.md) — a LOCAL-FIRST LAN relay:
 //   * the identity is a real ed25519 keypair (generated once, persisted under
 //     <userData>/phone/, private key 0600);
 //   * `enable` starts a REAL `ws` server (0.0.0.0, random port) and persists
@@ -186,7 +186,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
 
   /** Why the relay is not running right now (honest). */
   function relayUnavailableReason(): string {
-    if (!wsModule()) return "the ws dependency is not installed — the phone relay needs it (doc 32 §W2-10)";
+    if (!wsModule()) return "the ws dependency is not installed — the phone relay needs it (docs/architecture/backend.md-10)";
     const s = readState();
     if (!s.enabled) return "phone access is off";
     return "the relay is not listening";
@@ -232,7 +232,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
    */
   function startRelay(): Promise<{ ok: true; relay: Relay } | { ok: false; reason: string }> {
     const ws = wsModule();
-    if (!ws) return Promise.resolve({ ok: false, reason: "the ws dependency is not installed — the phone relay needs it (doc 32 §W2-10)" });
+    if (!ws) return Promise.resolve({ ok: false, reason: "the ws dependency is not installed — the phone relay needs it (docs/architecture/backend.md-10)" });
     if (relay) return Promise.resolve({ ok: true, relay });
     return new Promise((resolve) => {
     const server = new ws.WebSocketServer({ host: "0.0.0.0", port: 0 });
@@ -402,7 +402,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.enable",
       description:
-        "enable phone access (RE: generate the identity + start the listener); params: {} -> status — an ed25519 identity generated once, the REAL ws relay started on a random LAN port, enabled:true persisted, emits phone.onChanged",
+        "enable phone access (generate the identity + start the listener); params: {} -> status — an ed25519 identity generated once, the REAL ws relay started on a random LAN port, enabled:true persisted, emits phone.onChanged",
       handler: async () => {
         const s = readState();
         const wasEnabled = s.enabled;
@@ -445,7 +445,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.keepAwake",
       description:
-        "hold a keep-awake blocker while phone access serves; params: enabled (boolean, RE positional; non-bool -> bad-params 'enabled must be boolean') -> {enabled, applied, blockerId?} | {applied:false, reason} without Electron",
+        "hold a keep-awake blocker while phone access serves; params: enabled (boolean, positional; non-bool -> bad-params 'enabled must be boolean') -> {enabled, applied, blockerId?} | {applied:false, reason} without Electron",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const enabled = pick(obj, pos, "enabled", 0);
@@ -478,7 +478,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.createPairing",
       description:
-        "create a 6-digit pairing code (RE: auto-enables first; 10 min expiry; only the sha256 hash is stored); params: {label?} -> {code, expiresAt} — the code is shown once and the relay accepts it in an {t:'auth'} frame",
+        "create a 6-digit pairing code (auto-enables first; 10 min expiry; only the sha256 hash is stored); params: {label?} -> {code, expiresAt} — the code is shown once and the relay accepts it in an {t:'auth'} frame",
       handler: async (params) => {
         const { obj } = paramsOf(params);
         let s = readState();
@@ -513,7 +513,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.decide",
       description:
-        "approve or deny a pairing intent; params: intentId, decision (RE positional; decision ∉ {approve,deny} -> bad-params 'Invalid pairing decision.'; pairing off -> handler-error 'Phone access is not enabled.') -> {approved|denied} + device record; approving really grants the relay session on that socket; emits phone.onChanged",
+        "approve or deny a pairing intent; params: intentId, decision (positional; decision ∉ {approve,deny} -> bad-params 'Invalid pairing decision.'; pairing off -> handler-error 'Phone access is not enabled.') -> {approved|denied} + device record; approving really grants the relay session on that socket; emits phone.onChanged",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return str(obj, pos, "intentId", "id") ? { ok: true } : { ok: false, message: "intentId required" };
@@ -521,7 +521,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const intentId = str(obj, pos, "intentId", "id") as string;
-        // RE positional is (intentId, decision) — decision is the SECOND arg.
+        // positional is (intentId, decision) — decision is the SECOND arg.
         const decision = ostr(obj, "decision") ?? (typeof pos[1] === "string" ? (pos[1] as string) : undefined);
         if (decision !== "approve" && decision !== "deny") return badParams("Invalid pairing decision.");
         const s = readState();
@@ -579,7 +579,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.revoke",
       description:
-        "revoke a paired device; params: id (RE positional bind) -> {revoked: bool, device?} — idempotent (RE revoke is), really closes that device's relay socket, emits phone.onChanged only on a real removal",
+        "revoke a paired device; params: id (positional bind) -> {revoked: bool, device?} — idempotent (revoke is), really closes that device's relay socket, emits phone.onChanged only on a real removal",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const id = str(obj, pos, "id", "bind");
@@ -648,7 +648,7 @@ export function makePhoneHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "phone.resetIdentity",
       description:
-        "reset the phone identity; params: {confirm:true} (RE passes confirmed===true) — without confirm -> bad-params; with it -> keypair + devices + apps + intents + inputs wiped, the relay closed, disabled, emits phone.onChanged",
+        "reset the phone identity; params: {confirm:true} (passes confirmed===true) — without confirm -> bad-params; with it -> keypair + devices + apps + intents + inputs wiped, the relay closed, disabled, emits phone.onChanged",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return pick(obj, pos, "confirm", 0) === true ? { ok: true } : { ok: false, message: "confirm:true is required" };

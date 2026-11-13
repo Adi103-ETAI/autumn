@@ -1,9 +1,9 @@
 "use strict";
-// layer-1 tests for the remotion bridge ids (doc 32 W2-5 §2h). 7 dispatchable,
-// none boundary: create (RE slug+uuid8+"-remotion" + freeChildName nesting),
+// layer-1 tests for the remotion bridge ids (docs/architecture/backend.md W2-5 §2h). 7 dispatchable,
+// none boundary: create (slug+uuid8+"-remotion" + freeChildName nesting),
 // compositions (real <Composition id> parse of src/Root.tsx), start/stop/status
-// (studio child lifecycle + RE empty-folder cleanup), render (real CLI run →
-// verified output file), repair (RE refusal + W2-11 template gate).
+// (studio child lifecycle + empty-folder cleanup), render (real CLI run →
+// verified output file), repair (refusal + W2-11 template gate).
 // The `remotion` CLI deps ship at W2-11 — until then every CLI op must answer
 // honest {supported:false, reason}, never a fake studio or fake mp4.
 const { test, beforeEach } = require("node:test");
@@ -126,7 +126,7 @@ test("id surface: 7 remotion ids, all in the manifest, none boundary", () => {
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("create: RE slug + uuid8 + '-remotion' under the projects root; the template is scaffolded in", async () => {
+test("create: slug + uuid8 + '-remotion' under the projects root; the template is scaffolded in", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -183,7 +183,7 @@ test("compositions: [] outside the root and without src/Root.tsx; real id parse 
   });
 });
 
-test("start: non-owned → RE error-state; no CLI (empty PATH) → {supported:false} honest W2-11 gate", async () => {
+test("start: non-owned → error-state; no CLI (empty PATH) → {supported:false} honest W2-11 gate", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -232,13 +232,13 @@ test("start: fake CLI → real spawn, running state with port/url; busy returns 
       assert.equal((await call("remotion.status", folder)).running, false);
     });
 
-    // stop on an owned folder that became empty → RE rmSync cleanup. A created
+    // stop on an owned folder that became empty → rmSync cleanup. A created
     // project now holds the template, so the cleanup is asserted on a folder
     // that really is empty.
     const doomed = path.join(root, "doomed-project");
     fs.mkdirSync(doomed, { recursive: true });
     await call("remotion.stop", doomed);
-    assert.ok(!fs.existsSync(doomed), "empty owned folder removed, like RE");
+    assert.ok(!fs.existsSync(doomed), "empty owned folder removed, like ");
 
     void root;
   });
@@ -264,7 +264,7 @@ test("render: ownership + no-composition + no-CLI gates before any spawn", async
     const folder = path.join(root, "renderproj");
     fs.mkdirSync(folder, { recursive: true });
     const noComp = await call("remotion.render", folder);
-    assert.match(noComp.message, /No video to render yet/, "RE-style message state, not an envelope");
+    assert.match(noComp.message, /No video to render yet/, "-style message state, not an envelope");
     assert.equal(noComp.rendering, false);
 
     fs.mkdirSync(path.join(folder, "src"), { recursive: true });
@@ -344,7 +344,7 @@ test("render: positional (folder, composition) — composition must not be read 
   });
 });
 
-test("repair: no package.json → RE refusal; a broken project really gets the template back", async () => {
+test("repair: no package.json → refusal; a broken project really gets the template back", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();

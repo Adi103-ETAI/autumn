@@ -1,13 +1,13 @@
 "use strict";
-// layer-1 tests for the Wave-3 supermemory handlers (doc 35 §2): team memory
-// over MCP, with the RE's least-privilege grant model.
+// layer-1 tests for the Wave-3 supermemory handlers (docs/architecture/memory.md): team memory
+// over MCP, with the least-privilege grant model.
 //
 // The provider path is tested against a REAL local MCP server (an http server
-// that speaks the JSON-RPC the RE's client speaks), so the handshake, the tool
+// that speaks the JSON-RPC the client speaks), so the handshake, the tool
 // discovery, the space listing and the key verification are genuinely
 // exercised — not mocked away.
 //
-// The grant model is tested against the RE's exact semantics:
+// The grant model is tested against the exact semantics:
 //   mint  → one grant per (canvas, node), bound to an intentId + a live agent
 //   check → no-grant | intent-changed | access-insufficient | execution-changed
 //   a 'recall' grant CANNOT write ('recall-and-contribute' can)
@@ -170,7 +170,7 @@ test("the manifest's onGrantChanged is a push, not a dispatchable method", () =>
 // status
 // ---------------------------------------------------------------------------
 
-test("status with no credential is the RE's signed-out shape", async () => {
+test("status with no credential is the signed-out shape", async () => {
   const { call } = build();
   const res = await call("supermemory.status", {});
   assert.equal(res.state, "signed-out");
@@ -224,18 +224,18 @@ test("status says so when the provider is unreachable — it never fakes a conne
 // connectApiKey
 // ---------------------------------------------------------------------------
 
-test("connectApiKey refuses a key that is not shaped like one (the RE's check)", async () => {
+test("connectApiKey refuses a key that is not shaped like one (the check)", async () => {
   const { call } = build();
   const res = await call("supermemory.connectApiKey", { apiKey: "nope" });
   assert.equal(res.ok, false);
   assert.match(res.error, /sm_/);
 });
 
-test("isSupermemoryApiKeyShape is the RE's regex", () => {
+test("isSupermemoryApiKeyShape is the regex", () => {
   assert.equal(isSupermemoryApiKeyShape("sm_abcdefghij"), true);
   assert.equal(isSupermemoryApiKeyShape("sm_abcdefghijklmnopqrstuvwxyz"), true);
   assert.equal(isSupermemoryApiKeyShape("sk_abcdefghij"), false);
-  assert.equal(isSupermemoryApiKeyShape("sm_short"), false, "the RE needs at least 10 more chars");
+  assert.equal(isSupermemoryApiKeyShape("sm_short"), false, "the needs at least 10 more chars");
   assert.equal(isSupermemoryApiKeyShape(123), false);
 });
 
@@ -285,21 +285,21 @@ test("selectSpace only accepts a space the provider really offers", async () => 
   }
 });
 
-test("selectSpace validates the tag itself (the RE's normalizeContainerTag)", async () => {
+test("selectSpace validates the tag itself (the normalizeContainerTag)", async () => {
   const { call } = build();
   const bad = await call("supermemory.selectSpace", { containerTag: "" });
   assert.equal(bad.ok, false);
   assert.match(bad.error, /Invalid/);
 });
 
-test("normalizeContainerTag is the RE's rule", () => {
+test("normalizeContainerTag is the rule", () => {
   assert.equal(normalizeContainerTag("team"), "team");
   assert.equal(normalizeContainerTag(""), null);
   assert.equal(normalizeContainerTag("x".repeat(129)), null, "max 128 chars");
   assert.equal(normalizeContainerTag("a b"), null, "control bytes are refused");
 });
 
-test("normalizeSpaces is the RE's normalization", () => {
+test("normalizeSpaces is the normalization", () => {
   assert.deepEqual(normalizeSpaces(null), []);
   assert.deepEqual(normalizeSpaces({ spaces: ["a", "a", "b"] }), [
     { name: "a", containerTag: "a" },
@@ -340,10 +340,10 @@ test("the space selection store clears when the space disappears", () => {
 });
 
 // ---------------------------------------------------------------------------
-// grants — the RE's least-privilege model
+// grants — the least-privilege model
 // ---------------------------------------------------------------------------
 
-test("grant needs a live, eligible agent; the reason is the RE's", async () => {
+test("grant needs a live, eligible agent; the reason is the", async () => {
   const { call } = build();
   const ineligible = await call("supermemory.grant", {
     canvasId: "c1",
@@ -363,7 +363,7 @@ test("grant needs a live, eligible agent; the reason is the RE's", async () => {
   assert.equal(missing.ok, false);
 });
 
-test("grant validates its input (the RE's shape)", async () => {
+test("grant validates its input (the shape)", async () => {
   const { dispatch } = build();
   const bad = await dispatch("supermemory.grant", { canvasId: "c1", nodeId: "n1", intentId: "i1", access: "write" });
   assert.equal(bad.ok, false);
@@ -407,7 +407,7 @@ test("revoking an unknown grant is a no-op, not an error", async () => {
   assert.equal(state.emitted.length, 0, "nothing really changed, so nothing is pushed");
 });
 
-test("the grant store enforces the RE's least privilege and intent binding", async () => {
+test("the grant store enforces the least privilege and intent binding", async () => {
   const probe = {
     probe: async () => ({ kind: "terminal", harness: "codex", agentPid: 1, agentStartToken: "t" }),
     verify: async () => true,
@@ -444,7 +444,7 @@ test("the grant store enforces the RE's least privilege and intent binding", asy
   assert.equal(changes.filter((c) => c.state === "inactive").length, 1);
 });
 
-test("a grant dies when the agent run changes (the RE's execution-changed)", async () => {
+test("a grant dies when the agent run changes (the execution-changed)", async () => {
   let live = true;
   const probe = {
     probe: async () => ({ kind: "terminal", harness: "codex", agentPid: 1, agentStartToken: "t" }),
@@ -472,7 +472,7 @@ test("an ineligible harness is refused by the store too", async () => {
   assert.match(res.reason, /No eligible agent/);
 });
 
-test("the eligible harnesses are the RE's list", () => {
+test("the eligible harnesses are the list", () => {
   for (const h of ["claude", "codex", "opencode", "hermes", "cursor", "gemini"]) {
     assert.ok(GRANT_ELIGIBLE_HARNESSES.includes(h), `${h} should be eligible`);
   }
@@ -480,10 +480,10 @@ test("the eligible harnesses are the RE's list", () => {
 });
 
 // ---------------------------------------------------------------------------
-// the tool resolution + credential shapes (the RE's)
+// the tool resolution + credential shapes (the)
 // ---------------------------------------------------------------------------
 
-test("the provider tool lists are the RE's", () => {
+test("the provider tool lists are the contract's", () => {
   assert.deepEqual(SEARCH_TOOLS, ["search_memory", "recall", "search", "searchSupermemory"]);
   assert.deepEqual(SPACE_TOOLS, ["listSpaces", "listContainerTags", "listProjects"]);
   assert.ok(WRITE_TOOLS.includes("add_memory"));
@@ -497,7 +497,7 @@ test("resolveProviderTool picks the first candidate the provider offers", () => 
   assert.equal(resolveProviderTool(null, SEARCH_TOOLS), null);
 });
 
-test("normalizeCredentials is the RE's shape check", () => {
+test("normalizeCredentials is the shape check", () => {
   assert.deepEqual(normalizeCredentials({ kind: "api-key", apiKey: "k" }), { kind: "api-key", apiKey: "k" });
   assert.equal(normalizeCredentials({ kind: "api-key", apiKey: "  " }), null);
   assert.equal(normalizeCredentials({ kind: "oauth" }), null);

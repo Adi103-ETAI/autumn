@@ -1,6 +1,6 @@
-// autumn — the portable-session layer (Wave 3, doc 35 §5).
+// autumn — the portable-session layer (Wave 3, docs/architecture/sessions.md).
 //
-// The RE (October v1.0.56) makes the OTHER agents' sessions portable: it
+// Autumn makes the OTHER agents' sessions portable: it
 // discovers the session transcripts that Claude Code, Codex, Pi, Amp and Grok
 // already wrote on this machine, indexes them in a library file, and lets the
 // user browse, search and import them.
@@ -8,7 +8,7 @@
 // That is genuinely local — it is just a careful reader of the local session
 // stores — so autumn implements it as such.
 //
-// RE-derived (doc 24 §7 + main-index.js):
+// derived (docs/architecture/sessions.md):
 //   roots            claude  ~/.claude                 (or $CLAUDE_CONFIG_DIR)
 //                    codex   ~/.codex                  (or $CODEX_HOME)
 //                    pi      $PI_CODING_AGENT_SESSION_DIR | $PI_CODING_AGENT_DIR/sessions | ~/.pi/agent/sessions
@@ -31,9 +31,9 @@
 //   folder facts     for every path: {path, root, name, kind, home, temporary,
 //                    driveRoot, system} — "kind" is folder | repository | missing
 //
-// autumn's search reads the transcript's own JSONL lines (the RE shells out to
+// autumn's search reads the transcript's own JSONL lines (the shells out to
 // a native `txcript` helper for the same thing); the result shape is the
-// RE's: up to HITS_PER_SESSION matching lines per session.
+// 's: up to HITS_PER_SESSION matching lines per session.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -42,7 +42,7 @@ import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { userDataDir } from "./store";
 
 // ---------------------------------------------------------------------------
-// the RE's bounds
+// the bounds
 // ---------------------------------------------------------------------------
 
 export const PORTABLE_HARNESSES = ["claude_code", "codex", "pi", "amp", "grok"] as const;
@@ -75,7 +75,7 @@ export interface PortableRoots {
   grokRoot: string;
 }
 
-/** The RE's `defaultRoots` — where each harness keeps its sessions. */
+/** The `defaultRoots` — where each harness keeps its sessions. */
 export function defaultRoots(home: string = homedir()): PortableRoots {
   return {
     claudeRoot: process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
@@ -95,7 +95,7 @@ export function defaultRoots(home: string = homedir()): PortableRoots {
 }
 
 // ---------------------------------------------------------------------------
-// the file discovery (the RE's layouts)
+// the file discovery (the layouts)
 // ---------------------------------------------------------------------------
 
 export interface StoreEntry {
@@ -216,7 +216,7 @@ export function grokFiles(root: string): StoreEntry[] {
   return out;
 }
 
-/** The RE's `walkStore`. */
+/** The `walkStore`. */
 export function walkStore(roots: PortableRoots, harness: string): StoreEntry[] {
   switch (harness) {
     case "claude_code":
@@ -235,10 +235,10 @@ export function walkStore(roots: PortableRoots, harness: string): StoreEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// the transcript readers (the RE's parsers)
+// the transcript readers (the parsers)
 // ---------------------------------------------------------------------------
 
-/** The first 64 KB of a transcript (the RE's `firstChunk`). */
+/** The first 64 KB of a transcript (the `firstChunk`). */
 export function firstChunk(file: string): string {
   const fd = require("node:fs").openSync(file, "r");
   try {
@@ -265,7 +265,7 @@ export function jsonLines(chunk: string): Array<Record<string, any>> {
   return out;
 }
 
-/** The RE's `extractCwd`. */
+/** The `extractCwd`. */
 export function extractCwd(chunk: string): string | null {
   const m = chunk.match(/"cwd"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (!m) return null;
@@ -276,7 +276,7 @@ export function extractCwd(chunk: string): string | null {
   }
 }
 
-/** The RE's `codexCwdFromChunk`. */
+/** The `codexCwdFromChunk`. */
 export function codexCwdFromChunk(chunk: string): string | null {
   for (const l of jsonLines(chunk)) {
     if (l.type !== "session_meta") continue;
@@ -286,7 +286,7 @@ export function codexCwdFromChunk(chunk: string): string | null {
   return null;
 }
 
-/** The RE's `piCwdFromChunk`. */
+/** The `piCwdFromChunk`. */
 export function piCwdFromChunk(chunk: string): string | null {
   for (const l of jsonLines(chunk)) {
     if (l.type !== "session") continue;
@@ -295,7 +295,7 @@ export function piCwdFromChunk(chunk: string): string | null {
   return null;
 }
 
-/** The RE's `fileUriToPath`. */
+/** The `fileUriToPath`. */
 export function fileUriToPath(uri: string): string | null {
   if (!uri.startsWith("file://")) return null;
   let rest = uri.slice("file://".length);
@@ -309,7 +309,7 @@ export function fileUriToPath(uri: string): string | null {
   return rest || null;
 }
 
-/** The RE's `ampMetaFromChunk`. */
+/** The `ampMetaFromChunk`. */
 export function ampMetaFromChunk(chunk: string): { cwd: string | null; title: string | null } {
   try {
     const doc = JSON.parse(chunk);
@@ -337,7 +337,7 @@ export function ampMetaFromChunk(chunk: string): { cwd: string | null; title: st
   return { cwd, title: title ? title.trim().slice(0, 120) : null };
 }
 
-/** The RE's `firstUserText`. */
+/** The `firstUserText`. */
 export function firstUserText(lines: Array<Record<string, any>>, harness: string): string | null {
   for (const l of lines) {
     if (harness === "claude_code") {
@@ -379,7 +379,7 @@ export function firstUserText(lines: Array<Record<string, any>>, harness: string
   return null;
 }
 
-/** The RE's `titleFromChunk`. */
+/** The `titleFromChunk`. */
 export function titleFromChunk(chunk: string, harness: string): string | null {
   const lines = jsonLines(chunk);
   if (harness === "claude_code") {
@@ -394,13 +394,13 @@ export function titleFromChunk(chunk: string, harness: string): string | null {
   return user ? user.trim().slice(0, 120) : null;
 }
 
-/** The RE's `fallbackTitle`. */
+/** The `fallbackTitle`. */
 export function fallbackTitle(cwd: string | null): string {
   const base = cwd?.split(/[\\/]/).filter(Boolean).pop();
   return base ? `Session in ${base}` : "Untitled session";
 }
 
-/** The RE's `readGrokSummary`. */
+/** The `readGrokSummary`. */
 function readGrokSummary(dir: string): { cwd: string | null; title: string | null } {
   try {
     const s = JSON.parse(readFileSync(join(dir, "summary.json"), "utf8"));
@@ -412,7 +412,7 @@ function readGrokSummary(dir: string): { cwd: string | null; title: string | nul
   }
 }
 
-/** The RE's `sourcePrimaryPath`. */
+/** The `sourcePrimaryPath`. */
 export function sourcePrimaryPath(harness: string, ref: string): string {
   if (harness !== "grok") return ref;
   const log = join(ref, "chat_history.jsonl");
@@ -483,7 +483,7 @@ const toSession = (entry: StoreEntry, knownIds: Set<string>): PortableSession | 
   };
 };
 
-/** The RE's `discoverPortableSessions`. */
+/** The `discoverPortableSessions`. */
 export function discoverPortableSessions(
   roots: PortableRoots = defaultRoots(),
   knownIds: Set<string> = new Set(),
@@ -516,7 +516,7 @@ export function discoverPortableSessions(
   return results.slice(0, RESULT_CAP);
 }
 
-/** The matching lines of a transcript (the RE's `txcript` search). */
+/** The matching lines of a transcript (the `txcript` search). */
 export function searchTranscriptLines(text: string, pattern: string): string[] {
   const needle = pattern.trim().toLowerCase();
   if (!needle) return [];
@@ -529,7 +529,7 @@ export function searchTranscriptLines(text: string, pattern: string): string[] {
   return hits;
 }
 
-/** The RE's `searchPortableSessions` — the metadata hits AND the content hits. */
+/** The `searchPortableSessions` — the metadata hits AND the content hits. */
 export async function searchPortableSessions(
   pattern: string,
   roots: PortableRoots = defaultRoots(),
@@ -570,7 +570,7 @@ export async function searchPortableSessions(
 }
 
 // ---------------------------------------------------------------------------
-// the library file (the RE's `session-library.json`)
+// the library file (the `session-library.json`)
 // ---------------------------------------------------------------------------
 
 export interface LibraryEntry {
@@ -591,7 +591,7 @@ export const libraryPath = (): string => join(userDataDir(), "session-library.js
 
 let libraryWarning: string | null = null;
 
-/** The RE's `readSessionLibrary` — a damaged file is preserved, not ignored. */
+/** The `readSessionLibrary` — a damaged file is preserved, not ignored. */
 export function readSessionLibrary(): LibraryEntry[] {
   libraryWarning = null;
   if (!existsSync(libraryPath())) return [];
@@ -624,7 +624,7 @@ export function readSessionLibrary(): LibraryEntry[] {
   }
 }
 
-/** The warning the last `readSessionLibrary` produced (the RE's). */
+/** The warning the last `readSessionLibrary` produced (the). */
 export function libraryWarningText(): string | null {
   return libraryWarning;
 }
@@ -638,12 +638,12 @@ export function writeSessionLibrary(sessions: LibraryEntry[]): void {
   require("node:fs").renameSync(tmp, file);
 }
 
-/** The RE's `libraryEntryKey`. */
+/** The `libraryEntryKey`. */
 export const libraryEntryKey = (entry: LibraryEntry): string =>
   `${entry.sourceId} ${entry.harness} ${entry.sessionId}`;
 
 // ---------------------------------------------------------------------------
-// the folder facts (the RE's `folderFacts`)
+// the folder facts (the `folderFacts`)
 // ---------------------------------------------------------------------------
 
 export interface FolderFact {
@@ -663,7 +663,7 @@ export interface FolderFactRoots {
   system: string[];
 }
 
-/** The RE's `folderFactRoots`. */
+/** The `folderFactRoots`. */
 export function folderFactRoots(
   platform: string = process.platform,
   env: NodeJS.ProcessEnv = process.env,
@@ -697,7 +697,7 @@ const insideRoot = (p: string, root: string): boolean => {
   return norm(p).startsWith(`${norm(root)}${sep}`);
 };
 
-/** The RE's `folderFacts` — what kind of folder each path is. */
+/** The `folderFacts` — what kind of folder each path is. */
 export function folderFacts(paths: unknown, roots: FolderFactRoots): FolderFact[] {
   if (!Array.isArray(paths)) return [];
   const unique: string[] = [];
@@ -734,7 +734,7 @@ export function folderFacts(paths: unknown, roots: FolderFactRoots): FolderFact[
       out.push({ path: raw, root: p, name: basename(p) || p, kind: "missing", ...flags });
       continue;
     }
-    // The repository root of the folder (the RE walks up to the .git).
+    // The repository root of the folder (the walks up to the .git).
     let repo: string | null = null;
     let current = p;
     for (let depth = 0; depth < 64; depth++) {

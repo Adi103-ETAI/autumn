@@ -1,5 +1,5 @@
 "use strict";
-// autumn IPC envelope — the uniform result shape every dispatch returns (doc 29 §T layer 2/4).
+// autumn IPC envelope — the uniform result shape every dispatch returns (docs/architecture/ipc-facade.md layer 2/4).
 // { ok: true, result } | { ok: false, error: { code, message, detail? } }
 
 const ERR = {

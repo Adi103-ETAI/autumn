@@ -1,10 +1,10 @@
 "use strict";
-// layer-1 tests for the backends bridge ids (doc 32 W2-7 §2d). The local-first
+// layer-1 tests for the backends bridge ids (docs/architecture/backend.md W2-7 §2d). The local-first
 // mini data platform: registry CRUD, typed schemas + client regen, read-only
 // SQL + structured queries, a guarded destructive-op queue, a REAL local data
 // service (the local analogue of `supabase start`), and local sync snapshots.
 //
-// RE shapes that must hold: create/update take one object; remove(id) and
+// shapes that must hold: create/update take one object; remove(id) and
 // schema(id) take a positional id; link/unlink are keyed by app; pending
 // answers an ARRAY of changes; query accepts {id, sql}; peek accepts
 // {id, table}; sync requires push|pull; the 3 convex ids are boundary.
@@ -79,12 +79,12 @@ test("boundary: the 3 Convex ids return not-implemented envelopes (passed throug
   }
 });
 
-test("create → entity row (RE fields) with all state files scaffolded; duplicate names get unique slugs", async () => {
+test("create → entity row (fields) with all state files scaffolded; duplicate names get unique slugs", async () => {
   const dir = useTempUserData();
   const { call } = build();
   const row = await create(call, "My DB");
   assert.equal(row.name, "My DB");
-  assert.equal(row.title, "My DB", "RE display field");
+  assert.equal(row.title, "My DB", "display field");
   assert.equal(row.slug, "my-db");
   assert.equal(row.kind, "local");
   assert.equal(row.status, "ready");
@@ -99,7 +99,7 @@ test("create → entity row (RE fields) with all state files scaffolded; duplica
   assert.notEqual(row2.id, row.id);
 });
 
-test("create accepts the RE title field and refuses cloud kinds (platform boundary)", async () => {
+test("create accepts the title field and refuses cloud kinds (platform boundary)", async () => {
   useTempUserData();
   const { call } = build();
   const titled = await call("backends.create", { title: "Cloudless" });
@@ -163,13 +163,13 @@ test("schema write validates field types and regenerates client.ts; schema read 
   assert.match(client, /export async function query/);
   assert.match(client, /export async function insert/);
 
-  // RE shape: the renderer calls schema(backend.id) positionally.
+  // shape: the renderer calls schema(backend.id) positionally.
   const readBack = await call("backends.schema", row.id);
   assert.equal(readBack.collections.length, 1);
   assert.equal(readBack.reachable, true);
 });
 
-test("query: read-only SQL (RE shape) — select/where/order/limit over real rows; writes are refused", async () => {
+test("query: read-only SQL (shape) — select/where/order/limit over real rows; writes are refused", async () => {
   const dir = useTempUserData();
   const { call } = build();
   const row = await create(call, "CRM");
@@ -259,7 +259,7 @@ test("query: structured form — field-op filters, sort, limit; bad filter → b
   assert.equal(noCol.error.code, "not-found");
 });
 
-test("peek: RE {id, table} shape returns columns + rows; without a table it summarizes every collection", async () => {
+test("peek: {id, table} shape returns columns + rows; without a table it summarizes every collection", async () => {
   const dir = useTempUserData();
   const { call } = build();
   const row = await create(call, "Peeky");
@@ -268,7 +268,7 @@ test("peek: RE {id, table} shape returns columns + rows; without a table it summ
 
   const table = await call("backends.peek", { id: row.id, table: "item" });
   assert.deepEqual(table.columns, ["a"]);
-  assert.deepEqual(table.rows, [[1], [2]], "RE shape: rows as arrays");
+  assert.deepEqual(table.rows, [[1], [2]], "shape: rows as arrays");
   assert.equal(table.collections[0].count, 2);
 
   const summary = await call("backends.peek", { id: row.id });
@@ -280,7 +280,7 @@ test("peek: RE {id, table} shape returns columns + rows; without a table it summ
   assert.equal(missing.error.code, "not-found");
 });
 
-test("approval queue: pending is an ARRAY of RE-shaped changes; approve executes the drop for real", async () => {
+test("approval queue: pending is an ARRAY of contract-shaped changes; approve executes the drop for real", async () => {
   const dir = useTempUserData();
   const { call } = build();
   const row = await create(call, "Guarded");
@@ -298,13 +298,13 @@ test("approval queue: pending is an ARRAY of RE-shaped changes; approve executes
   });
 
   const pending = await call("backends.pending", row.id);
-  assert.ok(Array.isArray(pending), "the RE renderer spreads this array");
+  assert.ok(Array.isArray(pending), "the renderer spreads this array");
   assert.equal(pending.length, 1);
   assert.equal(pending[0].status, "pending");
-  assert.ok(pending[0].id, "RE change id");
+  assert.ok(pending[0].id, "change id");
   assert.equal(pending[0].backendId, row.id);
   assert.equal(pending[0].sql, 'DROP TABLE "junk";');
-  assert.ok(pending[0].file, "RE file field");
+  assert.ok(pending[0].file, "file field");
 
   const applied = await call("backends.approve", pending[0].id);
   assert.equal(applied.approved, true);
@@ -342,7 +342,7 @@ test("approval queue: reject drops the change with a note and executes nothing",
   assert.deepEqual(await call("backends.pending", {}), [], "rejected changes leave the queue");
 });
 
-test("link/unlink: RE app-keyed bindings; absolute paths only; unknown backend → not-found", async () => {
+test("link/unlink: app-keyed bindings; absolute paths only; unknown backend → not-found", async () => {
   useTempUserData();
   const { call } = build();
   const row = await create(call, "Linked");

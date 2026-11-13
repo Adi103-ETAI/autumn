@@ -105,7 +105,7 @@ export function resolveBin(name: string): string | null {
 /**
  * autumn's projects root (slides/remotion/deck folders live here).
  * Default ~/Autumn — a visible, cross-platform user folder (the target used
- * ~/October); AUTUMN_PROJECTS_DIR overrides it for headless tests.
+ * ~/Autumn); AUTUMN_PROJECTS_DIR overrides it for headless tests.
  */
 export function projectsRoot(): string {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -126,7 +126,7 @@ export function projectsRoot(): string {
 }
 
 /**
- * Ownership check, ported from the RE'd isOctoberOwnedFolder: resolve the
+ * Ownership check — resolve the
  * nearest EXISTING ancestor (a not-yet-created child of an owned folder counts
  * when the parent exists below the root), realpath both sides, prefix-match.
  */

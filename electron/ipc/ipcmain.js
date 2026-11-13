@@ -1,5 +1,5 @@
 "use strict";
-// autumn IPC registrar — the main-process half of the facade (doc 29 Wave 0).
+// autumn IPC registrar — the main-process half of the facade (docs/architecture/ipc-facade.md Wave 0).
 //
 // One generic `ipcMain.handle(CALL)` receives every renderer->backend call as
 // { kind, id, params } and routes it through registry.dispatch(), which applies
@@ -9,7 +9,7 @@
 //
 // Also exposes `INSPECT`, the Bridge Inspector's data channel: manifest surface
 // + implemented handlers + a rolling log of recent dispatches (dev manual testing,
-// doc 29 §T layer 7).
+// docs/architecture/ipc-facade.md layer 7).
 //
 // Headless-testable: `ipcMain` is injected (a fake with .handle() works), so the
 // registrar itself is unit-tested without Electron.

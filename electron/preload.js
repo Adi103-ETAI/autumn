@@ -1,14 +1,13 @@
 // Autumn — Electron preload (contextBridge).
 //
 // Exposes `window.autumn`: the facade over autumn's IPC/core-RPC backend.
-// The shape is GENERATED from electron/ipc/manifest.json (RE'd from the target,
-// October Desktop v1.0.56): 68 namespaces / 572 methods, where
+// The shape is GENERATED from electron/ipc/manifest.json (adapted from the target,
+//): 68 namespaces / 572 methods, where
 //   - `on*` methods subscribe to main-pushed events (returns unsubscribe)
 //   - everything else invokes the generic `autumn:invoke` channel and resolves
 //     to the standard envelope { ok, result | error }.
 //
-// `window.october` is exposed as a compatibility alias ONLY, so target-renderer
-// code ported during Waves 1–4 resolves unchanged. autumn is the project.
+// Only `window.autumn` is exposed. autumn is the project.
 //
 // Pre-existing autumn members (openFileDialog / onTerminalData) are kept so the
 // current UI keeps working while the backend migrates onto the facade (Wave 0/1).
@@ -50,7 +49,7 @@ const facade = buildFacade({
   privateOps: PRIVATE_OPS,
 });
 
-// `pathForFile` is PRELOAD-LOCAL in the RE (and must be here too): Electron 32
+// `pathForFile` is PRELOAD-LOCAL in the (and must be here too): Electron 32
 // removed the non-standard `File.path`, and `webUtils.getPathForFile` only
 // works in this process — a dropped file that should be IMPORTED (rather than
 // read as bytes) has to come through here. Returns "" for a drag that is not
@@ -68,5 +67,3 @@ facade.files.pathForFile = pathForFile;
 facade.fs.pathForFile = pathForFile;
 
 contextBridge.exposeInMainWorld("autumn", facade);
-// Compatibility alias for ported target-renderer code (see header).
-contextBridge.exposeInMainWorld("october", facade);

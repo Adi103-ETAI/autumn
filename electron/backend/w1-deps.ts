@@ -1,4 +1,4 @@
-// autumn — Wave-1 shared dependency surface (doc 31).
+// autumn — Wave-1 shared dependency surface (docs/architecture/backend.md).
 //
 // ONE interface every Wave-1 handler module consumes: `make*Handlers(deps: W1Deps)`.
 // Built by index.ts `realW1Deps()` for the main process; tests build partial fakes
@@ -75,7 +75,7 @@ export interface ShellDep {
    * electron.shell.trashItem — move a path to the OS trash.
    * OPTIONAL: headless fakes (and any runtime without the Electron shell)
    * simply do not provide it; the finder then falls back to the platform's
-   * own trash folder (Wave 3, doc 35 §4).
+   * own trash folder (Wave 3, docs/architecture/finder.md).
    */
   trashItem?(p: string): Promise<void>;
 }

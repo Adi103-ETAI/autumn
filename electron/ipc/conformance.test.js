@@ -1,8 +1,8 @@
 "use strict";
-// Conformance + renderer-contract tests (doc 29 §T layers 4 & 5).
+// Conformance + renderer-contract tests (docs/architecture/ipc-facade.md layers 4 & 5).
 //
 // These are GENERATED evidence: electron/ipc/manifest.json is produced from the
-// target's reverse-engineering inventories — October Desktop v1.0.56
+// target's reverse-engineering inventories —
 // (scripts/gen-ipc-manifest.mjs reads autumn/evidence/inventories/*.md). They assert
 // the oracle's totals so any drift in the oracles, the manifest, or the facade is caught.
 //
@@ -16,11 +16,11 @@ const manifest = require("./manifest.json");
 
 beforeEach(() => reg.reset());
 
-// ---- Known evidence facts (validated against the oracles, see doc 27/28) --------
+// ---- Known evidence facts (validated against the contract oracles) --------
 
-// The 7 `october.*.*` regex hits in the TARGET's renderer bundle that are NOT bridge
-// calls: the target's preload exposes none of them (0 mentions) — they are
-// renderer-local objects in October's code, not part of any bridge.
+// The 7 namespace-prefixed regex hits in the upstream renderer bundle that are NOT
+// bridge calls: the preload exposes none of them (0 mentions) — they are
+// renderer-local objects, not part of any bridge.
 const KNOWN_NON_BRIDGE = [
   "announcement",
   "collaboratorOutbox",
@@ -45,18 +45,18 @@ const EXPECTED_DORMANT = [
 // outside the target surface. Enumerated here so nothing slips in silently.
 const PRIVATE_OPS = require("./private-ops");
 
-test("manifest totals match the v1.0.56 RE oracles (target: October Desktop)", () => {
+test("manifest totals match the contract oracles", () => {
   assert.equal(manifest.project, "autumn");
   assert.deepEqual(manifest.protocol, { API_VERSION: 2, SCHEMA: 8 });
   assert.equal(manifest.counts.coreMethods, 129, "core methods");
   assert.equal(manifest.counts.coreGroups, 21, "core groups");
   assert.equal(manifest.counts.bridgeNamespaces, 68, "bridge namespaces");
   assert.equal(manifest.counts.bridgeMethods, 572, "bridge second-level methods");
-  assert.equal(manifest.counts.rendererCalls, 476, "target renderer october.* matches");
+  assert.equal(manifest.counts.rendererCalls, 476, "the renderer call list matches");
   assert.deepEqual(
     manifest.principals,
     ["desktop", "cli", "remote", "local-client", "capability"],
-    "per-principal auth roles (doc 22)"
+    "per-principal auth roles"
   );
 });
 
@@ -92,7 +92,7 @@ test("renderer usage: 469 genuine bridge calls across 62 namespaces", () => {
   assert.deepEqual(
     dormant.sort(),
     [...EXPECTED_DORMANT].sort(),
-    "dormant namespaces (doc 27 §2.1)"
+    "dormant namespaces"
   );
 });
 
@@ -154,7 +154,7 @@ test("honest baseline: conformance reports implemented/total", async () => {
   for (const h of impl) {
     assert.ok(
       reg.inManifest(h.kind, h.id) || PRIVATE_OPS.includes(h.id),
-      `registered ${h.kind}:${h.id} is not part of the target surface (October Desktop v1.0.56) or the private allow-list`
+      `registered ${h.kind}:${h.id} is not part of the contract surface () or the private allow-list`
     );
   }
   // The report line (visible in test output via assert message on failure only).

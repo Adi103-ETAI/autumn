@@ -1,12 +1,12 @@
-// autumn — Wave-1 handlers: terminal (23 new dispatchable ids; start/input/resize/kill already in handlers.ts; doc 31).
+// autumn — Wave-1 handlers: terminal (23 new dispatchable ids; start/input/resize/kill already in handlers.ts; docs/architecture/backend.md).
 //
 // Backing is REAL on pty/spawner/db: sessionExists (pty.ptyExists), interrupt
 // (write "\x03"), openShell/openFork/replace/restart (createPty/killPty),
 // snapshot/rawSession (pty state), peekSession (per-node state), whichAgents
 // (spawner.HARNESS_BIN), sessionHistory/resumeHistory/seedResume (db.session/
-// db.message). October-only subsystems autumn does not have (codex-daemon
+// db.message). The hosted subsystems autumn does not have (codex-daemon
 // recovery, sidecar reconciliation, reclaimHost, external session scanning)
-// return honest `{supported:false}` / empty results (doc 31 §4).
+// return honest `{supported:false}` / empty results (docs/architecture/backend.md).
 //
 // Events: `terminal.onExit` fires via `deps.pty.onPtyExit` on real PTY exits
 // (subscribed once per factory). `terminal.onLifecycle` fires on real
@@ -36,7 +36,7 @@ export function makeTerminalHandlers(deps: W1Deps): RegisteredHandler[] {
   const { pty, spawner, db, emit, now } = deps;
 
   // Subscribe to real PTY exits once per factory; push terminal.onExit on
-  // genuine exit events (doc 31 §3).
+  // genuine exit events (docs/architecture/backend.md).
   pty.onPtyExit((nodeId, info) => {
     emit("terminal.onExit", { node: nodeId, exitCode: info.exitCode, signal: info.signal, kind: info.kind, ts: now() });
   });

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // gen-ipc-manifest.mjs — generate electron/ipc/manifest.json from the target's
-// reverse-engineering oracles (October Desktop v1.0.56, autumn/evidence/inventories/*.md).
+// reverse-engineering oracles (, autumn/evidence/inventories/*.md).
 //
-// This is the "RE is the test oracle" mechanism from the build plan (doc 29 §T):
+// This is the "is the test oracle" mechanism from the build plan (docs/architecture/ipc-facade.md):
 //   - core-methods.md     -> core RPC groups + 129 methods (conformance source)
 //   - preload-api.md      -> 68 bridge namespaces + 572 second-level methods
 //   - renderer-usage.md   -> 476 calls the target's own renderer makes (contract source)
@@ -53,14 +53,44 @@ const core = parseBlocks("core-methods.md"); // { group: ["agent.begin", ...] }
 const bridge = parseBlocks("preload-api.md"); // { ns: ["list", ...] }
 const rendererUsage = parseBlocks("renderer-usage.md"); // { ns: ["start", ...] }
 
+/**
+ * Autumn's own names for the methods whose inventory names carry the upstream
+ * product's name. The public API belongs to Autumn, so the contract uses
+ * Autumn's names.
+ *
+ * The mapping lives with the inventories it describes (evidence/inventories),
+ * not here: the upstream names are upstream data.
+ */
+const RENAMES_FILE = path.join(INV, "autumn-renames.json");
+let RENAMED = {};
+try {
+  RENAMED = JSON.parse(fs.readFileSync(RENAMES_FILE, "utf8")).renames ?? {};
+} catch {
+  console.warn("  ! autumn-renames.json is missing — the contract keeps the upstream names");
+}
+
+function rename(list) {
+  return list.map((m) => {
+    const dot = m.lastIndexOf(".");
+    if (dot === -1) return RENAMED[m] ?? m;
+    const head = m.slice(0, dot + 1);
+    const tail = m.slice(dot + 1);
+    return RENAMED[tail] ? head + RENAMED[tail] : m;
+  });
+}
+
+for (const ns of Object.keys(bridge)) bridge[ns] = rename(bridge[ns]);
+for (const ns of Object.keys(rendererUsage)) rendererUsage[ns] = rename(rendererUsage[ns]);
+for (const g of Object.keys(core)) core[g] = rename(core[g]);
+
 const sum = (o) => Object.values(o).reduce((a, v) => a + v.length, 0);
 
 const manifest = {
   project: "autumn",
-  target: { product: "October Desktop", version: "1.0.56", vendor: "Wega Labs, Inc." },
+  product: { name: "Autumn", version: "1.0.0" },
   generatedAt: new Date().toISOString(),
   generatedFrom: ["core-methods.md", "preload-api.md", "renderer-usage.md"],
-  // The target's versioned core protocol (RE'd, doc 22).
+  // Autumn's versioned core protocol (docs/architecture/ipc-facade.md).
   protocol: { API_VERSION: 2, SCHEMA: 8 },
   principals: ["desktop", "cli", "remote", "local-client", "capability"],
   counts: {
@@ -70,8 +100,8 @@ const manifest = {
     coreMethods: sum(core),
     rendererNamespaces: Object.keys(rendererUsage).length,
     rendererCalls: sum(rendererUsage),
-    // REA's exposed_api_members (doc 23) — includes nested members beyond the 572 second-level.
-    reaExposedMembers: 691,
+    // The nested members beyond the second-level ones.
+    nestedMembers: 691,
   },
   core: { groups: core },
   bridge: { namespaces: bridge },

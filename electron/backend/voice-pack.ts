@@ -1,6 +1,6 @@
-// autumn — the on-device voice pack (Wave 3, doc 35 §6): Parakeet v2.
+// autumn — the on-device voice pack (Wave 3, docs/architecture/voice.md): Parakeet v2.
 //
-// The RE (October v1.0.56) ships a *neutral voice-pack contract* that
+// Autumn ships a *neutral voice-pack contract* that
 // supersedes the older parakeet-shaped status:
 //
 //   voice:pack-status  → the pack status
@@ -11,11 +11,11 @@
 // one release.
 //
 // **The model is NOT in the installer.** It is downloaded AFTER the install,
-// into the OS user-data dir — exactly like the RE ("One-time ~700 MB
+// into the OS user-data dir — exactly like the ("One-time ~700 MB
 // download. Runs fully on-device after."). The installer stays small; the
 // download is explicit, resumable, sha256-verified and deletable.
 //
-// RE-derived (doc 24 §8 + main-index.js):
+// derived (docs/architecture/voice.md):
 //   model          sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8
 //   model url      https://github.com/k2-fsa/sherpa-onnx/releases/download/
 //                  asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2
@@ -58,12 +58,12 @@ import { userDataDir } from "./store";
 import { downloadToFile, extractTarBz2, sha256File } from "./sidecar";
 
 // ---------------------------------------------------------------------------
-// the RE's constants
+// the constants
 // ---------------------------------------------------------------------------
 
 export const VOICE_PACK_VERSION = 1;
 
-/** The model archive's name (the RE's `MODEL_NAME`). */
+/** The model archive's name (the `MODEL_NAME`). */
 export const MODEL_NAME = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8";
 
 /** The sherpa-onnx release bucket the models live in. */
@@ -75,7 +75,7 @@ export const PARAKEET_MODEL_SHA256 = "157c157bc51155e03e37d2466522a3a737dd9c72bb
 export const PARAKEET_VAD_SHA256 = "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6";
 
 export const SAMPLE_RATE = 16_000;
-/** The expected size of the installed pack (the RE's). */
+/** The expected size of the installed pack (the). */
 export const SHERPA_PACK_EXPECTED_BYTES = 600 * 1e6;
 /** The archive is ~460 MB; the cap leaves room for the extracted model. */
 export const MODEL_DOWNLOAD_MAX_BYTES = 1_500 * 1e6;
@@ -100,7 +100,7 @@ const verifiedMarker = (path: string, expected: string): boolean => {
 };
 
 // ---------------------------------------------------------------------------
-// the disk check (the RE's)
+// the disk check (the)
 // ---------------------------------------------------------------------------
 
 export function freeBytesAt(path: string): number | null {
@@ -135,7 +135,7 @@ export function diskShortfall(path: string, expectedBytes: number): string | nul
 }
 
 // ---------------------------------------------------------------------------
-// the model files (the RE's)
+// the model files (the)
 // ---------------------------------------------------------------------------
 
 export interface ModelFiles {
@@ -145,7 +145,7 @@ export interface ModelFiles {
   tokens: string;
 }
 
-/** The RE's `resolveModelFiles`. */
+/** The `resolveModelFiles`. */
 export function resolveModelFiles(): ModelFiles | null {
   const dir = modelDir();
   if (!existsSync(dir)) return null;
@@ -170,11 +170,11 @@ export function resolveModelFiles(): ModelFiles | null {
 }
 
 /**
- * The RE's `modelReady` — the structural check plus the two markers.
+ * The `modelReady` — the structural check plus the two markers.
  *
- * The expected hashes are the RE's by default; the install passes the hashes
+ * The expected hashes are the by default; the install passes the hashes
  * it actually verified, so a locally-served archive is checked against ITS
- * own hash (the production path is the RE's constant).
+ * own hash (the production path is the constant).
  */
 export function modelReady(
   modelSha: string = PARAKEET_MODEL_SHA256,
@@ -198,7 +198,7 @@ export interface ModelProgress {
   error?: string;
 }
 
-/** The RE's `download` — a `.part` file, then a rename on success. */
+/** The `download` — a `.part` file, then a rename on success. */
 export async function downloadFile(
   url: string,
   dest: string,
@@ -246,7 +246,7 @@ export async function downloadFile(
   }
 }
 
-/** The RE's `verifyParakeetSha256`. */
+/** The `verifyParakeetSha256`. */
 export async function verifySha256(file: string, expected: string): Promise<void> {
   const actual = await sha256File(file);
   if (actual.toLowerCase() !== expected.toLowerCase()) {
@@ -255,7 +255,7 @@ export async function verifySha256(file: string, expected: string): Promise<void
 }
 
 /**
- * The archive extraction — guarded like the RE's: every entry must stay under
+ * The archive extraction — guarded like the: every entry must stay under
  * the model folder, and a link entry is refused.
  */
 export async function extractModel(tarPath: string, onProgress?: (fraction: number) => void): Promise<string[]> {
@@ -271,7 +271,7 @@ export async function extractModel(tarPath: string, onProgress?: (fraction: numb
 
 let ensureInFlight: Promise<void> | null = null;
 
-/** The install options — the RE's URLs and hashes are the defaults. */
+/** The install options — the URLs and hashes are the defaults. */
 export interface ModelInstallOptions {
   modelUrl?: string;
   modelSha256?: string;
@@ -280,11 +280,11 @@ export interface ModelInstallOptions {
 }
 
 /**
- * The RE's `ensureParakeetModel` — the whole install, verified end to end.
+ * The `ensureParakeetModel` — the whole install, verified end to end.
  * Single-flight: concurrent callers join the same run.
  *
  * The options exist so the install can be driven against a local server (the
- * tests do exactly that); the defaults are the RE's own URLs and hashes.
+ * tests do exactly that); the defaults are the own URLs and hashes.
  */
 export function ensureParakeetModel(
   report?: (p: ModelProgress) => void,
@@ -382,7 +382,7 @@ export function loadSherpa(): any | null {
 }
 
 // ---------------------------------------------------------------------------
-// the pack manager (the RE's VoicePackManager)
+// the pack manager (the VoicePackManager)
 // ---------------------------------------------------------------------------
 
 export type PackState = "idle" | "preparing" | "ready" | "error" | "unsupported";
@@ -429,7 +429,7 @@ const readyComponents = (required: string[]) => {
   return { asr: mk("asr"), vad: mk("vad"), tts: mk("tts"), speakerModel: mk("speakerModel") };
 };
 
-/** The sherpa driver (the RE's). */
+/** The sherpa driver (the). */
 export function sherpaDriver(): PackDriver {
   return {
     supported: true,
@@ -452,7 +452,7 @@ export function sherpaDriver(): PackDriver {
   };
 }
 
-/** The RE's `classifyPrepareError`. */
+/** The `classifyPrepareError`. */
 export function classifyPrepareError(e: unknown): string {
   const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
   if (/enospc|no space|disk/.test(msg)) return "disk-space";
@@ -464,7 +464,7 @@ export function classifyPrepareError(e: unknown): string {
   return "unknown";
 }
 
-/** The pack manager (the RE's VoicePackManager, adapted to autumn). */
+/** The pack manager (the VoicePackManager, adapted to autumn). */
 export class VoicePackManager {
   private driver: PackDriver;
   private status: PackStatus;
@@ -519,7 +519,7 @@ export class VoicePackManager {
     }
   }
 
-  /** Start (or join) the preparation — single-flight, like the RE's. */
+  /** Start (or join) the preparation — single-flight, like the. */
   async start(): Promise<PackStatus> {
     if (!this.driver.supported) return this.getStatus();
     if (this.status.state === "ready" && this.driver.packReady()) return this.getStatus();
@@ -555,7 +555,7 @@ export class VoicePackManager {
     return this.getStatus();
   }
 
-  /** Retry: force a full re-preparation (the RE's `retry`). */
+  /** Retry: force a full re-preparation (the `retry`). */
   async retry(): Promise<PackStatus> {
     if (this.inFlight) return this.inFlight;
     this.driver.invalidate?.();
@@ -607,7 +607,7 @@ export class VoicePackManager {
   }
 }
 
-/** Delete the installed pack (the RE's `deleteOldModel`, pack-wide). */
+/** Delete the installed pack (the `deleteOldModel`, pack-wide). */
 export function deletePack(): { deleted: boolean; freedMb: number } {
   let bytes = 0;
   const root = modelsRoot();
@@ -636,7 +636,7 @@ function dirSize(dir: string): number {
   return total;
 }
 
-/** The sha256 of a buffer — the RE's helper, kept for the tests. */
+/** The sha256 of a buffer — the helper, kept for the tests. */
 export function sha256(data: Buffer | string): string {
   return createHash("sha256").update(data).digest("hex");
 }

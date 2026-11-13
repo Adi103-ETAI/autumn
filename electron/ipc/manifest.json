@@ -1,11 +1,10 @@
 {
   "project": "autumn",
-  "target": {
-    "product": "October Desktop",
-    "version": "1.0.56",
-    "vendor": "Wega Labs, Inc."
+  "product": {
+    "name": "Autumn",
+    "version": "1.0.0"
   },
-  "generatedAt": "2026-11-01T08:10:25.202Z",
+  "generatedAt": "2026-11-13T10:46:54.294Z",
   "generatedFrom": [
     "core-methods.md",
     "preload-api.md",
@@ -29,7 +28,7 @@
     "coreMethods": 129,
     "rendererNamespaces": 69,
     "rendererCalls": 476,
-    "reaExposedMembers": 691
+    "nestedMembers": 691
   },
   "core": {
     "groups": {
@@ -418,8 +417,8 @@
         "setEdges",
         "setResourceContexts",
         "nodeRemoved",
-        "octoberSend",
-        "cancelOctoberTask",
+        "cloudSend",
+        "cancelCloudTask",
         "consentRequests",
         "decideConsent",
         "consentAllowances",
@@ -727,8 +726,8 @@
       "runtime": [
         "prefetch",
         "ensureNode",
-        "installOctober",
-        "removeOctober",
+        "installCloudRuntime",
+        "removeCloudRuntime",
         "onProgress"
       ],
       "update": [
@@ -1006,7 +1005,7 @@
       "bus": [
         "activityView",
         "automationPreferences",
-        "cancelOctoberTask",
+        "cancelCloudTask",
         "claimProjectChatInbox",
         "consentAllowances",
         "consentRequests",
@@ -1018,7 +1017,7 @@
         "installRepo",
         "learnCollaboratorDevice",
         "nodeRemoved",
-        "octoberSend",
+        "cloudSend",
         "onActivity",
         "onConsent",
         "pendingCounts",
@@ -1404,9 +1403,9 @@
       ],
       "runtime": [
         "ensureNode",
-        "installOctober",
+        "installCloudRuntime",
         "onProgress",
-        "removeOctober"
+        "removeCloudRuntime"
       ],
       "video": [
         "bgm",

@@ -1,5 +1,5 @@
 "use strict";
-// Layer-1 handler units (doc 29 §T): every ported route handler runs headless
+// Layer-1 handler units (docs/architecture/ipc-facade.md): every ported route handler runs headless
 // against FAKE dependencies — no Electron, no Prisma, no PTY processes.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");

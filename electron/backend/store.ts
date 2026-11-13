@@ -1,4 +1,4 @@
-// autumn — flat-JSON persistence helper (Wave 2 platform layer, doc 32).
+// autumn — flat-JSON persistence helper (Wave 2 platform layer, docs/architecture/backend.md).
 //
 // Shared by Wave-2 handler modules: settings, auth, cues, skills, phone,
 // agentAccounts, backends registry, ... Everything lives under ONE data

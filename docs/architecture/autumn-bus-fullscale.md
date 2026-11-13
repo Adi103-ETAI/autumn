@@ -9,7 +9,7 @@
 
 ## 1. Why
 
-Current mock handles only `message_peer` + `session/list_peers` via `POST /api/bus` `src/app/api/bus/route.ts:18` `AUTUMN_BUS_TOKEN=autumn-dev-token` `spawner.ts:123`. Full daemon adds `Tasks` with leases, `Human Escalations`, `Heartbeats`, `Inbox reservations`, `MCP`, `Scope isolation` — required for real multi-agent orchestration at scale (October's bus is daemon, not SQLite).
+Current mock handles only `message_peer` + `session/list_peers` via `POST /api/bus` `src/app/api/bus/route.ts:18` `AUTUMN_BUS_TOKEN=autumn-dev-token` `spawner.ts:123`. Full daemon adds `Tasks` with leases, `Human Escalations`, `Heartbeats`, `Inbox reservations`, `MCP`, `Scope isolation` — required for real multi-agent orchestration at scale (the hosted bus is a daemon, not SQLite).
 
 ---
 

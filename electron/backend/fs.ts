@@ -1,6 +1,6 @@
 // autumn — Wave-3 handlers: fs (12 ids; the whole-machine finder).
 //
-// RE-derived (doc 24 §6 + the RE's own chunks/fs-browse-L9vYwDmT.js):
+// The contract (docs/architecture/finder.md):
 //
 //   fs:places          → the Home/Desktop/Documents/Downloads places that
 //                        really exist, plus the project folder
@@ -22,13 +22,13 @@
 //   fs:trash           → the OS trash
 //   fs:mkdir           → a new folder inside an existing one
 //
-// The RE runs the reads in a utility-process worker ("fs-browse-worker.js")
+// The runs the reads in a utility-process worker ("fs-browse-worker.js")
 // so a huge walk never blocks the main process. autumn keeps the same
 // semantics and the same bounds, and runs the reads with the async node:fs
 // API (so the main process stays responsive); the content search really runs
-// `rg` in its own child process, exactly like the RE.
+// `rg` in its own child process, exactly like the .
 //
-// The RE's bounds (kept): MAX_DIR_ENTRIES 10 000, MAX_SEARCH_HITS 200,
+// The bounds (kept): MAX_DIR_ENTRIES 10 000, MAX_SEARCH_HITS 200,
 // MAX_SEARCH_WALK 20 000, MAX_TEXT_BYTES 1 MB, MAX_IMAGE_BYTES 6 MB.
 
 import { spawn as nodeSpawn } from "node:child_process";
@@ -41,7 +41,7 @@ import type { RegisteredHandler } from "./handlers";
 import type { ChildProcLike, W1Deps } from "./w1-deps";
 
 // ---------------------------------------------------------------------------
-// the RE's bounds
+// the bounds
 // ---------------------------------------------------------------------------
 
 const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"]);
@@ -50,7 +50,7 @@ const MAX_IMAGE_BYTES = 6_000_000;
 const MAX_DIR_ENTRIES = 10_000;
 const MAX_SEARCH_HITS = 200;
 const MAX_SEARCH_WALK = 20_000;
-/** The folders the search never descends into (the RE's list). */
+/** The folders the search never descends into (the list). */
 const SEARCH_SKIP = new Set(["node_modules", ".git", "Library", ".Trash", "Pods"]);
 
 /** Deliberate bad-input envelope — never throw for user input. */
@@ -79,13 +79,13 @@ export function sanitizePath(raw: unknown): string | null {
 const absPathSchema = (p: Record<string, any>) =>
   sanitizePath(p?.path) ? { ok: true as const } : { ok: false, message: "path required (absolute string)" };
 
-/** The RE's `assertAbs` — an absolute path is required. */
+/** The `assertAbs` — an absolute path is required. */
 function assertAbs(p: unknown): string {
   if (typeof p !== "string" || !p.length || !isAbsolute(p)) throw new Error("An absolute path is required");
   return p;
 }
 
-/** The RE's `safeName` — a single path segment, never "." or "..". */
+/** The `safeName` — a single path segment, never "." or "..". */
 export function safeName(name: unknown): string {
   const n = typeof name === "string" ? name.trim() : "";
   if (!n || n === "." || n === ".." || n.includes("/") || n.includes("\\")) throw new Error("Invalid name");
@@ -93,7 +93,7 @@ export function safeName(name: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// the finder's operations (the RE's local ones)
+// the finder's operations (the local ones)
 // ---------------------------------------------------------------------------
 
 export interface BrowseEntry {
@@ -104,7 +104,7 @@ export interface BrowseEntry {
   updatedAt?: string;
 }
 
-/** One directory listing (the RE's `fsBrowseLocal`). */
+/** One directory listing (the `fsBrowseLocal`). */
 export async function browseLocal(dirPath: unknown, opts?: { showHidden?: boolean }): Promise<{ path: string; entries: BrowseEntry[] }> {
   const dir = typeof dirPath === "string" && dirPath && isAbsolute(dirPath) ? dirPath : homedir();
   let st;
@@ -146,7 +146,7 @@ export async function browseLocal(dirPath: unknown, opts?: { showHidden?: boolea
   return { path: dir, entries };
 }
 
-/** A file preview (the RE's `fsPreviewLocal`). */
+/** A file preview (the `fsPreviewLocal`). */
 export async function previewLocal(filePath: unknown): Promise<Record<string, unknown>> {
   const abs = assertAbs(filePath);
   let fileStat;
@@ -178,7 +178,7 @@ export interface SearchHit {
   snippet?: string;
 }
 
-/** The name-match half of the search (the RE's `nameSearch`). */
+/** The name-match half of the search (the `nameSearch`). */
 async function nameSearch(rootDir: string, query: string, showHidden: boolean, isCurrent: () => boolean): Promise<SearchHit[]> {
   const q = query.toLowerCase();
   const hits: SearchHit[] = [];
@@ -206,7 +206,7 @@ async function nameSearch(rootDir: string, query: string, showHidden: boolean, i
   return hits;
 }
 
-/** The content-match half of the search (the RE's `ripgrep`). */
+/** The content-match half of the search (the `ripgrep`). */
 function ripgrep(
   rootDir: string,
   query: string,
@@ -264,9 +264,9 @@ function ripgrep(
 }
 
 /**
- * The whole-machine search (the RE's `fsSearchLocal`): the name matches and
+ * The whole-machine search (the `fsSearchLocal`): the name matches and
  * the content matches, merged by path. A new search for the same root
- * supersedes the running one (the RE's generation counter).
+ * supersedes the running one (the generation counter).
  */
 export async function searchLocal(
   rootDir: unknown,
@@ -291,7 +291,7 @@ export async function searchLocal(
   return [...byPath.values()].slice(0, MAX_SEARCH_HITS);
 }
 
-/** Move files into a folder (the RE's `fsMoveLocal`). */
+/** Move files into a folder (the `fsMoveLocal`). */
 export function moveLocal(srcPaths: string[], destDir: unknown): { moved: number; collisions: string[]; failed: string[] } {
   const dir = assertAbs(destDir);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error("Destination is not a folder");
@@ -325,7 +325,7 @@ export function moveLocal(srcPaths: string[], destDir: unknown): { moved: number
   return result;
 }
 
-/** Copy files into a folder (the RE's `fsCopyIntoLocal`). */
+/** Copy files into a folder (the `fsCopyIntoLocal`). */
 export function copyIntoLocal(srcPaths: string[], destDir: unknown): { moved: number; collisions: string[]; failed: string[] } {
   const dir = assertAbs(destDir);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error("Destination is not a folder");

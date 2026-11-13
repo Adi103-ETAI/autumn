@@ -1,6 +1,6 @@
 "use strict";
-// Wave-1 layer-1 tests for the git + worktrees bridge ids (doc 29 §T, doc 31 §5).
-// REAL git against throwaway repositories under fs.mkdtemp (allowed by doc 31 §5);
+// Wave-1 layer-1 tests for the git + worktrees bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md).
+// REAL git against throwaway repositories under fs.mkdtemp (allowed by docs/architecture/backend.md);
 // git binary must be present (2.53 in this environment). No network, no GitHub.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");

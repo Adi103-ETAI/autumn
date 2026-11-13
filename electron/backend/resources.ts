@@ -1,4 +1,4 @@
-// autumn — Wave-2 handlers: resources (1 dispatchable + pressure/processMemory push; doc 32 §W2-1).
+// autumn — Wave-2 handlers: resources (1 dispatchable + pressure/processMemory push; docs/architecture/backend.md-1).
 //
 // `resources.pressure` does a REAL reading: process RSS vs total system memory, plus
 // OS load average. Events come from real calls only — pressure transitions emit

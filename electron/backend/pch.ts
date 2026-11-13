@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: projectChatHistory (3 dispatchable; doc 31).
+// autumn — Wave-1 handlers: projectChatHistory (3 dispatchable; docs/architecture/backend.md).
 //
 // Backing is REAL where possible: Prisma Message rows for read/upsert, and
 // commander-prompt for importLegacy parsing. Registered by index.ts; do not

@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: tasks (13 dispatchable + events.onTask push; doc 31).
+// autumn — Wave-1 handlers: tasks (13 dispatchable + events.onTask push; docs/architecture/backend.md).
 //
 // Backing is REAL where possible: Prisma Task/Message rows, spawner for agent
 // runs. `events.onTask` fires on real task transitions (steer/cancel/undo).

@@ -1,13 +1,13 @@
 "use strict";
-// layer-1 tests for the Wave-3 autopilot handlers (doc 35 §3): the team of
+// layer-1 tests for the Wave-3 autopilot handlers (docs/architecture/autopilot.md): the team of
 // agents under one node.
 //
 // What is really exercised here:
-//   - the plan validation (the RE's rules) and the honest refusals;
+//   - the plan validation (the rules) and the honest refusals;
 //   - the REPOSITORY resolution against a REAL git repository (created in a
 //     temp dir) — a non-repo is refused, a repo yields its root + HEAD sha;
 //   - the member launch against a REAL process: the "harness" is a shell
-//     script that prints the RE's worker report, and the member's status
+//     script that prints the worker report, and the member's status
 //     really follows the report;
 //   - the persistence (the operations file really survives a reload).
 const { test, beforeEach } = require("node:test");
@@ -179,7 +179,7 @@ test("id surface: 6 autopilot ids, all in the manifest", () => {
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("the RE's vocabularies are the RE's", () => {
+test("the vocabularies are the contract's", () => {
   assert.deepEqual([...OPERATION_STATUSES], [
     "starting", "running", "stopping", "stopped", "completed", "failed", "interrupted",
   ]);
@@ -196,7 +196,7 @@ test("the RE's vocabularies are the RE's", () => {
 // the plan
 // ---------------------------------------------------------------------------
 
-test("parseTeamProposal is the RE's team_proposal parser", () => {
+test("parseTeamProposal is the team_proposal parser", () => {
   const ok = parseTeamProposal(PROPOSAL);
   assert.equal(ok.ok, true);
   assert.equal(ok.proposal.objective, "ship the finder");
@@ -224,7 +224,7 @@ test("parseTeamProposal refuses a malformed plan", () => {
   assert.match(noSlot.error, /unknown slot/);
 });
 
-test("validateStart is the RE's candidate-binding check", () => {
+test("validateStart is the candidate-binding check", () => {
   assert.match(validateStart({ canvasId: "no", candidates: CANDIDATES }), /canvas identity/i);
   assert.match(validateStart({ canvasId: 42, candidates: CANDIDATES }), /canvas identity/i);
   assert.match(validateStart({ canvasId: "canvas-1", candidates: [] }), /candidate binding/i);
@@ -369,7 +369,7 @@ test("the gate is local and can be turned off", async () => {
 // the worker report
 // ---------------------------------------------------------------------------
 
-test("the worker report is parsed with the RE's vocabulary", () => {
+test("the worker report is parsed with the vocabulary", () => {
   assert.deepEqual(parseWorkerReport("[worker status: done] all done"), {
     state: "done",
     text: "all done",
@@ -409,7 +409,7 @@ test("the member status follows the worker's own report", async () => {
   assert.equal(snap2.status, "completed", "the team is complete when every member is done");
 });
 
-test("memberStatusForReport maps the RE's report states", () => {
+test("memberStatusForReport maps the report states", () => {
   assert.equal(memberStatusForReport("checkpoint"), "working");
   assert.equal(memberStatusForReport("needs_input"), "needs-input");
   assert.equal(memberStatusForReport("stuck"), "stuck");
@@ -542,7 +542,7 @@ test("the operations really survive a reload of the backend", async () => {
   assert.equal(snap.repoRoot, fs.realpathSync(repo));
 });
 
-test("workingMembers is the RE's can-work filter", () => {
+test("workingMembers is the can-work filter", () => {
   const op = {
     members: [
       { status: "working" },

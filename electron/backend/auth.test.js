@@ -1,6 +1,6 @@
 "use strict";
-// layer-1 tests for the auth bridge ids (doc 32 W2-4). Local-first scrypt auth,
-// RE-faithful shapes (12 dispatchable + auth.onChanged push). No network, no Electron.
+// layer-1 tests for the auth bridge ids (docs/architecture/backend.md W2-4). Local-first scrypt auth,
+// The shapes (12 dispatchable + auth.onChanged push). No network, no Electron.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -69,7 +69,7 @@ test("signUp → user + needsConfirmation:false + 8 recovery codes; emits auth.o
   assert.equal(users.length, 1);
 });
 
-test("signUp duplicate email → {user:null, needsConfirmation:false, alreadyRegistered:true} (RE shape)", async () => {
+test("signUp duplicate email → {user:null, needsConfirmation:false, alreadyRegistered:true} (shape)", async () => {
   useTempUserData();
   const { call } = build();
   await call("auth.signUp", { email: "a@b.co", password: "password123" });
@@ -77,14 +77,14 @@ test("signUp duplicate email → {user:null, needsConfirmation:false, alreadyReg
   assert.deepEqual(dup, { user: null, needsConfirmation: false, alreadyRegistered: true });
 });
 
-test("signUp validates password length (RE throws server-side min length)", async () => {
+test("signUp validates password length (throws server-side min length)", async () => {
   useTempUserData();
   const { call } = build();
   await assert.rejects(() => call("auth.signUp", { email: "a@b.co", password: "short" }), /at least 8/);
   await assert.rejects(() => call("auth.signUp", { email: "not-an-email", password: "password123" }), /valid email/);
 });
 
-test("signIn: positional args (facade-packed), bad password throws RE-style, good password → session", async () => {
+test("signIn: positional args (facade-packed), bad password throws the same error, good password → session", async () => {
   useTempUserData();
   const { call } = build();
   await call("auth.signUp", { email: "a@b.co", password: "password123" });
@@ -114,7 +114,7 @@ test("signOut deletes the current session → status null + onChanged(null)", as
   assert.equal(await call("auth.status", {}), null);
   const evt = state.emitted.filter(([id]) => id === "auth.onChanged").pop();
   assert.ok(evt);
-  assert.equal(evt[1], null, "onChanged payload is null on sign-out (RE renderer contract)");
+  assert.equal(evt[1], null, "onChanged payload is null on sign-out (renderer contract)");
 });
 
 test("validate without a session → {status:'invalid', user:null}", async () => {
@@ -128,7 +128,7 @@ test("resetPassword two phases: issue code (local delivery) → complete with co
   const { call } = build();
   await call("auth.signUp", { email: "a@b.co", password: "password123" });
 
-  // phase 1 — RE edge is resetPassword(email); autumn returns the code (no SMTP)
+  // phase 1 — edge is resetPassword(email); autumn returns the code (no SMTP)
   const issued = await call("auth.resetPassword", "a@b.co"); // single positional string
   assert.equal(issued.delivered, "local");
   assert.match(issued.code, /^[0-9A-F]{4}-[0-9A-F]{4}$/);
@@ -196,14 +196,14 @@ test("signInWithOAuth without env → honest {supported:false} (never faked)", a
   }
 });
 
-test("oauthAction validates attempt + action (RE error strings)", async () => {
+test("oauthAction validates attempt + action (error strings)", async () => {
   useTempUserData();
   const { call } = build();
   await assert.rejects(() => call("auth.oauthAction", { attemptId: "x", action: "delete" }), /Invalid sign-in action/);
   await assert.rejects(() => call("auth.oauthAction", { args: ["no-such-attempt", "copy-link"] }), /no longer waiting/);
 });
 
-test("networkRestored returns {online:boolean} (real probe, RE side-effect superset)", async () => {
+test("networkRestored returns {online:boolean} (real probe, side-effect superset)", async () => {
   useTempUserData();
   const { call } = build();
   const res = await call("auth.networkRestored", {});

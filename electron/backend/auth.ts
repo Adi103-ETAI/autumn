@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: auth (12 dispatchable + auth.onChanged push; doc 32 §W2-4).
+// autumn — Wave-2 handlers: auth (12 dispatchable + auth.onChanged push; docs/architecture/backend.md-4).
 //
-// RE-derived semantics (October-amd64.deb → app.asar out/main/index.js, the 12
+// The semantics (the 12
 // `auth:*` channels, cross-checked with autumn/01-main-auth-and-ipc.md §1.2/§2
 // and evidence/inventories/ipc-full.md `auth:` — 12):
 //   signIn(email, password)        positional; throws on failure; returns {id,email}
@@ -26,7 +26,7 @@
 // resetPassword(email.trim()), resendConfirmation(addr), signOut(),
 // status() → account object used as .id/.email directly.
 //
-// DEVIATIONS (documented in doc 32 §2b):
+// DEVIATIONS (documented in docs/architecture/backend.md):
 //   - Target auth = Supabase (email/password + OAuth PKCE + encrypted
 //     supabase-session.json). autumn is local-first: node:crypto scrypt only —
 //     no external provider, works offline, same renderer-visible shapes.
@@ -199,7 +199,7 @@ export function _resetAuthState(): void {
 export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
   const { emit, now } = deps;
 
-  /** auth.onChanged pushes the USER object (or null) — RE renderer contract. */
+  /** auth.onChanged pushes the USER object (or null) — renderer contract. */
   const push = (user: User | null) => emit("auth.onChanged", user);
 
   const findUserByEmail = (email: string): AuthUser | undefined =>
@@ -232,7 +232,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.signUp",
       description:
-        "create a local account + session (RE: signUp(email,password) positional → {user, needsConfirmation, alreadyRegistered?}; autumn adds recoveryCodes — shown once, no SMTP)",
+        "create a local account + session (signUp(email,password) positional → {user, needsConfirmation, alreadyRegistered?}; autumn adds recoveryCodes — shown once, no SMTP)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         const email = str(obj.email) ?? str(pos[0]);
@@ -244,7 +244,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
         const { email, password, name } = requireEmailPassword(params, "name");
         const existing = findUserByEmail(email);
         if (existing) {
-          // RE exact shape for an already-registered email.
+          // exact shape for an already-registered email.
           return { user: null, needsConfirmation: false, alreadyRegistered: true };
         }
         const { hash, salt } = hashPassword(password);
@@ -267,7 +267,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "auth.signIn",
-      description: "sign in (RE: signIn(email,password) positional → {id,email}; throws on bad credentials)",
+      description: "sign in (signIn(email,password) positional → {id,email}; throws on bad credentials)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.email) ?? str(pos[0])) || !(str(obj.password) ?? str(pos[1])))
@@ -278,7 +278,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
         const { email, password } = requireEmailPassword(params);
         const user = findUserByEmail(email);
         if (!user || !safeEqualHex(hashPassword(password, user.salt).hash, user.passHash)) {
-          throw new Error("Invalid email or password."); // RE throws the provider error message
+          throw new Error("Invalid email or password."); // throws the provider error message
         }
         return signInAs(user);
       },
@@ -286,7 +286,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "auth.signOut",
-      description: "sign out (RE: authSignOut() local scope, void); deletes the current session, emits onChanged(new-current|null)",
+      description: "sign out (authSignOut() local scope, void); deletes the current session, emits onChanged(new-current|null)",
       handler: (params) => {
         const { obj } = paramsOf(params);
         const token = str(obj.sid) ?? str(obj.token);
@@ -301,20 +301,20 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "auth.status",
-      description: "current user or null (RE: authStatus() → withPlan(user|null); renderer uses it as `account` directly)",
+      description: "current user or null (authStatus() → withPlan(user|null); renderer uses it as `account` directly)",
       handler: (params) => publicUserOrNull(userBySession(params)),
     },
     {
       kind: "bridge",
       id: "auth.localUser",
-      description: "user read straight from the session store (RE: authLocalUser(requireReadable) → user|null)",
+      description: "user read straight from the session store (authLocalUser(requireReadable) → user|null)",
       handler: () => publicUserOrNull(userBySession({})),
     },
     {
       kind: "bridge",
       id: "auth.validate",
       description:
-        "session validation (RE: authValidate() → {status:'valid'|'invalid'|'unreachable', user}; local store never goes unreachable unless unreadable)",
+        "session validation (authValidate() → {status:'valid'|'invalid'|'unreachable', user}; local store never goes unreachable unless unreadable)",
       handler: (params) => {
         try {
           const user = userBySession(params);
@@ -328,7 +328,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.resetPassword",
       description:
-        "two-phase reset (RE edge: resetPassword(email) → link sent; autumn local-first: phase 1 {email} issues + RETURNS a code (no SMTP), phase 2 {email, code, password} rotates the password and starts a session)",
+        "two-phase reset (edge: resetPassword(email) → link sent; autumn local-first: phase 1 {email} issues + RETURNS a code (no SMTP), phase 2 {email, code, password} rotates the password and starts a session)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         const email = str(obj.email) ?? str(pos[0]);
@@ -388,7 +388,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.resendConfirmation",
       description:
-        "re-issue confirmation (RE: resendConfirmation(email) → Supabase resend; autumn: honest local-first — accounts confirm at sign-up, no SMTP)",
+        "re-issue confirmation (resendConfirmation(email) → Supabase resend; autumn: honest local-first — accounts confirm at sign-up, no SMTP)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.email) ?? str(pos[0]))) return { ok: false, message: "email required" };
@@ -405,7 +405,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.forgetSavedSignIn",
       description:
-        "forget the saved sign-in (RE: authForgetSavedSignIn — clears session storage + verifier + local sign-out); emits onChanged(null)",
+        "forget the saved sign-in (authForgetSavedSignIn — clears session storage + verifier + local sign-out); emits onChanged(null)",
       handler: () => {
         writeSessions([]);
         saveJson(resetsFile(), []);
@@ -417,7 +417,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.networkRestored",
       description:
-        "network probe after connectivity returns (RE: authNetworkRestored() — net.isOnline + cloud retry side effects, void; autumn returns {online} from a real 3s probe)",
+        "network probe after connectivity returns (authNetworkRestored() — net.isOnline + cloud retry side effects, void; autumn returns {online} from a real 3s probe)",
       handler: async () => {
         try {
           const ctrl = new AbortController();
@@ -434,7 +434,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.signInWithOAuth",
       description:
-        "OAuth sign-in (RE: authSignInWithOAuth(provider, attemptId) — full loopback flow, resolves to the user). autumn: real GitHub flow ONLY when GITHUB_CLIENT_ID/SECRET are set, else {supported:false}",
+        "OAuth sign-in (authSignInWithOAuth(provider, attemptId) — full loopback flow, resolves to the user). autumn: real GitHub flow ONLY when GITHUB_CLIENT_ID/SECRET are set, else {supported:false}",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         const provider = str(obj.provider) ?? str(pos[0]);
@@ -456,7 +456,7 @@ export function makeAuthHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "auth.oauthAction",
       description:
-        "act on a pending OAuth attempt (RE: oauthAction(attemptId, 'cancel'|'copy-link'); throws 'Invalid sign-in action.' otherwise)",
+        "act on a pending OAuth attempt (oauthAction(attemptId, 'cancel'|'copy-link'); throws 'Invalid sign-in action.' otherwise)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         const attemptId = str(obj.attemptId) ?? str(pos[0]);

@@ -6,7 +6,7 @@ const { ERR } = require("./envelope");
 
 beforeEach(() => reg.reset());
 
-test("protocol version comes from the target manifest (October Desktop v1.0.56, RE'd)", () => {
+test("protocol version comes from the target manifest (, adapted)", () => {
   assert.equal(reg.API_VERSION, 2);
   assert.equal(reg.SCHEMA, 8);
   assert.equal(reg.manifest.project, "autumn");

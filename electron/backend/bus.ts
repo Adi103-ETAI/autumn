@@ -1,16 +1,16 @@
-// autumn — Wave-1 handlers: bus (30 dispatchable renderer-used ids; doc 31).
+// autumn — Wave-1 handlers: bus (30 dispatchable renderer-used ids; docs/architecture/backend.md).
 //
 // Backing is REAL where autumn has it: busStore (ensurePeer/setPeerStatus/
 // sendMessage/drainInbox/listPeers/getPeer) and Prisma db (busPeer/message/
-// edge/agentLog). October-only subsystems autumn does not have
+// edge/agentLog). The hosted subsystems autumn does not have
 // (harness repo install/uninstall, cloud sync, collaborator devices, consent
 // flow, codex-daemon) return honest `{supported:false}` / empty results or a
-// deliberate `not-implemented` envelope — never fabricated data (doc 31 §4).
-// `bus.octoberSend` and `bus.cancelOctoberTask` keep their target ids verbatim
-// (RE oracle). Registered by index.ts; do not edit shared files.
+// deliberate `not-implemented` envelope — never fabricated data (docs/architecture/backend.md).
+// `bus.cloudSend` and `bus.cancelCloudTask` are Autumn's own names for the two
+// (oracle). Registered by index.ts; do not edit shared files.
 //
 // Events: `bus.onActivity` and `bus.onConsent` fire ONLY on real triggers
-// (a real octoberSend / a real consent decision). Otherwise unemitted.
+// (a real cloud send / a real consent decision). Otherwise unemitted.
 
 import type { RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
@@ -75,13 +75,13 @@ export function makeBusHandlers(deps: W1Deps): RegisteredHandler[] {
     },
     {
       kind: "bridge",
-      id: "bus.cancelOctoberTask",
+      id: "bus.cancelCloudTask",
       description:
         "cancel a task; params: { taskId } -> not-implemented (autumn tracks no cancelable task queue)",
       schema: (p) => (typeof p?.taskId === "string" ? { ok: true } : { ok: false, message: "taskId required" }),
       handler: (p) => {
         if (typeof p?.taskId !== "string") return badParams("taskId required");
-        return notImplemented("cancelOctoberTask needs a cancelable task queue, which autumn does not have");
+        return notImplemented("cancelCloudTask needs a cancelable task queue, which autumn does not have");
       },
     },
     {
@@ -201,7 +201,7 @@ export function makeBusHandlers(deps: W1Deps): RegisteredHandler[] {
     },
     {
       kind: "bridge",
-      id: "bus.octoberSend",
+      id: "bus.cloudSend",
       description:
         "send a bus message peer->peer (target id kept verbatim); params: { canvasId, fromNodeId, toNodeId, message } -> busStore.sendMessage result; emits bus.onActivity",
       schema: (p) =>

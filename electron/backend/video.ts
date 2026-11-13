@@ -1,22 +1,22 @@
-// autumn — Wave-2 handlers: video (4 dispatchable; doc 32 §2h).
+// autumn — Wave-2 handlers: video (4 dispatchable; docs/architecture/backend.md).
 //
-// RE-derived (October out/main/index.js):
-//   pickInput — RE opens the native openFile dialog with filters
+// The contract:
+//   pickInput — opens the native openFile dialog with filters
 //     ["mp4","mov","m4v","webm","mkv","avi"] and resolves the picked path or
 //     null when canceled → autumn does the same; WITHOUT the Electron runtime
 //     there is no dialog, so it resolves null (nothing was selected — the
 //     ported renderer's `if (!input) return;` stays truthful; never a fake path).
 //   subtitle(input, opts) — positional; validates the input file exists, parses
-//     the SRT (RE validates too; malformed → bad-params), then runs the real
+//     the SRT (validates too; malformed → bad-params), then runs the real
 //     ffmpeg transcode `-vf subtitles=…` to <dir>/<name>.subbed.mp4 (or opts.outPath).
 //   bgm(input, audioPath, opts) — positional; mixes the audio track under the
 //     video via ffmpeg filter_complex amix (volume-scaled) to <dir>/<name>.bgm.mp4.
-//   cancel(input, kind?) — RE claims jobs PER INPUT (videoCancel(runningInput,
+//   cancel(input, kind?) — claims jobs PER INPUT (videoCancel(runningInput,
 //     runningKind ?? undefined)) → kill the tracked ffmpeg child for that input
 //     (optionally narrowed to a kind); nothing running → honest
 //     {cancelled:false, reason} — not an error envelope.
 //
-// ffmpeg gate (doc 32 §0/§2h): absent from PATH → {supported:false, reason}
+// ffmpeg gate (docs/architecture/backend.md/§2h): absent from PATH → {supported:false, reason}
 // per-op. Every run is a REAL child_process (deps.spawn — fakeable in tests,
 // which is also what keeps Windows CI from needing ffmpeg), tracked in a
 // per-input job registry, and journaled to <userData>/video/jobs.json (there is
@@ -24,8 +24,8 @@
 //
 // W2-11 (FULL): ffmpeg's stderr carries the real progress ("time=00:00:12.34")
 // — it is parsed and journaled per job (the progress record). `cancel` accepts
-// the RE's per-input shape AND a jobId, so a caller that only knows the job id
-// can still stop the run. The output paths follow the RE (next to the input).
+// the per-input shape AND a jobId, so a caller that only knows the job id
+// can still stop the run. The output paths follow the (next to the input).
 
 import { existsSync, mkdirSync, statSync, writeFileSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
@@ -123,7 +123,7 @@ const PROBE_TIMEOUT_MS = 5_000;
 export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
   const { spawn, now } = deps;
 
-  const live = new Map<string, Job>(); // key: `${input}::${kind}` (RE per-input claim)
+  const live = new Map<string, Job>(); // key: `${input}::${kind}` (per-input claim)
   const keyOf = (input: string, kind?: JobKind) => (kind ? `${input}::${kind}` : input);
   const findJob = (input: string, kind?: JobKind): Job | undefined => {
     if (kind) return live.get(keyOf(input, kind));
@@ -226,7 +226,7 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "video.pickInput",
       description:
-        "open the native video file picker (RE filters mp4/mov/m4v/webm/mkv/avi); params: {} -> path string | null (canceled — or no dialog without the Electron runtime; never a fabricated path)",
+        "open the native video file picker (filters mp4/mov/m4v/webm/mkv/avi); params: {} -> path string | null (canceled — or no dialog without the Electron runtime; never a fabricated path)",
       handler: async () => {
         const dialog = lazyElectron()?.dialog;
         if (!dialog?.showOpenDialog) return null;
@@ -246,7 +246,7 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "video.subtitle",
       description:
-        "burn subtitles into a video; params: input (RE positional) or {path, srtPath?, outPath?} — SRT parsed strictly (bad-params when malformed), real ffmpeg `-vf subtitles=` run to <dir>/<name>.subbed.mp4 -> {path, bytes, durationMs, jobId}; ffmpeg absent -> {supported:false, reason}",
+        "burn subtitles into a video; params: input (positional) or {path, srtPath?, outPath?} — SRT parsed strictly (bad-params when malformed), real ffmpeg `-vf subtitles=` run to <dir>/<name>.subbed.mp4 -> {path, bytes, durationMs, jobId}; ffmpeg absent -> {supported:false, reason}",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return str(obj, pos, "path", "input") || typeof pos[0] === "string" ? { ok: true } : { ok: false, message: "input required" };
@@ -285,7 +285,7 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "video.bgm",
       description:
-        "mix background music under a video; params: input, audioPath (RE positional (input, bgmPath)) or named — real ffmpeg amix (volume-scaled bgm, video stream copied) to <dir>/<name>.bgm.mp4 -> {path, bytes, durationMs, jobId}; ffmpeg absent -> {supported:false, reason}",
+        "mix background music under a video; params: input, audioPath (positional (input, bgmPath)) or named — real ffmpeg amix (volume-scaled bgm, video stream copied) to <dir>/<name>.bgm.mp4 -> {path, bytes, durationMs, jobId}; ffmpeg absent -> {supported:false, reason}",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         const input = ostr(obj, "path", "input") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -344,7 +344,7 @@ export function makeVideoHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "video.cancel",
       description:
-        "cancel a running media job; params: input, kind? (RE positional (runningInput, runningKind ?? undefined)) or {jobId} -> {cancelled:true, jobId} | {cancelled:false, reason} when nothing runs for that input (the claim is per-input, like the target)",
+        "cancel a running media job; params: input, kind? (positional (runningInput, runningKind ?? undefined)) or {jobId} -> {cancelled:true, jobId} | {cancelled:false, reason} when nothing runs for that input (the claim is per-input, like the target)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         // A caller that only knows the job id can still stop the run. The job

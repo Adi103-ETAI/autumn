@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the diagnostics bridge ids (doc 32 W2-1). Real temp userData dir.
+// layer-1 tests for the diagnostics bridge ids (docs/architecture/backend.md W2-1). Real temp userData dir.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

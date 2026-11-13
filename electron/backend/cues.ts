@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: cues (8 dispatchable; doc 32 §W2-2).
+// autumn — Wave-2 handlers: cues (8 dispatchable; docs/architecture/backend.md-2).
 //
-// RE-derived semantics (renderer-usage + ipc-map; per-ns detail absent):
+// The semantics:
 //   cues.save(list item) / cues.list / cues.read(id) / cues.remove(id)
 //   cues.prepareCommand(id)  — validate + resolve a saved command before running it
 //   cues.cancelCommand(id)   — drop a prepared command

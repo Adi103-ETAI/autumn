@@ -1,5 +1,5 @@
 "use strict";
-// Layer-1 units for the devServer namespace (doc 31 §T): headless — NO real
+// Layer-1 units for the devServer namespace (docs/architecture/backend.md): headless — NO real
 // processes, no network calls, no Electron. deps.spawn and deps.emit are FAKED
 // and driven by hand: the fake child records its listeners so tests can fire
 // "exit"/"error" manually and assert the events.onDevServer emissions. Only

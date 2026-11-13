@@ -1,8 +1,8 @@
 "use strict";
-// layer-1 tests for the slides bridge ids (doc 32 W2-5 §2h). 4 dispatchable:
-// create (RE slug+uuid8+"-slides" + freeChildName nesting), start (DECK mode —
-// real self-contained deck HTML; FOLDER mode — RE ownership error-state),
-// status (persisted deck record / RE folder state), stop (RE empty-owned-folder
+// layer-1 tests for the slides bridge ids (docs/architecture/backend.md W2-5 §2h). 4 dispatchable:
+// create (slug+uuid8+"-slides" + freeChildName nesting), start (DECK mode —
+// real self-contained deck HTML; FOLDER mode — ownership error-state),
+// status (persisted deck record / folder state), stop (empty-owned-folder
 // cleanup). Headless: no Electron runtime → honest opened:false + error states,
 // never a claimed running view.
 const { test, beforeEach } = require("node:test");
@@ -63,7 +63,7 @@ test("id surface: 4 slides ids, all in the manifest", () => {
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("create: RE slug + uuid8 + '-slides' under the projects root", async () => {
+test("create: slug + uuid8 + '-slides' under the projects root", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -120,7 +120,7 @@ test("start DECK mode: real deck HTML written; headless honest opened:false; sta
   assert.equal(status.slides, 3);
 });
 
-test("start FOLDER mode: non-owned → RE error-state pointing outside the root", async () => {
+test("start FOLDER mode: non-owned → error-state pointing outside the root", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -151,7 +151,7 @@ test("start FOLDER mode: owned without index.html → error; owned headless → 
   });
 });
 
-test("status: default {status:'idle'} for an unknown folder; RE shape after start", async () => {
+test("status: default {status:'idle'} for an unknown folder; shape after start", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -161,7 +161,7 @@ test("status: default {status:'idle'} for an unknown folder; RE shape after star
   });
 });
 
-test("stop FOLDER mode: RE cleanup — removes an OWNED empty folder, leaves a non-empty one", async () => {
+test("stop FOLDER mode: cleanup — removes an OWNED empty folder, leaves a non-empty one", async () => {
   useTempUserData();
   await withProjectsRoot(async (root) => {
     const { call } = build();
@@ -169,7 +169,7 @@ test("stop FOLDER mode: RE cleanup — removes an OWNED empty folder, leaves a n
     fs.mkdirSync(empty, { recursive: true });
     const res = await call("slides.stop", { folder: empty });
     assert.equal(res.status, "idle");
-    assert.ok(!fs.existsSync(empty), "empty owned folder removed, like RE");
+    assert.ok(!fs.existsSync(empty), "empty owned folder removed, like ");
 
     const busy = path.join(root, "busy-deck");
     fs.mkdirSync(busy, { recursive: true });

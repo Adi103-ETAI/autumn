@@ -1,4 +1,4 @@
-// autumn — renderer bridge adapter (Wave-0 migration M2, doc 30 §7).
+// autumn — renderer bridge adapter (the migration to the facade).
 //
 // The ONLY way the renderer talks to the backend: every former HTTP API call
 // site now goes through `window.autumn.*` — the IPC facade injected by
@@ -11,7 +11,7 @@
 //        { ok: false, error }   -> throws BridgeError { code, message, detail }
 //      so call sites read plain values exactly like they read `await r.json()`,
 //   3. fails loudly when the bridge is absent (web mode is gone by design —
-//      the app runs inside Electron; see doc 29 decision §6),
+//      the app runs inside Electron; see docs/architecture/ipc-facade.md),
 //   4. optionally enforces a timeout (parity with the old fetchWithTimeout).
 //
 // NO HTTP client lives in this file — that invariant is asserted by the M3
@@ -133,7 +133,7 @@ export function subscribe<T = unknown>(path: string, cb: (payload: T) => void): 
 }
 
 // ---------------------------------------------------------------------------
-// Typed helpers for the M2 call sites (doc 30 §7 mapping table).
+// Typed helpers for the call sites (the facade mapping table).
 // Each helper's result type mirrors the old route's JSON body, so call sites
 // change as little as possible.
 // ---------------------------------------------------------------------------

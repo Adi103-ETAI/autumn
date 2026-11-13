@@ -1,6 +1,6 @@
 "use strict";
 // W2-11 integration tests — the media + video-editor pipelines against the
-// REAL tools on this machine (doc 32 §2h).
+// REAL tools on this machine (docs/architecture/backend.md).
 //
 // These are skipped when the tool is absent, so the suite stays green on a
 // machine without ffmpeg / Remotion — but where the tool IS present, the test

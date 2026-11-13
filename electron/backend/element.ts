@@ -1,7 +1,7 @@
-// autumn — Wave-2 handlers: element (1 dispatchable; doc 32 §W2-1).
+// autumn — Wave-2 handlers: element (1 dispatchable; docs/architecture/backend.md-1).
 //
-// RE: element.resolve(...) — the target's design-element resolution hook. No
-// semantics are documented in the RE evidence beyond the call site; the honest
+// element.resolve(...) — the design-element resolution hook. No
+// semantics are documented in the evidence beyond the call site; the honest
 // reading: given a renderer-side element descriptor (tag + attrs), normalize it
 // into a canonical, validated shape with a stable id the canvas can re-attach.
 //

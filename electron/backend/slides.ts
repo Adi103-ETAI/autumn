@@ -1,35 +1,35 @@
 // autumn — Wave-2 handlers: slides (4 dispatchable: create/start/stop/status;
-// doc 32 §2h). `create`/`stop` are dormant in the current renderer but part of
-// the target surface, so they dispatch with the same RE semantics.
+// docs/architecture/backend.md). `create`/`stop` are dormant in the current renderer but part of
+// the contract surface, so they dispatch with the same semantics.
 //
-// RE-derived (October out/main/index.js):
-//   slidesCreate(name, parent) → slug (default name, RE default "october" →
+// The contract:
+//   slidesCreate(name, parent) → slug (default name, default "autumn" →
 //     autumn "autumn") + randomUUID().slice(0,8) + "-slides" folder directly in
 //     defaultProjectsDir(); when `parent` is an OWNED folder it nests instead
 //     via freeChildName(parent, "slides") (taken = exists AND non-empty →
 //     "slides-2", "slides-3", …). Returns the folder path; mkdir -p.
 //   slidesStart(folder) → ownership gate returns an ERROR STATE (not an error
-//     envelope — RE setState(folder, {status:"error", message})): "points
+//     envelope — setState(folder, {status:"error", message})): "points
 //     outside <root>'s projects folder…". Busy states (running/starting/
-//     installing/scaffolding) return the current state untouched. RE then runs
+//     installing/scaffolding) return the current state untouched. then runs
 //     a dev server for the deck.
 //   slidesStatus(folder) → decks.get(folder)?.state ?? {folder, status:"idle"}.
 //   slidesStop(folder) → drop the running server, setState idle, and remove an
-//     OWNED folder that has become empty (RE rmSync cleanup).
+//     OWNED folder that has become empty (rmSync cleanup).
 //
-// autumn design (doc 32 §2h): no server —
+// autumn design (docs/architecture/backend.md): no server —
 //   start in DECK mode ({title, slides}) renders a real self-contained deck
 //   HTML (cover + numbered slides, keyboard ←/→/Space nav) to
 //   <userData>/slides/<deckId>.html and opens it fullscreen in a
 //   BrowserWindow; without the Electron runtime the HTML is still really
 //   rendered and the result reports {opened:false, reason} — the persisted
 //   record never claims active:true for a window that was never shown.
-//   start in FOLDER mode (positional folder string — the RE renderer shape)
-//   behaves like RE (ownership error-state; opens <folder>/index.html
+//   start in FOLDER mode (positional folder string — the renderer shape)
+//   behaves like (ownership error-state; opens <folder>/index.html
 //   fullscreen when the folder is owned and has an entry file).
 //
 // status returns the persisted deck record {active, deckId, openedAt, slides}
-// (deck mode, doc §2h) or the folder state (RE shape). Closing the window
+// (deck mode, doc §2h) or the folder state (shape). Closing the window
 // (real "closed" trigger) marks the record inactive. No manifest event exists
 // for this namespace, so state updates are file/in-memory only.
 //
@@ -48,7 +48,7 @@ import type { W1Deps } from "./w1-deps";
 import { dbPath, loadJson, saveJson, userDataDir } from "./store";
 import { paramsOf, str, lazyElectron, isOwnedFolder, projectsRoot } from "./params";
 
-/** RE freeChildName: "taken" means exists AND non-empty. */
+/** freeChildName: "taken" means exists AND non-empty. */
 function freeChildName(parent: string, name: string): string {
   const taken = (leaf: string): boolean => {
     try {
@@ -127,7 +127,7 @@ function writeDeck(deck: DeckRecord | null): void {
 /**
  * Real deck render — self-contained HTML: cover + numbered slides, keyboard
  * ←/→/Space navigation, slide counter. No network, no deps; this file IS the
- * deck (doc 32 §2h "simple engine").
+ * deck (docs/architecture/backend.md "simple engine").
  */
 export function renderDeckHtml(title: string, slides: unknown[]): string {
   const esc = (s: string) =>
@@ -196,7 +196,7 @@ ${sections}
 export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
   const { now } = deps;
 
-  // RE keeps folder states in an in-memory map — ported verbatim.
+  // keeps folder states in an in-memory map — ported verbatim.
   const decks = new Map<string, FolderState>();
   // Live windows (module scope; cleared on stop / close).
   const windows = new Map<string, { win: any }>();
@@ -244,7 +244,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "slides.create",
       description:
-        "create a slide-deck folder (RE slidesCreate: slug + uuid8 + '-slides'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (exists AND non-empty → slides-2, …); returns the folder path",
+        "create a slide-deck folder (slidesCreate: slug + uuid8 + '-slides'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (exists AND non-empty → slides-2, …); returns the folder path",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const name = obj.name !== undefined ? (obj.name as string) : typeof pos[0] === "string" ? pos[0] : undefined;
@@ -265,7 +265,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "slides.start",
       description:
-        "start a slide deck — DECK mode {title, slides} (doc 32 §2h): renders real deck HTML to <userData>/slides/<id>.html and opens it fullscreen (opened:false + reason without the Electron runtime); FOLDER mode (positional folder, RE slidesStart): ownership gate → RE error-state shape, then opens <folder>/index.html fullscreen",
+        "start a slide deck — DECK mode {title, slides} (docs/architecture/backend.md): renders real deck HTML to <userData>/slides/<id>.html and opens it fullscreen (opened:false + reason without the Electron runtime); FOLDER mode (positional folder, slidesStart): ownership gate → error-state shape, then opens <folder>/index.html fullscreen",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const deckMode = obj.title !== undefined || obj.slides !== undefined;
@@ -296,7 +296,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
           return record;
         }
 
-        // ----- folder mode (RE slidesStart) ----------------------------------
+        // ----- folder mode (slidesStart) ----------------------------------
         const folder = obj.folder !== undefined ? (obj.folder as string) : typeof pos[0] === "string" ? pos[0] : undefined;
         if (!isOwnedFolder(folder)) {
           return setState(folder as unknown as string, {
@@ -337,7 +337,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "slides.status",
       description:
-        "deck/folder status — with a folder argument: RE slidesStatus → {folder, status, …} state (default {status:'idle'}); without: the persisted deck record {active, deckId, openedAt?, slides, reason?} (doc 32 §2h)",
+        "deck/folder status — with a folder argument: slidesStatus → {folder, status, …} state (default {status:'idle'}); without: the persisted deck record {active, deckId, openedAt?, slides, reason?} (docs/architecture/backend.md)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = obj.folder !== undefined ? (obj.folder as string) : typeof pos[0] === "string" ? pos[0] : undefined;
@@ -353,7 +353,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "slides.stop",
       description:
-        "stop a deck — folder argument: RE slidesStop (close view, state → idle, remove an OWNED folder that became empty); otherwise close the active deck window and clear the persisted record → {active:false, deckId?}",
+        "stop a deck — folder argument: slidesStop (close view, state → idle, remove an OWNED folder that became empty); otherwise close the active deck window and clear the persisted record → {active:false, deckId?}",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = obj.folder !== undefined ? (obj.folder as string) : typeof pos[0] === "string" ? pos[0] : undefined;
@@ -373,7 +373,7 @@ export function makeSlidesHandlers(deps: W1Deps): RegisteredHandler[] {
             try {
               if (readdirSync(folder).length === 0) rmSync(folder, { recursive: true, force: true });
             } catch {
-              /* leave it — cleanup is best effort, like RE */
+              /* leave it — cleanup is best effort, like */
             }
           }
           return state;

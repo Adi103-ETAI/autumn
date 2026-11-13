@@ -1,5 +1,5 @@
 "use strict";
-// Layer-1 units for the canvas command queue (doc 31 §4): headless — no
+// Layer-1 units for the canvas command queue (docs/architecture/backend.md): headless — no
 // Electron, no Prisma, no network. Deps are FAKED (only the members w1-canvas
 // calls: db.canvas.findUnique/update/upsert, emit, now) — the fake canvas row
 // really parse/stringifies its `state` JSON, so the queue round-trips through
@@ -173,7 +173,7 @@ test("queue is per-canvas; commandResult ok:false resolves as failed", async () 
   assert.equal(q[0].command, "b"); // the resolved one is gone, the other stays
 });
 
-// ---------------- events (doc 31 §3) ----------------
+// ---------------- events (docs/architecture/backend.md) ----------------
 
 test("events: stage emits onCanvasCommand; result emits onCanvasCommandResolved — nothing else", async () => {
   const { call, state } = build();

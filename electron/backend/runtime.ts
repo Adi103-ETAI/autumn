@@ -1,7 +1,7 @@
-// autumn — Wave-2 handlers: runtime (3 dispatchable + onProgress push; doc 32 §W2-2).
+// autumn — Wave-2 handlers: runtime (3 dispatchable + onProgress push; docs/architecture/backend.md-2).
 //
-// RE: runtime.ensureNode (no args → identity of the bundled Node), runtime.installOctober /
-// runtime.removeOctober (install/delete the October runtime — autumn IS the runtime;
+// runtime.ensureNode (no args → identity of the bundled Node), runtime.installCloudRuntime /
+// runtime.removeCloudRuntime (install/delete the hosted runtime — autumn IS the runtime;
 // there is nothing to install), runtime.onProgress (only on REAL ensureNode work —
 // ensureNode is a probe, so no progress events are ever emitted).
 
@@ -31,29 +31,29 @@ export function makeRuntimeHandlers(deps: W1Deps): RegisteredHandler[] {
     },
     {
       kind: "bridge",
-      id: "runtime.installOctober",
+      id: "runtime.installCloudRuntime",
       description:
-        "install the October runtime; params: {} -> not-implemented (autumn IS the runtime — nothing to download/install)",
+        "install the hosted runtime; params: {} -> not-implemented (autumn IS the runtime — nothing to download/install)",
       schema: () => ({ ok: true }),
       handler: () => ({
         ok: false,
         error: {
           code: "not-implemented",
-          message: "autumn bundles its runtime — installOctober is a no-op for this product (nothing exists to install)",
+          message: "autumn bundles its runtime — installCloudRuntime is a no-op for this product (nothing exists to install)",
         },
       }),
     },
     {
       kind: "bridge",
-      id: "runtime.removeOctober",
+      id: "runtime.removeCloudRuntime",
       description:
-        "remove the October runtime; params: {} -> not-implemented (removing the runtime would brick the app — not a supported operation)",
+        "remove the hosted runtime; params: {} -> not-implemented (removing the runtime would brick the app — not a supported operation)",
       schema: () => ({ ok: true }),
       handler: () => ({
         ok: false,
         error: {
           code: "not-implemented",
-          message: "removeOctober is not a supported operation — the runtime ships with autumn (uninstall autumn instead)",
+          message: "removeCloudRuntime is not a supported operation — the runtime ships with autumn (uninstall autumn instead)",
         },
       }),
     },

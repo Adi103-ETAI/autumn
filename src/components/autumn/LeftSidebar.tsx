@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 
 import { useAutumnStore } from "@/lib/autumn/store";
+import { AutumnLogo } from "@/components/autumn/AutumnLogo";
 import type {
   ProjectFile,
   ProjectFileCategory,
@@ -230,6 +231,17 @@ export function LeftSidebar() {
     <div className="flex h-full shrink-0 bg-sidebar/60 backdrop-blur-md border-r border-border/50">
       {/* ---- Icon rail (48px, always visible) ---- */}
       <div className="flex w-12 shrink-0 flex-col items-center justify-between border-r border-border/40 bg-sidebar/40 py-2">
+        {/* the brand mark */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="mb-1 flex size-9 items-center justify-center" aria-label="Autumn">
+              <AutumnLogo size={22} />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={6}>
+            Autumn
+          </TooltipContent>
+        </Tooltip>
         <div className="flex flex-col items-center gap-1">
           {TABS.map((tab) => {
             const Icon = tab.icon;

@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the video bridge ids (doc 32 W2-5 §2h). 4 ids, no
+// layer-1 tests for the video bridge ids (docs/architecture/backend.md W2-5 §2h). 4 ids, no
 // boundary ids: every capability gate is {supported:false} (ffmpeg absent,
 // no dialog without Electron) — never a fake path, never fake output.
 // Subtitle/bgm run REAL child processes through deps.spawn (faked here),

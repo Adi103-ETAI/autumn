@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the cues bridge ids (doc 32 W2-2). Real temp userData store,
+// layer-1 tests for the cues bridge ids (docs/architecture/backend.md W2-2). Real temp userData store,
 // FAKE spawn dep (no real processes).
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");

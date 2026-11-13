@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: artifacts (12 dispatchable + artifacts.onChanged push; doc 31).
+// autumn — Wave-1 handlers: artifacts (12 dispatchable + artifacts.onChanged push; docs/architecture/backend.md).
 //
 // Backing is REAL Prisma: Artifact / ArtifactVersion (canvasId is a plain
 // string, no FK — artifacts may outlive a canvas row). `onChanged` is a push

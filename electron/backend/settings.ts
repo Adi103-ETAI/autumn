@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: settings (4 dispatchable + onSshServersChanged push; doc 32 §W2-1).
+// autumn — Wave-2 handlers: settings (4 dispatchable + onSshServersChanged push; docs/architecture/backend.md-1).
 //
-// RE-faithful call shapes (autumn/05-renderer.md, 09-renderer-deep-dive.md):
+// The call shapes:
 //   settings.get()      — NO params; returns the WHOLE settings document
 //   settings.set(patch) — merges a partial patch object (e.g. { wallpaper }, { onboardingCompletedAt })
 //   settings.authStatus — NO params; returns { keychainAvailable, providerMode? }
@@ -20,7 +20,7 @@ const badParams = (message: string) => ({
 });
 
 const KEY_RE = /^[a-zA-Z0-9._-]{1,64}$/;
-/** Keys cleared by resetFtue — the FTUE/onboarding surface (RE: onboardingCompletedAt). */
+/** Keys cleared by resetFtue — the FTUE/onboarding surface (onboardingCompletedAt). */
 const FTUE_KEYS = ["ftue", "onboarding", "onboardingCompletedAt", "onboarding-step", "onboardingStep"];
 const SSH_KEYS = new Set(["sshServers", "ssh.servers", "ssh"]);
 
@@ -58,7 +58,7 @@ export function makeSettingsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "settings.get",
       description:
-        "read the whole settings document (RE: no params); params: {} -> the settings object; autumn extension: { key } returns { found, value }",
+        "read the whole settings document (no params); params: {} -> the settings object; autumn extension: { key } returns { found, value }",
       schema: (p) =>
         p?.key === undefined || (typeof p.key === "string" && KEY_RE.test(p.key))
           ? { ok: true }
@@ -76,7 +76,7 @@ export function makeSettingsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "settings.set",
       description:
-        "merge a partial settings patch (RE: object); params: { <patch keys> } -> { ok: true, settings }",
+        "merge a partial settings patch (object); params: { <patch keys> } -> { ok: true, settings }",
       schema: (p) => {
         if (!p || typeof p !== "object" || Array.isArray(p)) {
           return { ok: false, message: "a patch object is required" };
@@ -139,7 +139,7 @@ export function makeSettingsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "settings.authStatus",
       description:
-        "settings-storage security status (RE: no params); params: {} -> { keychainAvailable, providerMode? }",
+        "settings-storage security status (no params); params: {} -> { keychainAvailable, providerMode? }",
       schema: () => ({ ok: true }),
       handler: () => {
         const current = readSettings();

@@ -1,8 +1,8 @@
 "use strict";
-// layer-1 tests for the voice bridge ids (doc 32 W2-5 §2f). 10 real ids
+// layer-1 tests for the voice bridge ids (docs/architecture/backend.md W2-5 §2f). 10 real ids
 // (mic platform probes, OS TTS, mic control, BYO tokens, usage, cache) +
 // 5 permanent boundary ids (compile/cancelCompile/intentReady/parakeet/
-// voicePack — doc 32 §2a). No network: the BYO token mints must answer
+// voicePack — docs/architecture/backend.md). No network: the BYO token mints must answer
 // {supported:false} when the env key is absent and NEVER fabricate a token.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
@@ -210,7 +210,7 @@ test("ensureMicAccess: boolean (linux → true without Electron; win32 → not-d
   const ok = await call("voice.ensureMicAccess", {});
   assert.equal(typeof ok, "boolean");
   if (process.platform === "darwin") assert.equal(ok, false, "cannot prompt without Electron — honest false");
-  else assert.equal(ok, true, process.platform === "win32" ? "win32: no denied status without the API" : "RE: other platforms → true");
+  else assert.equal(ok, true, process.platform === "win32" ? "win32: no denied status without the API" : "other platforms → true");
 });
 
 test("openMicSettings: {opened:false, guidance} without the Electron shell (deviation, not an envelope)", async () => {
@@ -222,7 +222,7 @@ test("openMicSettings: {opened:false, guidance} without the Electron shell (devi
   assert.equal(typeof res.guidance, "string");
 });
 
-test("speak: positional text, sliced to 500 chars; no TTS on PATH → false (awaited boolean, RE shape)", async () => {
+test("speak: positional text, sliced to 500 chars; no TTS on PATH → false (awaited boolean, shape)", async () => {
   useTempUserData();
   const { call, state } = build();
   const res = await withPath("", () => call("voice.speak", "hello world"));
@@ -318,10 +318,10 @@ test("mic record mode: ffmpeg gated → {supported:false}; with a fake bin, star
   });
 });
 
-test("reportUsage: RE shape counts sessions+seconds; unusable shape → {ok:false, code:'invalid_request'}", async () => {
+test("reportUsage: shape counts sessions+seconds; unusable shape → {ok:false, code:'invalid_request'}", async () => {
   const dir = useTempUserData();
   const { call } = build();
-  // RE validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue,
+  // validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue,
   // desktop-voice}, seconds an integer 0..3600.
   const okRes = await call("voice.reportUsage", { sessionId: "session-0001", purpose: "desktop-voice", seconds: 42 });
   assert.equal(okRes.ok, true);
@@ -334,7 +334,7 @@ test("reportUsage: RE shape counts sessions+seconds; unusable shape → {ok:fals
   assert.equal(docRes.usage.byKind.tts.count, 1);
   assert.equal(docRes.usage.byKind.tts.ms, 500);
 
-  // RE rejections.
+  // rejections.
   assert.deepEqual(await call("voice.reportUsage", { sessionId: "s" }), { ok: false, code: "invalid_request" }, "sessionId too short");
   assert.deepEqual(
     await call("voice.reportUsage", { sessionId: "session-0001", purpose: "dictation", seconds: 5 }),
@@ -344,7 +344,7 @@ test("reportUsage: RE shape counts sessions+seconds; unusable shape → {ok:fals
   assert.deepEqual(
     await call("voice.reportUsage", { sessionId: "session-0001", purpose: "desktop-voice", seconds: 99999 }),
     { ok: false, code: "invalid_request" },
-    "seconds beyond the RE maximum",
+    "seconds beyond the maximum",
   );
   assert.deepEqual(await call("voice.reportUsage", {}), { ok: false, code: "invalid_request" });
 
@@ -352,7 +352,7 @@ test("reportUsage: RE shape counts sessions+seconds; unusable shape → {ok:fals
   assert.equal(persisted.sessions, 1, "counters persist for real");
 });
 
-test("deleteOldModel: stale cache files removed, fresh ones kept → {deleted, freedMb} (RE shape)", async () => {
+test("deleteOldModel: stale cache files removed, fresh ones kept → {deleted, freedMb} (shape)", async () => {
   const dir = useTempUserData();
   const { call } = build();
   const cache = path.join(dir, "voice", "cache");
@@ -371,7 +371,7 @@ test("deleteOldModel: stale cache files removed, fresh ones kept → {deleted, f
   assert.ok(fs.existsSync(freshFile), "fresh file must survive");
 });
 
-test("BYO tokens: no key → the RE refusal shape — never a fabricated token", async () => {
+test("BYO tokens: no key → the refusal shape — never a fabricated token", async () => {
   useTempUserData();
   const { call } = build();
   await withoutKeys(async () => {
@@ -389,7 +389,7 @@ test("BYO tokens: no key → the RE refusal shape — never a fabricated token",
   });
 });
 
-test("BYO tokens: the key may come from the SETTINGS document (RE: getSettings().openaiApiKey)", async () => {
+test("BYO tokens: the key may come from the SETTINGS document (getSettings().openaiApiKey)", async () => {
   useTempUserData();
   const { call } = build();
   await withoutKeys(async () => {
@@ -403,7 +403,7 @@ test("BYO tokens: the key may come from the SETTINGS document (RE: getSettings()
   });
 });
 
-test("deepgramToken: an invalid purpose → the RE invalid_request refusal", async () => {
+test("deepgramToken: an invalid purpose → the invalid_request refusal", async () => {
   useTempUserData();
   const { call } = build();
   await withoutKeys(async () => {

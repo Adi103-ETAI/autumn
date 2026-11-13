@@ -1,7 +1,7 @@
 // autumn — Wave-2 handlers: browser (11 dispatchable + browser.onActivity /
-// browser.onPresentationStopped pushes; doc 32 §2e) — FULL (W2-8).
+// browser.onPresentationStopped pushes; docs/architecture/backend.md) — FULL (W2-8).
 //
-// RE-derived (October out/preload/index.js + out/main/index.js):
+// The contract:
 //   register(canvasId, nodeId, webContentsId, document)   — positional
 //   unregister(canvasId, nodeId, webContentsId)            — positional
 //   setLinks(canvasId, pairs, document, opts{waitMs})      — pairs = [pattern, browserId]
@@ -18,9 +18,9 @@
 //   events: browser:profiles:changed, browser:import:progress,
 //           browser-activity, browser-presentation-stopped
 //
-// autumn design (doc 32 §2e) — a LOCAL-FIRST browser pane:
+// autumn design (docs/architecture/backend.md) — a LOCAL-FIRST browser pane:
 //   * profiles are REAL Electron session partitions (`persist:autumn-bp-<uuid>`)
-//     with an agent-access policy (allowed|ask|blocked, the RE's RANK order),
+//     with an agent-access policy (allowed|ask|blocked, the RANK order),
 //     per-profile history/download state, and node↔profile bindings;
 //   * the state lives under <userData>/browser/ (profiles.json, history.json,
 //     downloads.json, links.json, views.json, preview.json);
@@ -32,7 +32,7 @@
 //     presented window really closes.
 //
 // Deviations from the target (documented, not silent):
-//   * partition/profile naming uses `autumn`, never `october`;
+//   * the partition/profile naming uses `autumn`;
 //   * importing credentials straight out of Chrome/Edge/Safari needs the OS
 //     keychain, which autumn does not take — `import.sources` DETECTS the
 //     installed browsers for real, `import.run` really imports a cookie file
@@ -65,13 +65,13 @@ const handlerError = (message: string) => ({
 });
 
 const HISTORY_CAP = 500;
-/** The default (embedded) profile's partition — the RE's LEGACY_PARTITION. */
+/** The default (embedded) profile's partition — the LEGACY_PARTITION. */
 const DEFAULT_PARTITION = "persist:autumn-embedded";
 const PROFILE_PARTITION_PREFIX = "persist:autumn-bp-";
 const DEFAULT_PROFILE_ID = "default";
 const MAX_PROFILE_NAME = 64;
 
-/** RE agent-access ladder (most restrictive wins): allowed < ask < blocked. */
+/** agent-access ladder (most restrictive wins): allowed < ask < blocked. */
 type AgentAccess = "allowed" | "ask" | "blocked";
 const ACCESS_RANK: Record<AgentAccess, number> = { allowed: 0, ask: 1, blocked: 2 };
 
@@ -274,7 +274,7 @@ interface ImportSource {
   kind: string;
 }
 
-/** Known browser profile roots per platform (RE has the same idea). */
+/** Known browser profile roots per platform (has the same idea). */
 function knownBrowserRoots(): ImportSource[] {
   const home = homedir();
   const p = platform();
@@ -377,9 +377,9 @@ function sessionFor(partition: string): any | null {
 export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
   const { emit } = deps;
 
-  /** Live preview leases, keyed by lease id (RE: WorkspacePreviews). */
+  /** Live preview leases, keyed by lease id (WorkspacePreviews). */
   const previews = new Map<string, { view: any; canvasId: string; nodeId: string; partition: string }>();
-  /** The live import job (one at a time, like the RE). */
+  /** The live import job (one at a time, like the). */
   let importJob: { id: string; startedAt: number; cancelled: boolean } | null = null;
 
   // ----- local session helpers ------------------------------------------------
@@ -409,7 +409,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.register",
       description:
-        "register a canvas browser view; params: {canvasId, nodeId, webContentsId?, document?} (RE positional) -> {registered, views} — attaches a REAL did-navigate listener when the webContents exists",
+        "register a canvas browser view; params: {canvasId, nodeId, webContentsId?, document?} (positional) -> {registered, views} — attaches a REAL did-navigate listener when the webContents exists",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return (ostr(obj, "canvasId") ?? pos[0]) && (ostr(obj, "nodeId") ?? pos[1])
@@ -418,7 +418,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       },
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
-        // RE positional: (canvasId, nodeId, webContentsId, document).
+        // positional: (canvasId, nodeId, webContentsId, document).
         const canvasId = ostr(obj, "canvasId") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
         const nodeId = ostr(obj, "nodeId") ?? (typeof pos[1] === "string" ? pos[1] : undefined);
         if (!canvasId || !nodeId) return badParams("canvasId and nodeId required");
@@ -465,7 +465,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.unregister",
       description:
-        "unregister a canvas browser view; params: {canvasId, nodeId, webContentsId?} (RE positional) -> {unregistered, views}",
+        "unregister a canvas browser view; params: {canvasId, nodeId, webContentsId?} (positional) -> {unregistered, views}",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return (ostr(obj, "canvasId") ?? pos[0]) && (ostr(obj, "nodeId") ?? pos[1])
@@ -489,7 +489,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.profiles",
       description:
-        "browser profiles (RE profile manager); params: {} or {action:'list'} -> profile views | {action:'resolve', canvasId?, nodeId?} -> the bound profile | {action:'create', name} | {action:'rename', id, name} | {action:'duplicate', id, name?} | {action:'clear', id} | {action:'delete', id} | {action:'setAgentAccess', id, access} | {action:'bind', scope/canvasId, nodeId, id} | {action:'discardUnrecoverable'} — real session partitions (persist:autumn-bp-<uuid>)",
+        "browser profiles (profile manager); params: {} or {action:'list'} -> profile views | {action:'resolve', canvasId?, nodeId?} -> the bound profile | {action:'create', name} | {action:'rename', id, name} | {action:'duplicate', id, name?} | {action:'clear', id} | {action:'delete', id} | {action:'setAgentAccess', id, access} | {action:'bind', scope/canvasId, nodeId, id} | {action:'discardUnrecoverable'} — real session partitions (persist:autumn-bp-<uuid>)",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const action = str(obj, pos, "action") ?? "list";
@@ -581,7 +581,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
           const removed = (h[partitionFor(p)] ?? []).length;
           delete h[partitionFor(p)];
           writeHistory(h);
-          // The RE keeps the imported-credential flag but drops the credentials.
+          // The keeps the imported-credential flag but drops the credentials.
           if (p.imported) p.imported = { ...p.imported, credentials: false };
           writeProfileStore(store);
           return { cleared: true, id, storage, history: removed };
@@ -611,7 +611,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
           }
           const p = findProfile(store, id);
           if (!p) return notFound(`no profile ${id}`);
-          // RE: loosening the policy on a profile that holds imported
+          // loosening the policy on a profile that holds imported
           // credentials needs an explicit review.
           const loosening = ACCESS_RANK[access as AgentAccess] < ACCESS_RANK[p.agentAccess];
           const review = obj.review as { kind?: string } | undefined;
@@ -657,7 +657,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.history",
       description:
-        "query page history; params: {action:'query', prefix?, profileId?, limit?} or RE positional (document, canvasId, nodeId, prefix) — prefix string ≤256 (else 'Invalid history query.') -> newest-first entries (cap 500); {action:'clear', id?} wipes the partition",
+        "query page history; params: {action:'query', prefix?, profileId?, limit?} or positional (document, canvasId, nodeId, prefix) — prefix string ≤256 (else 'Invalid history query.') -> newest-first entries (cap 500); {action:'clear', id?} wipes the partition",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const action = str(obj, pos, "action") ?? "query";
@@ -671,7 +671,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
           return { cleared: n };
         }
         if (action !== "query") return badParams(`unknown history action: ${action}`);
-        // RE positional prefix sits last: (document, canvasId, nodeId, prefix).
+        // positional prefix sits last: (document, canvasId, nodeId, prefix).
         const prefix = obj.prefix !== undefined ? obj.prefix : pos.length ? pos[pos.length - 1] : undefined;
         if (prefix !== undefined && (typeof prefix !== "string" || prefix.length > 256)) {
           return badParams("Invalid history query.");
@@ -791,7 +791,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
           } else {
             profile.imported = { source: "cookie-file", credentials: imported > 0, via: "import", at: Date.now() };
           }
-          // Imported credentials always tighten the policy to "ask" (RE rule).
+          // Imported credentials always tighten the policy to "ask" (rule).
           if (imported > 0 && profile.agentAccess === "allowed") profile.agentAccess = "ask";
           writeProfileStore(store);
           return { status: cancelled ? "cancelled" : "ok", imported, failed, total: cookies.length, profileId, cancelled };
@@ -820,7 +820,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.setLinks",
       description:
-        "set the popup/external link policy; params: {allowlist:[string|{pattern}], profileId?} or RE positional (canvasId, pairs, document, opts{waitMs}) -> {links, applied, ready, pendingBrowserIds} — persisted and applied to every registered view of the canvas",
+        "set the popup/external link policy; params: {allowlist:[string|{pattern}], profileId?} or positional (canvasId, pairs, document, opts{waitMs}) -> {links, applied, ready, pendingBrowserIds} — persisted and applied to every registered view of the canvas",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         const allowlist = obj.allowlist ?? obj.pairs ?? pos[1];
@@ -862,7 +862,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
             /* view gone */
           }
         }
-        // RE: the browser ids named by the pairs must be live before the
+        // the browser ids named by the pairs must be live before the
         // policy is considered applied.
         const wanted = new Set(rules.map((r) => r.browserId).filter((x): x is string => typeof x === "string"));
         const pendingBrowserIds = [...wanted].filter(
@@ -883,7 +883,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.clearData",
       description:
-        "clear browser state; params: {profileId?} (RE positional document/canvasId/nodeId) -> {cleared, history, storage} — real history wipe always; session cookies/storage/cache only with the Electron session",
+        "clear browser state; params: {profileId?} (positional document/canvasId/nodeId) -> {cleared, history, storage} — real history wipe always; session cookies/storage/cache only with the Electron session",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const canvasId = ostr(obj, "canvasId");
@@ -918,11 +918,11 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.capture",
       description:
-        "screenshot a registered browser view; params: {nodeId|canvasId, destDir} or RE positional (canvasId, nodeId, destDir, options) / renderer (id, dest) -> {path, bytes} | null when no live view exists (renderer treats null as capture-failed — honest)",
+        "screenshot a registered browser view; params: {nodeId|canvasId, destDir} or positional (canvasId, nodeId, destDir, options) / renderer (id, dest) -> {path, bytes} | null when no live view exists (renderer treats null as capture-failed — honest)",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         // Renderer calls capture(id, dest): two positional strings where the
-        // LAST is the destination. RE's own shape is (canvasId, nodeId, destDir,
+        // LAST is the destination. own shape is (canvasId, nodeId, destDir,
         // options) — also last-is-destination, first-is-the-view-key. Object
         // callers pass named fields (ostr — never scan past the first pos).
         const strings = pos.filter((x): x is string => typeof x === "string");
@@ -952,10 +952,10 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.present",
       description:
-        "present a browser in a standalone window; params: {url} or RE positional (canvasId, cloudCanvasId, nodeId, enabled) -> {presented, url} (window close emits browser.onPresentationStopped) | enabled:false → stop; a non-boolean enabled → bad-params 'Choose whether to present this browser.'; {supported:false} headless",
+        "present a browser in a standalone window; params: {url} or positional (canvasId, cloudCanvasId, nodeId, enabled) -> {presented, url} (window close emits browser.onPresentationStopped) | enabled:false → stop; a non-boolean enabled → bad-params 'Choose whether to present this browser.'; {supported:false} headless",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
-        // RE positional: (canvasId, cloudCanvasId, nodeId, enabled).
+        // positional: (canvasId, cloudCanvasId, nodeId, enabled).
         const enabled = pick(obj, pos, "enabled", 3);
         const url = ostr(obj, "url");
         const stop = obj.action === "stop" || enabled === false;
@@ -1006,7 +1006,7 @@ export function makeBrowserHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "browser.workspacePreview",
       description:
-        "dock a browser preview in the Autumn window; params: {action:'request', url?, dock?} | {action:'release', leaseId} | {action:'session'} — a real WebContentsView in the workspace area; {supported:false, reason} without the Electron runtime (doc 32 §2e)",
+        "dock a browser preview in the Autumn window; params: {action:'request', url?, dock?} | {action:'release', leaseId} | {action:'session'} — a real WebContentsView in the workspace area; {supported:false, reason} without the Electron runtime (docs/architecture/backend.md)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const action = str(obj, pos, "action") ?? "request";

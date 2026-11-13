@@ -1,12 +1,12 @@
-// autumn — Wave-2 handlers: backends (23 dispatchable; doc 32 §2d) — FULL (W2-7).
+// autumn — Wave-2 handlers: backends (23 dispatchable; docs/architecture/backend.md) — FULL (W2-7).
 //
-// RE-derived (October out/main/index.js + CanvasView renderer chunk):
+// The contract:
 //   list()            → array of backend entities
 //   create(input)     → {kind, title, …}; kind ∈ supabase|convex|concurred
 //   update(input)     → {id, title?, autoApply?, useLocalForDev?, …}
 //   remove(id)        → positional id
 //   link(input)       → {id, app, projectPath, framework}; bindings keyed by app
-//   unlink(input)     → {id, app} (RE: "unlink needs id and app")
+//   unlink(input)     → {id, app} ("unlink needs id and app")
 //   pending(id)       → ARRAY of pending changes {id, backendId, app, file, sql, status}
 //   approve(changeId) / reject(changeId)
 //   query({id, sql})  → read-only SQL → {columns, rows}
@@ -14,13 +14,13 @@
 //   peek({id, table}) → {columns, rows, error?}
 //   ask({id, question})→ {kind: "read"|"change"|"error", sql, result|file, message}
 //   scaffoldClient({id, app}) → {written: [rel]}
-//   listOrgs(token)   → orgs (RE needs an sbp_ Supabase token)
+//   listOrgs(token)   → orgs (needs an sbp_ Supabase token)
 //   provision(input)  → creates a cloud project (orgId/name/region/dbPass/accessToken)
-//   localStart/Stop/Status(id) → the local stack (RE: `supabase start` + Docker)
-//   sync({id, direction}) → direction MUST be push|pull (RE throws otherwise)
+//   localStart/Stop/Status(id) → the local stack (`supabase start` + Docker)
+//   sync({id, direction}) → direction MUST be push|pull (throws otherwise)
 //   convexAuthStatus / convexLogin / convexCreate → §2a boundary ids
 //
-// autumn design (doc 32 §2d): a LOCAL-FIRST mini data platform — named
+// autumn design (docs/architecture/backend.md): a LOCAL-FIRST mini data platform — named
 // backends on disk with typed collection schemas, a guarded destructive-op
 // queue, and a REAL local runtime (a node:http data service on 127.0.0.1 —
 // the local analogue of `supabase start` + PostgREST, without Docker).
@@ -38,14 +38,14 @@
 //   - cloud backends (supabase/convex/concurred) are a PLATFORM BOUNDARY:
 //     `create` with a cloud kind and the 3 convex* ids answer the
 //     not-implemented envelope. autumn's own kind is "local".
-//   - `query` accepts BOTH the RE read-only SQL ({id, sql}) and autumn's
+//   - `query` accepts BOTH the read-only SQL ({id, sql}) and autumn's
 //     structured form ({id, collection, filter, sort, limit}). The SQL parser
 //     is a strict read-only subset (SELECT/WHERE/ORDER BY/LIMIT/OFFSET) —
 //     anything else is refused, never "executed".
-//   - `pending` answers the RE array shape (the renderer spreads it), each
-//     entry carrying the RE fields (id/backendId/app/file/sql/status).
-//   - `schema` accepts the positional id; `peek` accepts the RE {id, table}
-//     and answers the RE {columns, rows} shape.
+//   - `pending` answers the array shape (the renderer spreads it), each
+//     entry carrying the fields (id/backendId/app/file/sql/status).
+//   - `schema` accepts the positional id; `peek` accepts the {id, table}
+//     and answers the {columns, rows} shape.
 //   - `localStart` starts autumn's own local data service (no Docker, no
 //     Supabase CLI): a real HTTP server on 127.0.0.1 with a real port, the
 //     app-side data API the scaffolded client talks to.
@@ -107,7 +107,7 @@ interface Backend {
   createdAt: number;
   schema: BackendSchema;
 }
-/** RE binding: an app ("web"|"phone") bound to a project path. */
+/** binding: an app ("web"|"phone") bound to a project path. */
 interface Binding {
   app: string;
   projectPath: string;
@@ -127,16 +127,16 @@ interface Registry {
 type ApprovalStatus = "pending" | "approved" | "rejected";
 type ApprovalOp = "dropCollection" | "wipeRows";
 interface Approval {
-  /** RE change id — the renderer calls `backends.approve(change.id)`. */
+  /** change id — the renderer calls `backends.approve(change.id)`. */
   id: string;
   approvalId: string;
   backendId: string;
   app: string;
   op: ApprovalOp;
   collection?: string;
-  /** Human-readable statement of the change (RE shows it in the UI). */
+  /** Human-readable statement of the change (shows it in the UI). */
   sql: string;
-  /** Pseudo path of the queued change (RE: the migration file). */
+  /** Pseudo path of the queued change (the migration file). */
   file: string;
   requestedAt: number;
   status: ApprovalStatus;
@@ -331,7 +331,7 @@ function validateDoc(col: Collection | undefined, doc: unknown): { ok: true; doc
 }
 
 // ---------------------------------------------------------------------------
-// read-only SQL subset (RE `query({id, sql})`)
+// read-only SQL subset (`query({id, sql})`)
 // ---------------------------------------------------------------------------
 
 type FilterOp = "eq" | "neq" | "gt" | "lt" | "gte" | "lte" | "contains" | "like" | "in";
@@ -719,7 +719,7 @@ function writeClient(b: Backend, localUrl: string | null): void {
 }
 
 // ---------------------------------------------------------------------------
-// local data service (the local runtime — RE: `supabase start`)
+// local data service (the local runtime — `supabase start`)
 // ---------------------------------------------------------------------------
 
 type LocalServer = { server: Server; port: number; url: string; startedAt: number };
@@ -766,7 +766,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       id: b.id,
       slug: b.slug,
       name: b.name,
-      title: b.name, // RE field name (the target calls the display name "title")
+      title: b.name, // field name (the target calls the display name "title")
       kind: "local",
       status: "ready",
       description: b.description ?? "",
@@ -955,7 +955,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.create",
       description:
-        "create a local backend; params: {name|title, description?, kind?} — kind 'local' (default) creates a local backend; cloud kinds (supabase/convex/concurred) are a platform-boundary → not-implemented envelope; returns {id, slug, name, title, kind, linkedApps, …} (RE create(input) single object)",
+        "create a local backend; params: {name|title, description?, kind?} — kind 'local' (default) creates a local backend; cloud kinds (supabase/convex/concurred) are a platform-boundary → not-implemented envelope; returns {id, slug, name, title, kind, linkedApps, …} (create(input) single object)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         const name = obj.name ?? obj.title;
@@ -975,7 +975,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
             ok: false,
             error: {
               code: "not-implemented",
-              message: `autumn has no ${kind} cloud backends — cloud kinds are a platform boundary (doc 32 §2a)`,
+              message: `autumn has no ${kind} cloud backends — cloud kinds are a platform boundary (docs/architecture/backend.md)`,
             },
           };
         }
@@ -1004,7 +1004,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.list",
       description:
-        "list backends; params: {} -> rows [{id,slug,name,title,kind,status,linkedApps,linkedProjects,collections,linked,hasLocal}] (RE listBackends)",
+        "list backends; params: {} -> rows [{id,slug,name,title,kind,status,linkedApps,linkedProjects,collections,linked,hasLocal}] (listBackends)",
       handler: () => {
         const r = readRegistry();
         return r.backends.map((row) => {
@@ -1017,7 +1017,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.update",
       description:
-        "update a backend; params: {id, name?|title?, description?} -> row | not-found (RE updateBackend single object; title is the RE field name)",
+        "update a backend; params: {id, name?|title?, description?} -> row | not-found (updateBackend single object; title is the field name)",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return typeof obj.id === "string" || typeof pos[0] === "string"
@@ -1054,7 +1054,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.remove",
       description:
-        "delete a backend; params: {id, confirm:true} | id (positional, RE shape) -> {removed:true} (confirm:true required — destructive, doc 32 §2d)",
+        "delete a backend; params: {id, confirm:true} | id (positional, shape) -> {removed:true} (confirm:true required — destructive, docs/architecture/backend.md §2d)",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return typeof obj.id === "string" || typeof pos[0] === "string"
@@ -1089,7 +1089,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.link",
       description:
-        "link a backend to an app; params: {id, app, projectPath, framework?} (RE shape — bindings are keyed by app) -> row | bad-params/not-found",
+        "link a backend to an app; params: {id, app, projectPath, framework?} (shape — bindings are keyed by app) -> row | bad-params/not-found",
       schema: (p) => {
         const { obj } = paramsOf(p);
         return typeof obj.id === "string" && typeof obj.projectPath === "string"
@@ -1125,7 +1125,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.unlink",
       description:
-        "unlink an app; params: {id, app} (RE shape) or {id, projectPath} -> row | not-found (RE: \"unlink needs id and app\")",
+        "unlink an app; params: {id, app} (shape) or {id, projectPath} -> row | not-found (\"unlink needs id and app\")",
       schema: (p) => {
         const { obj } = paramsOf(p);
         return typeof obj.id === "string" && (typeof obj.app === "string" || typeof obj.projectPath === "string")
@@ -1154,7 +1154,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.schema",
       description:
-        "read/write the schema; params: id (RE positional) or {id} -> {collections, tables, reachable}; {id, collections} writes it (field types string|number|boolean|object|array|datetime, validated) and regenerates client.ts",
+        "read/write the schema; params: id (positional) or {id} -> {collections, tables, reachable}; {id, collections} writes it (field types string|number|boolean|object|array|datetime, validated) and regenerates client.ts",
       schema: (p) => {
         const { obj, pos } = paramsOf(p);
         return typeof obj.id === "string" || typeof pos[0] === "string"
@@ -1192,7 +1192,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.query",
       description:
-        "query rows; params: {id, sql} (RE read-only SQL subset — SELECT/WHERE/ORDER BY/LIMIT/OFFSET) or {id, collection, filter?, sort?, limit?} -> {columns, rows, objects, total, sql} (structured form: field ops eq/neq/gt/lt/gte/lte/contains/like/in)",
+        "query rows; params: {id, sql} (read-only SQL subset — SELECT/WHERE/ORDER BY/LIMIT/OFFSET) or {id, collection, filter?, sort?, limit?} -> {columns, rows, objects, total, sql} (structured form: field ops eq/neq/gt/lt/gte/lte/contains/like/in)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         if (typeof obj.id !== "string") return { ok: false, message: "id required" };
@@ -1206,7 +1206,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
         if (!entry) return notFound(`no backend ${String(obj.id)}`);
         const data = readData(entry.backend.slug);
 
-        // ----- RE form: read-only SQL ---------------------------------------
+        // ----- form: read-only SQL ---------------------------------------
         if (typeof obj.sql === "string" && obj.sql.trim()) {
           const parsed = parseSelect(obj.sql);
           if (!parsed.ok) return badParams(parsed.message);
@@ -1262,7 +1262,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.peek",
       description:
-        "inspect a backend; params: {id, table?} -> {columns, rows, collections, sizeBytes} (RE peek({id, table}) shape: the table's columns + rows; without a table: every collection's count + fields)",
+        "inspect a backend; params: {id, table?} -> {columns, rows, collections, sizeBytes} (peek({id, table}) shape: the table's columns + rows; without a table: every collection's count + fields)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         return typeof obj.id === "string" ? { ok: true } : { ok: false, message: "id required" };
@@ -1303,12 +1303,12 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- destructive-op approval queue (RE pending/approve/reject) ---------
+    // ----- destructive-op approval queue (pending/approve/reject) ---------
     {
       kind: "bridge",
       id: "backends.pending",
       description:
-        "list queued destructive changes; params: {id?} | id (RE positional) -> ARRAY of {id, backendId, app, file, sql, status, op, collection} (the RE renderer spreads this array)",
+        "list queued destructive changes; params: {id?} | id (positional) -> ARRAY of {id, backendId, app, file, sql, status, op, collection} (the renderer spreads this array)",
       handler: (params) => {
         const { pos, obj } = paramsOf(params);
         const id = str(obj, pos, "id");
@@ -1324,7 +1324,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.approve",
       description:
-        "approve a queued destructive change; params: changeId (RE positional) | {approvalId|id} -> executes it for real (drops the collection's rows + schema, or wipes its rows) -> {approved:true, id, status:'applied', applied}",
+        "approve a queued destructive change; params: changeId (positional) | {approvalId|id} -> executes it for real (drops the collection's rows + schema, or wipes its rows) -> {approved:true, id, status:'applied', applied}",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         return str(obj, pos, "approvalId", "changeId", "id") ? { ok: true } : { ok: false, message: "changeId required" };
@@ -1368,7 +1368,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.reject",
       description:
-        "reject a queued destructive change; params: changeId (RE positional) | {approvalId|id, note?} -> {rejected:true, id, note?} (nothing is executed)",
+        "reject a queued destructive change; params: changeId (positional) | {approvalId|id, note?} -> {rejected:true, id, note?} (nothing is executed)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         return str(obj, pos, "approvalId", "changeId", "id") ? { ok: true } : { ok: false, message: "changeId required" };
@@ -1498,7 +1498,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "backends.scaffoldClient",
       description:
-        "write the typed client; params: {id, targetDir?, app?} -> {path, bytes, written} (a REAL client: IPC facade first, local data service second — RE scaffoldClient writes into the bound project)",
+        "write the typed client; params: {id, targetDir?, app?} -> {path, bytes, written} (a REAL client: IPC facade first, local data service second — scaffoldClient writes into the bound project)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         return typeof obj.id === "string" ? { ok: true } : { ok: false, message: "id required" };
@@ -1517,7 +1517,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- orgs (RE listOrgs — the target needs an sbp_ Supabase token; autumn is local-first, one org) -----
+    // ----- orgs (listOrgs — the target needs an sbp_ Supabase token; autumn is local-first, one org) -----
     {
       kind: "bridge",
       id: "backends.listOrgs",
@@ -1526,12 +1526,12 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       handler: () => ({ items: [{ id: "local", name: "Local (this machine)" }] }),
     },
 
-    // ----- provisioning (RE provision creates a cloud project; autumn applies a template locally) -----
+    // ----- provisioning (provision creates a cloud project; autumn applies a template locally) -----
     {
       kind: "bridge",
       id: "backends.provision",
       description:
-        "apply a starter template; params: {id, template:'todo'|'notes'|'blank', resetData?, rows?} -> {collections, rows?} (RE provision creates a cloud DB — autumn applies a template schema + optional starter rows locally; documented deviation)",
+        "apply a starter template; params: {id, template:'todo'|'notes'|'blank', resetData?, rows?} -> {collections, rows?} (provision creates a cloud DB — autumn applies a template schema + optional starter rows locally; documented deviation)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         return typeof obj.id === "string" ? { ok: true } : { ok: false, message: "id required" };
@@ -1584,7 +1584,7 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- local runtime (RE: `supabase start`; autumn: its own local data service) -----
+    // ----- local runtime (`supabase start`; autumn: its own local data service) -----
     {
       kind: "bridge",
       id: "backends.localStart",
@@ -1667,12 +1667,12 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- sync (RE syncs schema with a remote Supabase; autumn syncs local snapshots) -----
+    // ----- sync (syncs schema with a remote Supabase; autumn syncs local snapshots) -----
     {
       kind: "bridge",
       id: "backends.sync",
       description:
-        "sync the backend; params: {id, direction:'push'|'pull'} (RE requires push|pull) -> {synced:true, at, docsCount, schemaVersion, direction} (autumn syncs LOCAL snapshots — there is no remote)",
+        "sync the backend; params: {id, direction:'push'|'pull'} (requires push|pull) -> {synced:true, at, docsCount, schemaVersion, direction} (autumn syncs LOCAL snapshots — there is no remote)",
       schema: (p) => {
         const { obj } = paramsOf(p);
         if (typeof obj.id !== "string") return { ok: false, message: "id required" };
@@ -1727,32 +1727,32 @@ export function makeBackendsHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- Convex boundary ids (doc 32 §2a — autumn has no Convex dependency) -----
+    // ----- Convex boundary ids (docs/architecture/backend.md — autumn has no Convex dependency) -----
     {
       kind: "bridge",
       id: "backends.convexAuthStatus",
-      description: "Convex cloud auth status; params: {} -> not-implemented envelope (autumn has no Convex dependency; doc 32 §2a boundary id)",
+      description: "Convex cloud auth status; params: {} -> not-implemented envelope (autumn has no Convex dependency; docs/architecture/backend.md boundary id)",
       handler: () => ({
         ok: false,
-        error: { code: "not-implemented", message: "autumn has no Convex backend — convexAuthStatus is a platform-boundary id (doc 32 §2a)" },
+        error: { code: "not-implemented", message: "autumn has no Convex backend — convexAuthStatus is a platform-boundary id (docs/architecture/backend.md)" },
       }),
     },
     {
       kind: "bridge",
       id: "backends.convexLogin",
-      description: "Convex cloud login; params: {} -> not-implemented envelope (autumn has no Convex dependency; doc 32 §2a boundary id)",
+      description: "Convex cloud login; params: {} -> not-implemented envelope (autumn has no Convex dependency; docs/architecture/backend.md boundary id)",
       handler: () => ({
         ok: false,
-        error: { code: "not-implemented", message: "autumn has no Convex backend — convexLogin is a platform-boundary id (doc 32 §2a)" },
+        error: { code: "not-implemented", message: "autumn has no Convex backend — convexLogin is a platform-boundary id (docs/architecture/backend.md)" },
       }),
     },
     {
       kind: "bridge",
       id: "backends.convexCreate",
-      description: "create a Convex cloud project; params: {} -> not-implemented envelope (autumn has no Convex dependency; doc 32 §2a boundary id)",
+      description: "create a Convex cloud project; params: {} -> not-implemented envelope (autumn has no Convex dependency; docs/architecture/backend.md boundary id)",
       handler: () => ({
         ok: false,
-        error: { code: "not-implemented", message: "autumn has no Convex backend — convexCreate is a platform-boundary id (doc 32 §2a)" },
+        error: { code: "not-implemented", message: "autumn has no Convex backend — convexCreate is a platform-boundary id (docs/architecture/backend.md)" },
       }),
     },
   ];

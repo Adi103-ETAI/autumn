@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the nav bridge id (doc 32 W2-1). Real fs against temp fixtures.
+// layer-1 tests for the nav bridge id (docs/architecture/backend.md W2-1). Real fs against temp fixtures.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

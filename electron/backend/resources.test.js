@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the resources bridge ids (doc 32 W2-1).
+// layer-1 tests for the resources bridge ids (docs/architecture/backend.md W2-1).
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");

@@ -1,10 +1,10 @@
 // autumn — Wave-1 handlers: git (10) + worktrees (9) = 19 renderer-used ids
-// (doc 31).
+// (docs/architecture/backend.md).
 //
 // Backing is REAL git via the injected `deps.git(cwd)` (simple-git bound to a
 // base dir) plus raw `git worktree` porcelain commands through `git.raw(...)`.
-// `git.autoLand` is October's auto-merge automation — autumn has no
-// equivalent, so it is an honest not-implemented envelope (doc 31 §4), never a
+// `git.autoLand` is the auto-merge automation — autumn has no
+// equivalent, so it is an honest not-implemented envelope (docs/architecture/backend.md), never a
 // fabricated success. Registered by index.ts; do not edit shared files
 // (w1-deps.ts, index.ts, handlers.ts, registry, manifest). Contract: every id
 // must exist in electron/ipc/manifest.json bridge namespaces. Envelope rules:
@@ -23,7 +23,7 @@ import type { SimpleGit } from "simple-git";
 import type { RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
 
-/** Deliberate bad-input envelope (doc 31 §2). */
+/** Deliberate bad-input envelope (docs/architecture/backend.md). */
 const badParams = (message: string) => ({
   ok: false as const,
   error: { code: "bad-params" as const, message },
@@ -43,7 +43,7 @@ const notFound = (message: string) => ({
 const validCwd = (v: unknown): v is string =>
   typeof v === "string" && v.length > 0 && isAbsolute(v) && !v.includes("\0");
 
-/** Wrap any git failure in an honest handler-error envelope (doc 31 §2). */
+/** Wrap any git failure in an honest handler-error envelope (docs/architecture/backend.md). */
 const gitCall = async <T>(fn: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; message: string }> => {
   try {
     return { ok: true, value: await fn() };
@@ -370,7 +370,7 @@ export function makeGitHandlers(deps: W1Deps): RegisteredHandler[] {
         if (!branch.ok) return handlerError(errMessage(branch));
         const head = String(branch.value).trim();
         if (!info) {
-          // No remote at all: a well-formed "no facts" result, not an error (doc 31 §4).
+          // No remote at all: a well-formed "no facts" result, not an error (docs/architecture/backend.md).
           return { supported: false, reason: "no origin remote configured", head, base: (p.base as string | undefined) ?? "main" };
         }
         const base = (p.base as string | undefined) ?? "main";
@@ -560,7 +560,7 @@ export function makeGitHandlers(deps: W1Deps): RegisteredHandler[] {
       schema: (p) => (validCwd(p?.cwd) ? { ok: true } : { ok: false, message: "cwd required (absolute path)" }),
       handler: (p) => {
         if (!validCwd(p?.cwd)) return badParams("cwd required (absolute path)");
-        // October Desktop ships an auto-land automation that rebases/merges the
+        // The upstream app ships an auto-land automation that rebases/merges the
         // worktree and deletes it. Autumn deliberately does not implement that
         // pipeline (it needs a merge policy + CI gating) — a not-implemented
         // envelope, never a fabricated "landed" state.

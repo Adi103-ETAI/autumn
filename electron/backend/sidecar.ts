@@ -1,6 +1,6 @@
 // autumn — shared helpers for the on-demand sidecar downloads (Wave 3).
 //
-// The RE downloads its heavy binaries (rclone, node, the Parakeet model) on
+// The downloads its heavy binaries (rclone, node, the Parakeet model) on
 // DEMAND into the OS user-data dir — never bundled in the installer — and
 // verifies every download against a published sha256 before using it.
 //
@@ -140,7 +140,7 @@ export function readZip(buf: Buffer): ZipEntry[] {
 
 /**
  * A safe archive-relative path: no absolute paths, no `..`, no backslashes.
- * The RE does the same for the Parakeet archive
+ * The does the same for the Parakeet archive
  * (`safeParakeetArchiveEntry`).
  */
 export function safeArchivePath(name: string): string {
@@ -186,7 +186,7 @@ const readTarString = (block: Buffer, offset: number, length: number): string =>
  * Read a tar archive. Pure JS (no `tar` binary), so it works the same on
  * Windows, macOS and Linux.
  *
- * Safety: a hard/symbolic link entry is refused outright (the RE's
+ * Safety: a hard/symbolic link entry is refused outright (the
  * `safeParakeetArchiveEntry` does the same), and every path is checked with
  * `safeArchivePath` — no absolute paths, no `..`.
  */
@@ -238,7 +238,7 @@ export function readTar(buf: Buffer): TarEntry[] {
   return entries;
 }
 
-/** Decompress a .bz2 buffer (pure JS — the RE uses `unbzip2-stream` too). */
+/** Decompress a .bz2 buffer (pure JS — the uses `unbzip2-stream` too). */
 export async function bunzip2(buf: Buffer): Promise<Buffer> {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const unbzip2 = require("unbzip2-stream");
@@ -256,7 +256,7 @@ export async function bunzip2(buf: Buffer): Promise<Buffer> {
 }
 
 /**
- * Unpack a .tar.bz2 (the Parakeet archive) — guarded like the RE's: nothing
+ * Unpack a .tar.bz2 (the Parakeet archive) — guarded like the: nothing
  * may escape the destination, and no link entries are accepted.
  */
 export async function extractTarBz2(file: string, dest: string): Promise<string[]> {

@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: canvas command queue (doc 31 §4).
+// autumn — Wave-1 handlers: canvas command queue (docs/architecture/backend.md).
 //
 // The renderer stages a command against a canvas, reports progress on it, and
 // finally resolves it with a result; queued commands live INSIDE the canvas
@@ -7,9 +7,9 @@
 // (no file I/O — the payload IS the document).
 //
 // canvas.load / canvas.save are Wave-0 (handlers.ts) — NOT re-registered here.
-// Envelope contract (doc 31 §2): plain payload on success, {ok:false,error}
+// Envelope contract (docs/architecture/backend.md): plain payload on success, {ok:false,error}
 // with code bad-params / not-found / handler-error otherwise.
-// Emitters (doc 31 §3): events.onCanvasCommand after a real stage,
+// Emitters (docs/architecture/backend.md): events.onCanvasCommand after a real stage,
 // events.onCanvasCommandResolved after a real commandResult — nothing else.
 
 import type { RegisteredHandler } from "./handlers";

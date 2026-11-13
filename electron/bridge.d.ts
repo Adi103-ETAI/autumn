@@ -1,7 +1,7 @@
 // Autumn — type declarations for the window.autumn preload bridge.
 //
-// The bridge shape is GENERATED from electron/ipc/manifest.json (RE'd from the
-// target, October Desktop v1.0.56): 68 namespaces / 572 methods. Every call
+// The bridge shape is GENERATED from electron/ipc/manifest.json (adapted from the
+// target): 68 namespaces / 572 methods. Every call
 // resolves to the standard envelope; `on*` methods subscribe instead.
 //
 // Wave-0 typing is intentionally LOOSE (index signature): precise per-namespace
@@ -71,7 +71,6 @@ declare global {
     /** autumn is the project. */
     autumn: AutumnBridge;
     /** Compatibility alias ONLY, so ported target-renderer code resolves unchanged. */
-    october: AutumnBridge;
   }
 }
 

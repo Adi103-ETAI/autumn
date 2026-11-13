@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: nav (1 dispatchable; doc 32 §W2-1).
+// autumn — Wave-2 handlers: nav (1 dispatchable; docs/architecture/backend.md-1).
 //
-// RE params (10-preload-api-surface.md): nav.detect(projectPath, screens).
+// params (10-preload-api-surface.md): nav.detect(projectPath, screens).
 // Detects how the project wires navigation so the renderer can render route-aware
 // UI: framework guess (expo / react-navigation / next / flutter-unknown-dirs / none)
 // plus which of the caller-supplied screen dirs hold route-like files. Everything

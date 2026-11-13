@@ -1,14 +1,14 @@
 // autumn — Wave-2 handlers: agentAccounts (11 ids — 6 renderer-used + 5 dormant;
-// doc 32 §W2-4). RE-faithful to the target's `agent-accounts:*` IPC family
-// (October-amd64.deb → app.asar out/main/index.js acctList/acctBeginAdd/acctProbe/
+// docs/architecture/backend.md §W2-4). faithful to the `agent-accounts:*` IPC family
+// (the contract's acctList/acctBeginAdd/acctProbe/
 // acctFinalize/acctCancelPending/acctAbandonLogin/acctReLogin/acctRename/acctRemove/
 // acctSystemLogin/acctSetAvatar; channel map in evidence/inventories/ipc-full.md
 // and autumn/19-ipc-contract.md §agent-accounts).
 //
-// RE model (ported closely):
+// The model:
 //   storage   <userData>/agent-accounts/<provider>/<uuid>/meta.json
-//             (target file: october-meta.json — autumn renames; the rest matches)
-//   providers ["claude", "codex"] only (RE listAccounts / ENV_VAR / SCRUB scope)
+//             (autumn writes its own meta.json; the rest matches)
+//   providers ["claude", "codex"] only (listAccounts / ENV_VAR / SCRUB scope)
 //   meta      {id, provider, label, addedAt, state:"pending"|"ready",
 //             avatar? (integer 20..44), identity?, identityProbedAt?}
 //   beginAdd  resolveBin(provider) on PATH else {reason:"cli-missing"}; busy gate
@@ -30,11 +30,11 @@
 // DEVIATIONS (documented):
 //   - target trashes profile dirs (electron.shell.trashItem); headless autumn
 //     deletes them (no shell trash in tests) — cancelPending/remove note this.
-//   - doc 32's 60s identity cache: RE probeAccount always re-probes (cacheIdentity
-//     is write-through into meta for usage reporting, not a read cache) — RE wins.
+//   - docs/architecture/backend.md's 60s identity cache: probeAccount always re-probes (cacheIdentity
+//     is write-through into meta for usage reporting, not a read cache).
 //   - autumn terminals don't yet carry accountId (target's terms map does), so
 //     remove's in-use list defaults to [] and accepts params.usedBy for callers
-//     that know better (RE internal: terminalsUsingAccount(id)).
+//     that know better (terminalsUsingAccount(id)).
 
 import { accessSync, constants as FS, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -65,7 +65,7 @@ function paramsOf(params: unknown): { pos: unknown[]; obj: Record<string, unknow
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.length > 0 ? v : undefined);
 
 // ---------------------------------------------------------------------------
-// RE constants
+// constants
 // ---------------------------------------------------------------------------
 
 const PROVIDERS = ["claude", "codex"] as const;
@@ -84,7 +84,7 @@ const SCRUB: Record<Provider, string[]> = {
 const ACCOUNT_AVATAR_MIN = 20;
 const ACCOUNT_AVATAR_MAX = 44;
 const ID_RE = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-const META_FILE = "meta.json"; // target: october-meta.json (naming rule)
+const META_FILE = "meta.json"; // autumn's own name for the profile metadata file
 const LOGIN_GATE_MS = 10 * 60 * 1000;
 const PROBE_TIMEOUT_MS = 15_000;
 const LOGOUT_TIMEOUT_MS = 20_000;
@@ -102,7 +102,7 @@ interface AccountMeta {
   identityProbedAt?: number;
 }
 
-// module-level attempt/login state (RE: latestAttempt / loginInFlight maps)
+// module-level attempt/login state (latestAttempt / loginInFlight maps)
 const latestAttempt = new Map<string, string>();
 const loginInFlight = new Map<Provider, { id: string; attemptId: string; startedAt: number; isAdd: boolean }>();
 const cancelling = new Set<string>();
@@ -252,7 +252,7 @@ function runProc(cmd: string, args: string[], opts: { env?: NodeJS.ProcessEnv; t
     };
     let proc;
     try {
-      // (RE passes windowsHide:true — the SpawnDep surface doesn't expose it.)
+      // (passes windowsHide:true — the SpawnDep surface doesn't expose it.)
       proc = deps_spawn(cmd, args, { env: opts.env });
     } catch (e) {
       err = e instanceof Error ? e.message : String(e);
@@ -300,7 +300,7 @@ function parseClaudeStatus(out: string): NonNullable<AccountMeta["identity"]> {
       ...(text(s.email) ? { email: s.email as string } : {}),
       ...(text(s.orgName) ? { orgName: s.orgName as string } : {}),
       ...(text(s.subscriptionType) ? { subscriptionType: s.subscriptionType as string } : {}),
-      // "logged in" alone is NOT enough — only a first-party claude.ai login counts (RE).
+      // "logged in" alone is NOT enough — only a first-party claude.ai login counts.
       firstParty: s.loggedIn === true && s.authMethod === "claude.ai" && s.apiProvider === "firstParty",
     };
   } catch {
@@ -368,7 +368,7 @@ function releaseLogin(provider: Provider, id: string, attemptId: unknown): void 
   if (entry?.id === id && entry.attemptId === attemptId) loginInFlight.delete(provider);
 }
 
-const setupTerminalId = (attemptId: string) => `acct-setup-${attemptId}`; // RE
+const setupTerminalId = (attemptId: string) => `acct-setup-${attemptId}`; //
 
 function beginLogin(account: AccountMeta, isAdd: boolean): { ok: true; id: string; attemptId: string; terminalId: string } {
   const attemptId = randomUUID();
@@ -453,14 +453,14 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "agentAccounts.list",
-      description: "managed account rows (RE listAccounts: claude+codex provider dirs, sorted by addedAt)",
+      description: "managed account rows (listAccounts: claude+codex provider dirs, sorted by addedAt)",
       handler: () => listAccounts().map((m) => ({ ...m })),
     },
     {
       kind: "bridge",
       id: "agentAccounts.beginAdd",
       description:
-        "start adding an account (RE: beginAdd(provider) → {ok,id,attemptId,terminalId:'acct-setup-<id>'}; real login continues in that terminal; reasons cli-missing | login-in-progress)",
+        "start adding an account (beginAdd(provider) → {ok,id,attemptId,terminalId:'acct-setup-<id>'}; real login continues in that terminal; reasons cli-missing | login-in-progress)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.provider) ?? str(pos[0]))) return { ok: false, message: "provider required (claude|codex)" };
@@ -485,7 +485,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "agentAccounts.probe",
       description:
-        "probe account identity (RE: probe(id) → spawn `claude auth status --json` / `codex login status` with profile env, 15s timeout; unknown/missing bin → {loggedIn:false,firstParty:false})",
+        "probe account identity (probe(id) → spawn `claude auth status --json` / `codex login status` with profile env, 15s timeout; unknown/missing bin → {loggedIn:false,firstParty:false})",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.id) ?? str(pos[0]))) return { ok: false, message: "id required" };
@@ -497,7 +497,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "agentAccounts.finalize",
       description:
-        "finish adding (RE: finalize(id, attemptId, label) positional → probe + firstParty required → unique label, state 'ready'; {ok,account} | {ok:false,reason})",
+        "finish adding (finalize(id, attemptId, label) positional → probe + firstParty required → unique label, state 'ready'; {ok,account} | {ok:false,reason})",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.id) ?? str(pos[0]))) return { ok: false, message: "id required" };
@@ -529,7 +529,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "agentAccounts.cancelPending",
       description:
-        "cancel a pending add (RE runCancelPending: logout profile → delete dir → release attempt; state pending + attempt ownership required)",
+        "cancel a pending add (runCancelPending: logout profile → delete dir → release attempt; state pending + attempt ownership required)",
       handler: async (params) => {
         const { pos, obj } = paramsOf(params);
         const id = str(obj.id) ?? str(pos[0]);
@@ -554,7 +554,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "agentAccounts.abandonLogin",
-      description: "release a login attempt without touching the account (RE: abandonLogin(id, attemptId))",
+      description: "release a login attempt without touching the account (abandonLogin(id, attemptId))",
       handler: (params) => {
         const { pos, obj } = paramsOf(params);
         const id = str(obj.id) ?? str(pos[0]);
@@ -567,7 +567,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "agentAccounts.reLogin",
-      description: "re-open a login attempt for an existing account (RE: beginReLogin(id) → beginLogin(false); cli-missing when the CLI is gone)",
+      description: "re-open a login attempt for an existing account (beginReLogin(id) → beginLogin(false); cli-missing when the CLI is gone)",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.id) ?? str(pos[0]))) return { ok: false, message: "id required" };
@@ -586,7 +586,7 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "agentAccounts.rename",
-      description: "rename with per-provider unique label (RE: rename(id, label) → {ok,account} | {ok:false,reason:'unknown-account'})",
+      description: "rename with per-provider unique label (rename(id, label) → {ok,account} | {ok:false,reason:'unknown-account'})",
       schema: (p) => {
         const { pos, obj } = paramsOf(p);
         if (!(str(obj.id) ?? str(pos[0]))) return { ok: false, message: "id required" };
@@ -607,11 +607,11 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "agentAccounts.remove",
       description:
-        "remove an account (RE: removeAccount(id, terminalsUsingAccount(id)) — in-use guard, logout, delete profile; unknown id → {ok:true} idempotent)",
+        "remove an account (removeAccount(id, terminalsUsingAccount(id)) — in-use guard, logout, delete profile; unknown id → {ok:true} idempotent)",
       handler: async (params) => {
         const { pos, obj } = paramsOf(params);
         const id = (str(obj.id) ?? str(pos[0])) as string;
-        const usedBy = Array.isArray(obj.usedBy) ? (obj.usedBy as string[]) : []; // RE: terminalsUsingAccount(id)
+        const usedBy = Array.isArray(obj.usedBy) ? (obj.usedBy as string[]) : []; // terminalsUsingAccount(id)
         const account = findAccount(id);
         if (!account) return { ok: true };
         if (usedBy.length > 0) return { ok: false, reason: "in-use", terminalIds: usedBy };
@@ -631,19 +631,19 @@ export function makeAgentAccountsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "agentAccounts.systemLogin",
       description:
-        "probe the SYSTEM (non-profile) CLI login (RE: systemLogin(provider, refresh) — claude|codex only, others → null; 5min cache, refresh bypasses)",
+        "probe the SYSTEM (non-profile) CLI login (systemLogin(provider, refresh) — claude|codex only, others → null; 5min cache, refresh bypasses)",
       handler: async (params) => {
         const { pos, obj } = paramsOf(params);
         const provider = str(obj.provider) ?? str(pos[0]);
         const refresh = (obj.refresh ?? pos[1]) === true;
-        if (!isProvider(provider)) return null; // RE returns null for non claude/codex
+        if (!isProvider(provider)) return null; // returns null for non claude/codex
         return probeSystemLogin(provider, refresh);
       },
     },
     {
       kind: "bridge",
       id: "agentAccounts.setAvatar",
-      description: "set the avatar index (RE: setAccountAvatar(id, avatar) — integer 20..44 only, stored in meta; {ok,account} | {ok:false,reason})",
+      description: "set the avatar index (setAccountAvatar(id, avatar) — integer 20..44 only, stored in meta; {ok,account} | {ok:false,reason})",
       handler: (params) => {
         const { pos, obj } = paramsOf(params);
         const id = (str(obj.id) ?? str(pos[0])) as string;

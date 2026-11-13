@@ -1,22 +1,22 @@
-// autumn — Wave-3 handlers: autopilot (6 dispatchable + 1 push; doc 35 §3).
+// autumn — Wave-3 handlers: autopilot (6 dispatchable + 1 push; docs/architecture/autopilot.md).
 //
-// The RE (October v1.0.56) runs a *team* of agents under one node: an
+// Autumn runs a *team* of agents under one node: an
 // operation binds several agent slots to a reviewed plan, materializes one
 // terminal per member, launches the real harness CLI in it, watches the
 // workers' reports and can stop, retry or release each member.
 //
-// autumn keeps the RE's shape and makes it LOCAL:
+// autumn keeps the shape and makes it LOCAL:
 //   * the gate is local (there is no server to ask): team staffing is on by
 //     default and can be turned off from the user's own settings file;
-//   * the plan is validated exactly like the RE's (a `team_proposal`
+//   * the plan is validated exactly like the contract's (a `team_proposal`
 //     envelope, unique candidate ids, bounded payloads);
-//   * the repository is a REAL local Git repo (the RE resolves the same way:
+//   * the repository is a REAL local Git repo (the resolves the same way:
 //     `git rev-parse --show-toplevel` + the HEAD sha);
 //   * every member is a REAL agent process: the harness CLI is resolved on
-//     PATH and launched in a PTY, and the worker reports the RE's vocabulary
+//     PATH and launched in a PTY, and the worker reports the vocabulary
 //     are read out of the terminal's own output.
 //
-// RE-derived details (doc 24 §4 + main-index.js):
+// The contract (docs/architecture/autopilot.md):
 //   operation statuses  starting | running | stopping | stopped | completed |
 //                       failed | interrupted
 //   member statuses     queued | isolating | launching | connecting |
@@ -32,7 +32,7 @@
 //   gate                remoteConfigSnapshot().autopilotStaffing — enabled OR
 //                       (not packaged AND not operator-disabled)
 //
-// autumn's IPC shapes (the RE's ipcMain handlers):
+// autumn's IPC shapes (the ipcMain handlers):
 //   autopilot.start(input)          input: {canvasId, proposal, candidates, repoRoot}
 //   autopilot.stop(operationId)
 //   autopilot.retryMember(operationId, nodeId)
@@ -51,7 +51,7 @@ import { userDataDir } from "./store";
 import { paramsOf } from "./params";
 
 // ---------------------------------------------------------------------------
-// the RE's vocabulary
+// the vocabulary
 // ---------------------------------------------------------------------------
 
 export const OPERATION_STATUSES = [
@@ -85,15 +85,15 @@ export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 export const OPTIMIZE_VALUES = ["speed", "cost", "quality", "balanced"] as const;
 export type Optimize = (typeof OPTIMIZE_VALUES)[number];
 
-/** The RE's cap on approved operation slots. */
+/** The cap on approved operation slots. */
 export const MAX_ACTIVE_SLOTS = 20;
-/** The RE's cap on the candidate binding. */
+/** The cap on the candidate binding. */
 export const MAX_CANDIDATES = 64;
 export const MAX_CANDIDATE_BYTES = 256 * 1024;
-/** The RE's cap on the members of one operation. */
+/** The cap on the members of one operation. */
 export const MAX_SLOTS = 20;
 
-/** The RE's worker-report vocabulary. */
+/** The worker-report vocabulary. */
 export const WORKER_REPORT_STATES = ["checkpoint", "needs_input", "stuck", "done"] as const;
 export const WORKER_STATE_TEXT: Record<(typeof WORKER_REPORT_STATES)[number], string> = {
   checkpoint: "checkpoint",
@@ -102,7 +102,7 @@ export const WORKER_STATE_TEXT: Record<(typeof WORKER_REPORT_STATES)[number], st
   done: "done",
 };
 
-/** The RE's member statuses that can still work. */
+/** The member statuses that can still work. */
 const TERMINAL_MEMBER_STATUSES: MemberStatus[] = ["stopped", "released", "failed", "done"];
 const memberCanWork = (member: AutopilotMember): boolean => !TERMINAL_MEMBER_STATUSES.includes(member.status);
 const operationIsActive = (record: AutopilotOperation): boolean =>
@@ -154,7 +154,7 @@ export interface AutopilotOperation {
   members: AutopilotMember[];
 }
 
-/** The proposal the RE's plan parser produces (`team_proposal`). */
+/** The proposal the plan parser produces (`team_proposal`). */
 export interface TeamProposal {
   version: 1;
   kind: "team_proposal";
@@ -185,7 +185,7 @@ interface Gate {
 }
 
 /**
- * The gate. The RE asks its server (`remoteConfigSnapshot()`); autumn has no
+ * The gate is local: there is no server to ask (`remoteConfigSnapshot()`); autumn has no
  * server, so the gate is a local file — enabled unless the operator (or the
  * user) turned it off.
  */
@@ -209,12 +209,12 @@ export function writeGate(gate: Gate): void {
 }
 
 // ---------------------------------------------------------------------------
-// plan parsing (the RE's rules)
+// plan parsing (the rules)
 // ---------------------------------------------------------------------------
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 
-/** Parse the `team_proposal` envelope (the RE's `parseProjectChatPlan`). */
+/** Parse the `team_proposal` envelope (the `parseProjectChatPlan`). */
 export function parseTeamProposal(raw: unknown): { ok: true; proposal: TeamProposal } | { ok: false; error: string } {
   if (!isRecord(raw)) return { ok: false, error: "The reviewed proposal is not a valid envelope." };
   if (raw.version !== 1) return { ok: false, error: "The reviewed proposal is no longer valid." };
@@ -279,7 +279,7 @@ export function parseTeamProposal(raw: unknown): { ok: true; proposal: TeamPropo
   };
 }
 
-/** The RE's `validateStart` (adapted: autumn's canvas ids are not UUIDs). */
+/** The `validateStart` (adapted: autumn's canvas ids are not UUIDs). */
 export function validateStart(input: {
   canvasId?: unknown;
   candidates?: unknown;
@@ -307,7 +307,7 @@ export function validateStart(input: {
 }
 
 // ---------------------------------------------------------------------------
-// the worker report (the RE's vocabulary, read from the terminal's output)
+// the worker report (the vocabulary, read from the terminal's output)
 // ---------------------------------------------------------------------------
 
 export interface WorkerReport {
@@ -324,7 +324,7 @@ export function parseWorkerReport(chunk: string): WorkerReport | null {
   return { state, text: cleanText(m[2], 600) };
 }
 
-/** Map a worker report onto the member status (the RE's REPORTED_MEMBER_STATUS). */
+/** Map a worker report onto the member status (the REPORTED_MEMBER_STATUS). */
 export function memberStatusForReport(state: WorkerReport["state"]): MemberStatus {
   switch (state) {
     case "checkpoint":
@@ -397,7 +397,7 @@ export function makeAutopilotHandlers(deps: W1Deps): RegisteredHandler[] {
   const findMember = (record: AutopilotOperation, nodeId: string): AutopilotMember | undefined =>
     record.members.find((m) => m.nodeId === nodeId);
 
-  /** The RE's slot accounting (a released member does not hold a slot). */
+  /** The slot accounting (a released member does not hold a slot). */
   const activeSlotCount = (): number => {
     let count = 0;
     for (const record of operations.values()) {
@@ -456,7 +456,7 @@ export function makeAutopilotHandlers(deps: W1Deps): RegisteredHandler[] {
   /**
    * Launch a member for real: resolve the harness CLI and run it in a PTY
    * rooted at the operation's repository. A harness that is not installed
-   * leaves the member in `needs-setup` — the RE's honest answer.
+   * leaves the member in `needs-setup` — the honest answer.
    */
   const launchMember = async (record: AutopilotOperation, member: AutopilotMember): Promise<void> => {
     member.status = "launching";
@@ -532,7 +532,7 @@ export function makeAutopilotHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "autopilot.start",
       description:
-        "start a team of agents on a canvas; params: {canvasId, proposal, candidates, repoRoot} -> {ok:true, operation} | {ok:false, error} — the plan is validated like the RE's (a team_proposal envelope + a bounded candidate binding), the repository must be a real local Git repo, and every member is a real agent process launched in its own terminal",
+        "start a team of agents on a canvas; params: {canvasId, proposal, candidates, repoRoot} -> {ok:true, operation} | {ok:false, error} — the plan is validated like the contract's (a team_proposal envelope + a bounded candidate binding), the repository must be a real local Git repo, and every member is a real agent process launched in its own terminal",
       schema: (p) => {
         const { obj } = paramsOf(p);
         const ok =
@@ -570,7 +570,7 @@ export function makeAutopilotHandlers(deps: W1Deps): RegisteredHandler[] {
           return { ok: false, error: `This device can run at most ${MAX_ACTIVE_SLOTS} approved operation slots at once.` };
         }
 
-        // The repository must be a REAL local Git repo (the RE resolves it the
+        // The repository must be a REAL local Git repo (the resolves it the
         // same way: the work-tree root plus the HEAD sha).
         const repoRootInput = obj.repoRoot as string;
         let repoRoot = "";

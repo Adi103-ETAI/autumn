@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the bus bridge ids (doc 29 §T, doc 31 §5). Fake deps only —
+// layer-1 tests for the bus bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md). Fake deps only —
 // no Electron, no Prisma, no PTY.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
@@ -8,11 +8,11 @@ const reg = require("../ipc/registry");
 const { makeBusHandlers } = require("./bus.ts");
 
 const EXPECTED_IDS = [
-  "bus.activityView", "bus.automationPreferences", "bus.cancelOctoberTask",
+  "bus.activityView", "bus.automationPreferences", "bus.cancelCloudTask",
   "bus.claimProjectChatInbox", "bus.consentAllowances", "bus.consentRequests",
   "bus.decideConsent", "bus.deliverInbox", "bus.enabled", "bus.executionStates",
   "bus.harnessReadiness", "bus.installRepo", "bus.learnCollaboratorDevice",
-  "bus.nodeRemoved", "bus.octoberSend", "bus.pendingCounts", "bus.previewUninstall",
+  "bus.nodeRemoved", "bus.cloudSend", "bus.pendingCounts", "bus.previewUninstall",
   "bus.receiveCollaboratorMessage", "bus.recentActivity", "bus.registerNode",
   "bus.resolveDeliveryUncertainty", "bus.revokeConsent", "bus.saveAutomationPreferences",
   "bus.setDeliveryPolicy", "bus.setEdges", "bus.setResourceContexts", "bus.startChatTurn",
@@ -78,9 +78,9 @@ test("id surface: exactly the 30 renderer-used bus ids, all in the manifest", ()
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("bus.octoberSend sends a real message and emits bus.onActivity", async () => {
+test("bus.cloudSend sends a real message and emits bus.onActivity", async () => {
   const { call, state } = build();
-  const res = await call("bus.octoberSend", { canvasId: "c", fromNodeId: "n1", toNodeId: "n2", message: "hello" });
+  const res = await call("bus.cloudSend", { canvasId: "c", fromNodeId: "n1", toNodeId: "n2", message: "hello" });
   assert.deepEqual(res, { delivered: true, from: "n1", to: "n2", id: "m1", ts: 111 });
   assert.deepEqual(state.sendMessage, [["c", "n1", "n2", "hello"]]);
   const activity = state.emitted.find(([id]) => id === "bus.onActivity");
@@ -92,9 +92,9 @@ test("bus.octoberSend sends a real message and emits bus.onActivity", async () =
   assert.equal(activity[1].to, "n2");
 });
 
-test("bus.octoberSend bad-params when message missing", async () => {
+test("bus.cloudSend bad-params when message missing", async () => {
   const { call } = build();
-  assert.equal((await call("bus.octoberSend", { canvasId: "c", fromNodeId: "n1", toNodeId: "n2" })).error.code, "bad-params");
+  assert.equal((await call("bus.cloudSend", { canvasId: "c", fromNodeId: "n1", toNodeId: "n2" })).error.code, "bad-params");
 });
 
 test("bus.registerNode / nodeRemoved / startChatTurn / deliverInbox operate on the real store", async () => {
@@ -159,7 +159,7 @@ test("honest-minimal surface: supported:false / empty shapes / not-implemented",
   assert.equal((await call("bus.stopCloudSync", {})).error.code, "not-implemented");
   assert.equal((await call("bus.decideConsent", { requestId: "r", decision: "allow" })).error.code, "not-implemented");
   assert.equal((await call("bus.revokeConsent", { requestId: "r" })).error.code, "not-implemented");
-  assert.equal((await call("bus.cancelOctoberTask", { taskId: "t" })).error.code, "not-implemented");
+  assert.equal((await call("bus.cancelCloudTask", { taskId: "t" })).error.code, "not-implemented");
   assert.equal((await call("bus.resolveDeliveryUncertainty", { messageId: "m" })).error.code, "not-implemented");
   assert.deepEqual(await call("bus.enabled", {}), { enabled: true });
   assert.deepEqual(await call("bus.terminalExposure", {}), { exposed: false });
@@ -189,11 +189,11 @@ test("registry dispatch round-trip wraps plain payloads and passes envelopes thr
   });
   for (const h of handlers) reg.register(h.kind, h.id, h.handler, { schema: h.schema, description: h.description });
 
-  const ok = await reg.dispatch({ id: "bus.octoberSend", params: { canvasId: "c", fromNodeId: "n1", toNodeId: "n2", message: "hi" } });
+  const ok = await reg.dispatch({ id: "bus.cloudSend", params: { canvasId: "c", fromNodeId: "n1", toNodeId: "n2", message: "hi" } });
   assert.equal(ok.ok, true);
   assert.equal(ok.result.id, "m1");
 
-  const bad = await reg.dispatch({ id: "bus.octoberSend", params: { canvasId: "c" } });
+  const bad = await reg.dispatch({ id: "bus.cloudSend", params: { canvasId: "c" } });
   assert.equal(bad.ok, false);
   assert.equal(bad.error.code, "bad-params");
 

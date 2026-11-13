@@ -1,5 +1,5 @@
 "use strict";
-// Layer-1 units for the os namespace — clipboard / find / thumbnails (doc 31 §T).
+// Layer-1 units for the os namespace — clipboard / find / thumbnails (docs/architecture/backend.md).
 // Headless: no Electron — deps.clipboard and deps.screen are FAKES that record
 // calls and control their return values; find.* runs against REAL fs in
 // fs.mkdtemp dirs with distinct mtimes; at least one test round-trips through
@@ -13,7 +13,7 @@ require("../ts-register"); // transpile ./os.ts on require
 const reg = require("../ipc/registry");
 const { makeOsHandlers } = require("./os.ts");
 
-// find.* runs against the REAL fs (doc 31 §T allows fs.mkdtemp for fs tests).
+// find.* runs against the REAL fs (docs/architecture/backend.md allows fs.mkdtemp for fs tests).
 const realFs = require("node:fs/promises");
 
 /** Exactly the 7 renderer-used os bridge ids (renderer-usage.md). */

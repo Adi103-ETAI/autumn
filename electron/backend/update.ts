@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: update (2 dispatchable + events.onUpdate push; doc 32 §W2-3).
+// autumn — Wave-2 handlers: update (2 dispatchable + events.onUpdate push; docs/architecture/backend.md-3).
 //
-// RE-derived (06-native-and-packaging.md §3): electron-updater autoUpdater with
+// The contract (docs/architecture/packaging.md): electron-updater autoUpdater with
 // autoDownload=false, autoInstallOnAppQuit=true; GitHub-Releases provider via
 // resources/app-update.yml; init skipped entirely when !app.isPackaged →
 // status "unsupported". IPC: update:state / update:start / update:install /
@@ -168,7 +168,7 @@ export function makeUpdateHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "update.state",
       description:
-        "current update state (RE: state()); params: {} -> { status, currentVersion, forced, minimumVersion, version?, progress?, error? }",
+        "current update state (state()); params: {} -> { status, currentVersion, forced, minimumVersion, version?, progress?, error? }",
       schema: () => ({ ok: true }),
       handler: () => read(),
     },
@@ -176,7 +176,7 @@ export function makeUpdateHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "update.check",
       description:
-        "trigger an update check (RE: check()); params: {} -> { checked: true, status } | { supported: false, reason } when dev/unpackaged",
+        "trigger an update check (check()); params: {} -> { checked: true, status } | { supported: false, reason } when dev/unpackaged",
       schema: () => ({ ok: true }),
       handler: async () => {
         const u = getUpdater();

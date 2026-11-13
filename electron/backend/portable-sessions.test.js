@@ -1,8 +1,8 @@
 "use strict";
-// layer-1 tests for the portable-session layer (doc 35 §5): the sessions the
+// layer-1 tests for the portable-session layer (docs/architecture/sessions.md): the sessions the
 // OTHER agents wrote on this machine.
 //
-// The stores are REAL: the test lays out the RE's directory layouts in a temp
+// The stores are REAL: the test lays out the directory layouts in a temp
 // dir (Claude Code, Codex, Pi, Amp, Grok) and the discovery really reads
 // them — the titles, the cwds, the sizes and the content hits all come out of
 // the actual files.
@@ -41,7 +41,7 @@ const {
 const CLAUDE_UUID = "11111111-2222-3333-4444-555555555555";
 const CODEX_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-/** Lay out the RE's store layouts in a temp dir and point the roots at it. */
+/** Lay out the store layouts in a temp dir and point the roots at it. */
 function makeStores() {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "autumn-stores-"));
   const claudeRoot = path.join(home, ".claude");
@@ -124,7 +124,7 @@ beforeEach(() => {
 // the roots
 // ---------------------------------------------------------------------------
 
-test("defaultRoots honours the environment overrides (the RE's)", () => {
+test("defaultRoots honours the environment overrides (the)", () => {
   process.env.CLAUDE_CONFIG_DIR = "/claude";
   process.env.CODEX_HOME = "/codex";
   process.env.PI_CODING_AGENT_SESSION_DIR = "/pi";
@@ -178,14 +178,14 @@ test("the discovery marks the sessions autumn already tracks", () => {
   assert.equal(codex.tracked, false);
 });
 
-test("a file smaller than the RE's floor is skipped", () => {
+test("a file smaller than the floor is skipped", () => {
   const stores = makeStores();
   fs.writeFileSync(path.join(stores.claudeRoot, "projects", "-home-user-proj", "tiny.jsonl"), "{}", "utf8");
   const sessions = discoverPortableSessions(defaultRoots(), new Set());
   assert.equal(sessions.some((s) => s.sessionId === "tiny"), false);
 });
 
-test("the per-harness file readers follow the RE's layouts", () => {
+test("the per-harness file readers follow the layouts", () => {
   const stores = makeStores();
   assert.equal(claudeFiles(stores.claudeRoot).length, 1);
   assert.equal(claudeFiles(stores.claudeRoot)[0].sessionId, CLAUDE_UUID);
@@ -236,7 +236,7 @@ test("searchTranscriptLines returns the matching lines", () => {
 // the parsers
 // ---------------------------------------------------------------------------
 
-test("the transcript parsers are the RE's", () => {
+test("the transcript parsers are the contract's", () => {
   assert.equal(extractCwd('{"cwd":"/home/x"}'), "/home/x");
   assert.equal(extractCwd("no cwd here"), null);
   assert.equal(codexCwdFromChunk('{"type":"session_meta","payload":{"cwd":"/c"}}'), "/c");
@@ -316,6 +316,6 @@ test("the folder facts ignore a relative path and de-duplicate", () => {
 // the harness list
 // ---------------------------------------------------------------------------
 
-test("the portable harnesses are the RE's", () => {
+test("the portable harnesses are the contract's", () => {
   assert.deepEqual([...PORTABLE_HARNESSES], ["claude_code", "codex", "pi", "amp", "grok"]);
 });

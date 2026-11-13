@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the phone bridge ids (doc 32 W2-10 §2g). 12 dispatchable +
+// layer-1 tests for the phone bridge ids (docs/architecture/backend.md W2-10 §2g). 12 dispatchable +
 // phone.onChanged push. The RELAY is real: a `ws` server on the LAN that pairs
 // a phone with a one-time code and then streams frames.
 //
@@ -114,7 +114,7 @@ test("createPairing: auto-enables, returns a 6-digit code with 10-min expiry, pe
   assert.equal(res.label, "Ada's phone");
 
   const state = JSON.parse(fs.readFileSync(dbPath("phone.json"), "utf8"));
-  assert.equal(state.enabled, true, "createPairing auto-enables (RE)");
+  assert.equal(state.enabled, true, "createPairing auto-enables ()");
   const { createHash } = require("node:crypto");
   const codeHash = createHash("sha256").update(res.code).digest("hex");
   assert.ok(state.codes.some((c) => c.codeHash === codeHash), "sha256 of the code is stored");
@@ -131,7 +131,7 @@ test("pending: lists unexpired intents, drops expired ones", async () => {
   assert.deepEqual(pending.map((i) => i.id), ["i-live"]);
 });
 
-test("decide: RE validation messages + approve moves the intent into devices (with emit)", async () => {
+test("decide: validation messages + approve moves the intent into devices (with emit)", async () => {
   useTempUserData();
   const { call, emits } = build();
   await call("phone.enable", {});
@@ -171,7 +171,7 @@ test("decide: positional (intentId, decision) facade shape works", async () => {
   assert.equal(res.approved, true, "positional decision must not be mistaken for intentId");
 });
 
-test("decide while pairing is off → RE handler-error 'Phone access is not enabled.'", async () => {
+test("decide while pairing is off → handler-error 'Phone access is not enabled.'", async () => {
   useTempUserData();
   const { call } = build();
   _queueIntent({ id: "i-x", label: "X" });
@@ -200,7 +200,7 @@ test("revoke: idempotent — real removal emits, unknown id answers revoked:fals
   assert.equal(emits("phone.onChanged").length, count + 1);
 });
 
-test("keepAwake: RE boolean validation; headless answers {applied:false, reason}", async () => {
+test("keepAwake: boolean validation; headless answers {applied:false, reason}", async () => {
   useTempUserData();
   const { call } = build();
   const bad = await call("phone.keepAwake", "on");

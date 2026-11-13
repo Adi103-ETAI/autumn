@@ -1,21 +1,19 @@
 "use strict";
-// autumn IPC registry — dispatcher at the center of the B architecture (doc 29 Wave 0).
+// autumn IPC registry — dispatcher at the center of the B architecture (docs/architecture/ipc-facade.md Wave 0).
 //
 // One place to register a handler per method and dispatch a call with:
 //   principal auth -> schema validation -> handler -> envelope.
 //
 // Two method kinds share the mechanism (they are both dotted ids):
 //   "bridge"  -> window.autumn.<ns>.<method>    (572 methods / 68 ns, preload-api.md)
-//                (`window.october` exists only as a compatibility alias so ported
-//                 target-renderer code resolves unchanged)
+//                (`window.autumn` is the only surface the renderer sees)
 //   "core"    -> <group>.<method>               (129 methods / 21 groups, core-methods.md)
 //
-// Naming: this project is **autumn**. "October" appears only when citing the
-// reverse-engineered target (October Desktop v1.0.56).
+// Naming: this project is **autumn**. The public API belongs to Autumn.
 //
 // Design notes:
 //   - Handlers are plain Node functions (injected deps) so layers 1–3 are testable
-//     headless — no Electron needed (doc 29 §T).
+//     headless — no Electron needed (docs/architecture/ipc-facade.md).
 //   - The registry tracks only IMPLEMENTED handlers; unimplemented manifest methods
 //     surface as not-found (facade stubs return not-implemented at the preload edge).
 //   - authRules default to the fail-closed skeleton in ./auth (real matrix = Wave 4).
@@ -100,7 +98,7 @@ async function dispatch(req = {}) {
   }
 }
 
-/** True if the method is part of the target surface (October Desktop v1.0.56, RE'd). */
+/** True if the method is part of the contract surface (, adapted). */
 function inManifest(kind, id) {
   if (kind === "core") {
     return Object.values(manifest.core.groups).some((m) => m.includes(id));

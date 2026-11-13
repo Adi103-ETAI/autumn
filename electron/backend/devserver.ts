@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: devServer (5; 4 renderer-used: start/stop/lanHost/enableExpoWeb) (doc 31).
+// autumn — Wave-1 handlers: devServer (5; 4 renderer-used: start/stop/lanHost/enableExpoWeb) (docs/architecture/backend.md).
 //
 // Implements the 4 renderer-used devServer bridge ids over a REAL child process
 // (deps.spawn — node:child_process via index.ts) plus node:os for the machine's
@@ -21,7 +21,7 @@ import { isAbsolute } from "node:path";
 import type { RegisteredHandler } from "./handlers";
 import type { ChildProcLike, W1Deps } from "./w1-deps";
 
-/** Deliberate bad-input envelope (doc 31 §2) — never throw for user input. */
+/** Deliberate bad-input envelope (docs/architecture/backend.md) — never throw for user input. */
 const badParams = (message: string) => ({
   ok: false as const,
   error: { code: "bad-params" as const, message },
@@ -135,7 +135,7 @@ export function makeDevServerHandlers(deps: W1Deps): RegisteredHandler[] {
         } catch (e) {
           // spawn() threw synchronously: no child exists, so no state
           // transition was observed and NO event fires — this is a failed
-          // operation (real failure -> handler-error, doc 31 §2).
+          // operation (real failure -> handler-error, docs/architecture/backend.md).
           const msg = e instanceof Error ? e.message : String(e);
           return { ok: false, error: { code: "handler-error", message: `spawn failed: ${msg}` } };
         }
@@ -145,7 +145,7 @@ export function makeDevServerHandlers(deps: W1Deps): RegisteredHandler[] {
         devServers.set(key, record);
 
         // Drain stdout/stderr so a chatty dev server never fills the pipe
-        // buffer. The devServer surface pushes STATE transitions only (doc 31
+        // buffer. The devServer surface pushes STATE transitions only (docs/architecture/backend.md
         // §3) — chunks are consumed, never emitted as events.
         proc.stdout?.on("data", () => {});
         proc.stderr?.on("data", () => {});
@@ -231,7 +231,7 @@ export function makeDevServerHandlers(deps: W1Deps): RegisteredHandler[] {
         // The target's Expo web-enablement writes Expo project config (app.json
         // web settings / prebuild). Autumn has NO Expo config pipeline — there
         // is no config file we could honestly update — so this is a deliberate
-        // not-implemented envelope (doc 31 §4), never a fabricated success that
+        // not-implemented envelope (docs/architecture/backend.md), never a fabricated success that
         // would claim a write we never performed.
         return {
           ok: false,

@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: agent (2 dispatchable + events.onAgentQuestion(-Resolved) push; doc 31).
+// autumn — Wave-1 handlers: agent (2 dispatchable + events.onAgentQuestion(-Resolved) push; docs/architecture/backend.md).
 //
 // Backing is REAL spawner/db: answerQuestion runs an agent via spawner and
 // emits events.onAgentQuestion on a real trigger; pendingQuestions reads from

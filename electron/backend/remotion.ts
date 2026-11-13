@@ -1,29 +1,29 @@
 // autumn — Wave-2 handlers: remotion (7 dispatchable: create/compositions/
-// start/repair/stop/status/render; doc 32 §2h) — FULL (W2-11).
+// start/repair/stop/status/render; docs/architecture/backend.md) — FULL (W2-11).
 //
-// RE-derived (October out/main/index.js):
+// The contract:
 //   remotionCreate(name, parent) → `<slug>-<uuid8>-remotion` folder in
 //     defaultProjectsDir(), or nested "video-N" under an OWNED parent
 //     (freeChildName(parent, "video")) — mkdir -p, returns the folder.
 //   remotionCompositions(folder) → [] when not owned or src/Root.tsx missing;
-//     else parses `<Composition … id="…">` ids with the RE regex
+//     else parses `<Composition … id="…">` ids with the regex
 //     /<Composition[\s\S]*?\bid=["']([^"']+)["']/g (real fs read).
-//   remotionStart(folder) → ownership gate returns RE ERROR STATE ("points
+//   remotionStart(folder) → ownership gate returns ERROR STATE ("points
 //     outside <root>'s projects folder, so it wasn't started. Add a new Video
 //     Editor block to create one."); busy states return current state; else
 //     boots the studio dev server.
 //   remotionStop(folder) → drop the studio child, state → idle, and rm -rf an
-//     OWNED folder that has become empty (RE cleanup).
+//     OWNED folder that has become empty (cleanup).
 //   remotionStatus(folder) → studios.get(folder)?.state ?? {folder,status:"idle"}.
-//   remotionRepair(folder) → NOT owned or no package.json → RE error state
-//     "Autumn cannot repair this Video project." (RE refuses in-place; never
+//   remotionRepair(folder) → NOT owned or no package.json → error state
+//     "Autumn cannot repair this Video project." (refuses in-place; never
 //     touches foreign folders).
-//   remotionRender(folder, composition) → ownership → RE error state
+//   remotionRender(folder, composition) → ownership → error state
 //     "Autumn does not own this Video folder."; already rendering → current
-//     state; no composition id (param, else first parsed id) → RE-style
+//     state; no composition id (param, else first parsed id) → -style
 //     message state; else a real `remotion render <id> <out>` run.
 //
-// autumn design (doc 32 §2h) — a REAL video editor:
+// autumn design (docs/architecture/backend.md) — a REAL video editor:
 //   * the `remotion` + `@remotion/cli` dependencies ship with the app (4.0.518),
 //     and the CLI is resolved project-local → app-local → PATH;
 //   * the bundled template (app tree ./remotion) is a REAL Remotion project
@@ -69,7 +69,7 @@ function slugify(name: string | undefined, fallback: string): string {
   );
 }
 
-/** RE freeChildName: "taken" = exists AND non-empty. */
+/** freeChildName: "taken" = exists AND non-empty. */
 function freeChildName(parent: string, name: string): string {
   const taken = (leaf: string): boolean => {
     try {
@@ -141,7 +141,7 @@ function copyMissing(src: string, dst: string, prefix = ""): string[] {
   return repaired;
 }
 
-/** The composition ids of a project (the RE regex, real fs read). */
+/** The composition ids of a project (the regex, real fs read). */
 export function parseCompositionIds(folder: string): string[] {
   try {
     const root = join(folder, "src", "Root.tsx");
@@ -190,7 +190,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.create",
       description:
-        "create a video-editor project (RE remotionCreate: slug + uuid8 + '-remotion'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (… → video-2); scaffolds the bundled Remotion template (Caption/PromoCard/EndCard) into it; returns the folder path",
+        "create a video-editor project (remotionCreate: slug + uuid8 + '-remotion'); params: {name?, parent?} or positional (name, parent) — nested under an OWNED parent via freeChildName (… → video-2); scaffolds the bundled Remotion template (Caption/PromoCard/EndCard) into it; returns the folder path",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const name = obj.name !== undefined ? (obj.name as string) : typeof pos[0] === "string" ? pos[0] : undefined;
@@ -210,7 +210,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.compositions",
       description:
-        "list composition ids in a project (RE remotionCompositions): params: folder (positional) — [] when outside the Autumn projects folder or src/Root.tsx is absent; else real parse of <Composition … id=\"…\"> (no CLI needed)",
+        "list composition ids in a project (remotionCompositions): params: folder (positional) — [] when outside the Autumn projects folder or src/Root.tsx is absent; else real parse of <Composition … id=\"…\"> (no CLI needed)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -223,7 +223,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.start",
       description:
-        "start the Remotion studio (RE remotionStart ownership → RE error-state shape; busy → current state); real `remotion studio --port <port>` run in the project folder → {status:'running', port, pid, url}; CLI absent → {supported:false, reason}; exit → state idle/error",
+        "start the Remotion studio (remotionStart ownership → error-state shape; busy → current state); real `remotion studio --port <port>` run in the project folder → {status:'running', port, pid, url}; CLI absent → {supported:false, reason}; exit → state idle/error",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -239,7 +239,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           return studios.get(f) as StudioState;
         }
         const bin = findRemotionBin(f);
-        if (!bin) return { supported: false, reason: "the Remotion studio CLI is not installed — install remotion + @remotion/cli (doc 32 §W2-11)" };
+        if (!bin) return { supported: false, reason: "the Remotion studio CLI is not installed — install remotion + @remotion/cli (docs/architecture/backend.md-11)" };
         const port = typeof obj.port === "number" && obj.port > 0 ? obj.port : defaultPort(f);
         setState(f, { status: "starting" });
         try {
@@ -267,7 +267,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.stop",
       description:
-        "stop the Remotion studio (RE remotionStop): kill the tracked child → state idle; remove an OWNED folder that became empty (RE rmSync cleanup); nothing running → idle state (idempotent)",
+        "stop the Remotion studio (remotionStop): kill the tracked child → state idle; remove an OWNED folder that became empty (rmSync cleanup); nothing running → idle state (idempotent)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -286,7 +286,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           try {
             if (readdirSync(folder).length === 0) rmSync(folder, { recursive: true, force: true });
           } catch {
-            /* best effort, like RE */
+            /* best effort, like */
           }
         }
         return { ...state, running: false };
@@ -297,7 +297,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.status",
       description:
-        "studio status (RE remotionStatus): params: folder → {folder, status, running, port?, pid?, url?} (default {status:'idle', running:false})",
+        "studio status (remotionStatus): params: folder → {folder, status, running, port?, pid?, url?} (default {status:'idle', running:false})",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -311,7 +311,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.render",
       description:
-        "render a composition (RE remotionRender): ownership → RE error-state 'Autumn does not own this Video folder.'; already rendering → current state; no id (param, else first parsed id) → message state; real `remotion render <id> <out>` → {path, bytes, durationMs, jobId}; CLI absent → {supported:false, reason}; failure → handler-error with the stderr tail; output <userData>/remotion/<ts>-<id>.mp4 (doc 32 §2h)",
+        "render a composition (remotionRender): ownership → error-state 'Autumn does not own this Video folder.'; already rendering → current state; no id (param, else first parsed id) → message state; real `remotion render <id> <out>` → {path, bytes, durationMs, jobId}; CLI absent → {supported:false, reason}; failure → handler-error with the stderr tail; output <userData>/remotion/<ts>-<id>.mp4 (docs/architecture/backend.md)",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
@@ -333,7 +333,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
           });
         }
         const bin = findRemotionBin(f);
-        if (!bin) return { supported: false, reason: "the Remotion render CLI is not installed — install remotion + @remotion/cli (doc 32 §W2-11)" };
+        if (!bin) return { supported: false, reason: "the Remotion render CLI is not installed — install remotion + @remotion/cli (docs/architecture/backend.md-11)" };
 
         const outDir = join(userDataDir(), "remotion");
         mkdirSync(outDir, { recursive: true });
@@ -385,7 +385,7 @@ export function makeRemotionHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "remotion.repair",
       description:
-        "repair a video project (RE remotionRepair): not owned or no package.json → RE error-state 'Autumn cannot repair this Video project.'; else copy missing bundled-template files (app ./remotion) over the project, idempotently → {repaired:[names…], folder}",
+        "repair a video project (remotionRepair): not owned or no package.json → error-state 'Autumn cannot repair this Video project.'; else copy missing bundled-template files (app ./remotion) over the project, idempotently → {repaired:[names…], folder}",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const folder = str(obj, pos, "folder", "path") ?? (typeof pos[0] === "string" ? pos[0] : undefined);

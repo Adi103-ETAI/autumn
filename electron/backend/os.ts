@@ -1,17 +1,17 @@
-// autumn — Wave-1 handlers: clipboard (3) + find (3) + thumbnails (1); 7 renderer-used dispatchable (doc 31).
+// autumn — Wave-1 handlers: clipboard (3) + find (3) + thumbnails (1); 7 renderer-used dispatchable (docs/architecture/backend.md).
 //
 // Implements the 7 renderer-used bridge ids over the injected electron surfaces
 // (deps.clipboard for clipboard.*, deps.screen for thumbnails.capture) and a
 // small LOCAL file walk for find.* — autumn has NO search index backing, so
 // find.recent/candidates/rank are an honest bounded walk/scorer over files the
-// backend can actually stat (doc 31 §4), never a fake index.
+// backend can actually stat (docs/architecture/backend.md), never a fake index.
 // Registered by index.ts; do not edit shared files (w1-deps.ts, index.ts,
 // handlers.ts, registry, manifest). Contract: every id must exist in
 // electron/ipc/manifest.json bridge namespaces (conformance test enforces it).
 // Envelope rules: plain payload on success (registry wraps {ok:true,result}),
 // { ok:false, error:{ code, message } } for bad-params / not-found /
 // not-implemented. No events: none of these handlers has a real trigger, so
-// events.onBrowserFind is deliberately never emitted (doc 31 §3 — a fabricated
+// events.onBrowserFind is deliberately never emitted (docs/architecture/backend.md — a fabricated
 // event would be worse than none).
 
 import { randomUUID } from "node:crypto";
@@ -22,7 +22,7 @@ import type { RegisteredHandler } from "./handlers";
 import type { FsPromises, W1Deps } from "./w1-deps";
 
 // ---------------------------------------------------------------------------
-// Envelope helpers + shared param validation (doc 31 §2)
+// Envelope helpers + shared param validation (docs/architecture/backend.md)
 // ---------------------------------------------------------------------------
 
 /** Deliberate bad-input envelope — never throw for user input. */
@@ -37,7 +37,7 @@ const notFound = (message: string) => ({
   error: { code: "not-found" as const, message },
 });
 
-/** Genuinely unperformable operation envelope (doc 31 §4) — with a why. */
+/** Genuinely unperformable operation envelope (docs/architecture/backend.md) — with a why. */
 const notImplemented = (message: string) => ({
   ok: false as const,
   error: { code: "not-implemented" as const, message },
@@ -52,7 +52,7 @@ const isPositiveNumber = (v: unknown): v is number =>
   typeof v === "number" && Number.isFinite(v) && v >= 1;
 
 // ---------------------------------------------------------------------------
-// find.* — bounded local walk (no search index; doc 31 §4 honest-minimal)
+// find.* — bounded local walk (no search index; docs/architecture/backend.md honest-minimal)
 // ---------------------------------------------------------------------------
 
 /** Files stat'ed per call — keeps the walk small and fast (tests stay quick). */
@@ -83,7 +83,7 @@ async function walkFiles(fs: FsPromises, root: string): Promise<WalkEntry[]> {
     const cur = queue.shift();
     if (!cur) break;
     const dirents = await fs.readdir(cur.dir, { withFileTypes: true }).catch(() => null);
-    if (!dirents) continue; // missing / unreadable dir — skipped (doc 31 §4)
+    if (!dirents) continue; // missing / unreadable dir — skipped (docs/architecture/backend.md)
     for (const dirent of dirents) {
       if (budget <= 0) break;
       const full = join(cur.dir, dirent.name);
@@ -294,7 +294,7 @@ export function makeOsHandlers(deps: W1Deps): RegisteredHandler[] {
           : { ok: false, message: "width/height must be positive numbers when given" },
       handler: async (p = {}) => {
         // Handler validates too (not just the registry schema) so direct calls
-        // agree with dispatched ones (doc 31 §2).
+        // agree with dispatched ones (docs/architecture/backend.md).
         if (
           (p?.width !== undefined && !isPositiveNumber(p.width)) ||
           (p?.height !== undefined && !isPositiveNumber(p.height))
@@ -310,7 +310,7 @@ export function makeOsHandlers(deps: W1Deps): RegisteredHandler[] {
         if (typeof dataUrl === "string" && dataUrl.length > 0) return { dataUrl };
         // No display / headless: desktopCapturer returned no sources, so there
         // is genuinely nothing to capture — honest not-implemented, and NEVER
-        // invented image bytes (doc 31 §4).
+        // invented image bytes (docs/architecture/backend.md).
         return notImplemented(
           "screen capture unavailable: desktopCapturer returned no sources (headless / no display)",
         );

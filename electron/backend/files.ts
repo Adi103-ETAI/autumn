@@ -1,4 +1,4 @@
-// autumn — Wave-1 handlers: files (37 renderer-used dispatchable; doc 31).
+// autumn — Wave-1 handlers: files (37 renderer-used dispatchable; docs/architecture/backend.md).
 //
 // Backing is REAL node:fs/promises calls plus deps.shell for reveal/open. The
 // target's editor-buffer lifecycle ids (openFileNode/releaseFileNode/
@@ -27,7 +27,7 @@ import { basename, dirname, isAbsolute, join, normalize, resolve, sep } from "no
 import type { RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
 
-/** Deliberate bad-input envelope (doc 31 §2). */
+/** Deliberate bad-input envelope (docs/architecture/backend.md). */
 const badParams = (message: string) => ({
   ok: false as const,
   error: { code: "bad-params" as const, message },

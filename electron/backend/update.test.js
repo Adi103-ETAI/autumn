@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the update bridge ids (doc 32 W2-3). No Electron, no network.
+// layer-1 tests for the update bridge ids (docs/architecture/backend.md W2-3). No Electron, no network.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");
@@ -49,7 +49,7 @@ test("update.state in dev is honest: status 'unsupported' shape after a check at
   const state = await call("update.state", {});
   assert.equal(state.status, "idle"); // initial (no check yet this process
   // Note (transparency): a fresh state file is "idle" by design; after `update.check`
-  // in dev it becomes "unsupported". (The RE's dev init sets "unsupported" immediately
+  // in dev it becomes "unsupported". (The dev init sets "unsupported" immediately
   // because checkForUpdates is attempted at app start.)
 });
 

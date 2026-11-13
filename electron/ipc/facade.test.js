@@ -62,7 +62,7 @@ test("callable methods default params to {} (argument-optional calls)", async ()
 
 test("positional multi-arg calls (target renderer style) pack as {args:[...]}", async () => {
   const { facade, calls } = build();
-  // RE target renderer: signIn(email, password), terminal.input(id, data) —
+  // target renderer: signIn(email, password), terminal.input(id, data) —
   // without packing, everything after arg 1 would be silently dropped.
   await facade.auth.signIn("user@example.com", "hunter2222");
   assert.deepEqual(calls[calls.length - 1], {
@@ -159,7 +159,7 @@ test("legacy member colliding with a target namespace throws", () => {
   );
 });
 
-test("two builds are structurally identical (october alias can share the shape)", () => {
+test("two builds are structurally identical (the alias can share the shape)", () => {
   const a = build().facade;
   const b = build().facade;
   assert.deepEqual(Object.keys(a), Object.keys(b));

@@ -1,9 +1,9 @@
 "use strict";
-// layer-1 tests for the Wave-3 storage handlers (doc 35 §1): the rclone sidecar.
+// layer-1 tests for the Wave-3 storage handlers (docs/architecture/storage.md): the rclone sidecar.
 //
 // The sidecar is downloaded on DEMAND (never bundled in the installer) and is
 // sha256-verified against the published SHA256SUMS before it is used. These
-// tests cover the parsers (the RE's output shapes), the path-safety rules and
+// tests cover the parsers (the output shapes), the path-safety rules and
 // the honest "not installed yet" answers — plus, when the network allows, the
 // REAL download + verify + install of the sidecar.
 const { test, beforeEach } = require("node:test");
@@ -86,7 +86,7 @@ test("id surface: 7 storage ids, all in the manifest", () => {
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("rcloneAssetName follows the RE's naming", () => {
+test("rcloneAssetName follows the naming", () => {
   assert.equal(rcloneAssetName("v1.74.3", "linux", "x64"), "rclone-v1.74.3-linux-amd64.zip");
   assert.equal(rcloneAssetName("v1.74.3", "darwin", "arm64"), "rclone-v1.74.3-osx-arm64.zip");
   assert.equal(rcloneAssetName("v1.74.3", "win32", "x64"), "rclone-v1.74.3-windows-amd64.zip");
@@ -110,7 +110,7 @@ test("parseLsjson reads the real rclone lsjson output", () => {
   ]);
   const rows = parseLsjson(json, "drive:folder");
   assert.equal(rows.length, 2);
-  // The RE sorts directories first, then by name.
+  // The sorts directories first, then by name.
   assert.equal(rows[0].isDirectory, true);
   assert.equal(rows[0].path, "drive:folder/sub");
   assert.equal(rows[0].size, undefined, "a directory has no size");
@@ -136,7 +136,7 @@ test("parseAuthorizeToken finds the token blob rclone prints", () => {
   assert.equal(parseAuthorizeToken("---> {\"no\":\"token\"} <---"), null, "a blob without access_token is refused");
 });
 
-test("archive paths are traversal-guarded (the RE's rule)", () => {
+test("archive paths are traversal-guarded (the rule)", () => {
   assert.equal(safeArchivePath("rclone"), "rclone");
   assert.equal(safeArchivePath("dir/rclone"), "dir/rclone");
   assert.throws(() => safeArchivePath("/etc/passwd"), /absolute/);

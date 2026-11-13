@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: diagnostics (2 dispatchable; doc 32 §W2-1).
+// autumn — Wave-2 handlers: diagnostics (2 dispatchable; docs/architecture/backend.md-1).
 //
-// RE: the renderer calls `window.october.diagnostics.report(note?)` expecting `{code}`.
+// the renderer calls `window.autumn.diagnostics.report(note?)` expecting `{code}`.
 // The target's remote log-report service does not exist for a local-first clone, and
 // faking a remote issue code would be fabrication. Honest analogue: build the
 // diagnostics bundle locally, write it to <userData>/logs/diagnostics-<ts>.json, and
@@ -92,7 +92,7 @@ export function makeDiagnosticsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "diagnostics.report",
       description:
-        "build + save a diagnostics bundle (RE shape, local code); params: { note?: string } -> { code }",
+        "build + save a diagnostics bundle (shape, local code); params: { note?: string } -> { code }",
       schema: (p) =>
         p?.note === undefined || typeof p.note === "string"
           ? { ok: true }

@@ -1,5 +1,5 @@
 "use strict";
-// Layer-1 units for the fs namespace (doc 35 §4): the whole-machine finder.
+// Layer-1 units for the fs namespace (docs/architecture/finder.md): the whole-machine finder.
 //
 // Everything here is REAL: the listings, the previews, the search, the
 // rename/move/copy/trash/mkdir really touch the disk (in a temp dir), and
@@ -95,7 +95,7 @@ test("id surface: exactly the 12 manifest fs ids", () => {
 
 // ---------------- fs.places ----------------
 
-test("fs.places: the RE's places — the folders that really exist", async () => {
+test("fs.places: the places — the folders that really exist", async () => {
   const { call } = build();
   const res = await call("fs.places", {});
   assert.ok(Array.isArray(res.places));
@@ -428,7 +428,7 @@ test("fs.mkdir: an existing name and a separator are refused", async () => {
 
 // ---------------- the pure helpers ----------------
 
-test("safeName is the RE's rule", () => {
+test("safeName is the rule", () => {
   assert.equal(safeName("ok.txt"), "ok.txt");
   assert.equal(safeName("  spaced  "), "spaced");
   assert.throws(() => safeName(""), /Invalid name/);

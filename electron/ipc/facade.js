@@ -1,8 +1,8 @@
 "use strict";
 // autumn preload facade — builds the `window.autumn` object from the manifest.
 //
-// The facade is generated from electron/ipc/manifest.json (RE'd from the target,
-// October Desktop v1.0.56) so the shape can never drift from the oracle:
+// The facade is generated from electron/ipc/manifest.json (adapted from the target,
+//) so the shape can never drift from the oracle:
 //   - 68 namespaces / 572 second-level methods
 //   - `on*` methods (68) are SUBSCRIPTIONS: (cb) => unsubscribe
 //   - all other methods (504) are CALLS: (params) => Promise<envelope>
@@ -10,7 +10,7 @@
 // Transport is a single generic IPC channel (`autumn:invoke`) handled by the
 // registrar in ./ipcmain.js -> registry.dispatch(). The renderer never talks to
 // anything else — the "every renderer->backend call goes through the facade" rule
-// (doc 29 Wave 0).
+// (docs/architecture/ipc-facade.md Wave 0).
 //
 // Pure module: `invoke`/`subscribe` are injected so this is testable headless.
 
@@ -18,7 +18,7 @@ const CALL = "autumn:invoke";
 const EVENT = (id) => `autumn:event:${id}`;
 const INSPECT = "autumn:inspect";
 
-/** Subscription methods follow October's `on<Event>` convention. */
+/** Subscription methods follow the `on<Event>` convention. */
 function isEventMethod(name) {
   return /^on[A-Z]/.test(name);
 }

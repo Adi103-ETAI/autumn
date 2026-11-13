@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: skills (2 dispatchable; doc 32 §W2-2).
+// autumn — Wave-2 handlers: skills (2 dispatchable; docs/architecture/backend.md-2).
 //
-// RE-derived model (index-C29xCgPS.js ~line 694320): the target treats on-disk
+// The model: the target treats on-disk
 // skills directories (`.claude/skills` for Claude Code, CLAUDE.md/AGENTS.md blocks
 // for codex/opencode/cursor) as THE SOURCE OF TRUTH. The renderer calls:
 //   loadSkills() -> skills.installed(roots)  // roots = canvasHomePath + workspaceProjects[].info.path + terminal cwds
@@ -151,7 +151,7 @@ export function makeSkillsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "skills.sync",
       description:
-        "sync/snapshot installed skill ids into the store (RE keeps them in registry); params: { roots: string[] } -> { skills: Skill[], updated, total }",
+        "sync/snapshot installed skill ids into the store (keeps them in registry); params: { roots: string[] } -> { skills: Skill[], updated, total }",
       schema: (p) => {
         const e = validateRoots(p?.roots);
         return e ? { ok: false, message: e } : { ok: true };

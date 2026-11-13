@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the runtime bridge ids (doc 32 W2-2).
+// layer-1 tests for the runtime bridge ids (docs/architecture/backend.md W2-2).
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");
@@ -14,7 +14,7 @@ function build() {
   return { handlers, byId, call };
 }
 
-const EXPECTED_IDS = ["runtime.ensureNode", "runtime.installOctober", "runtime.removeOctober"];
+const EXPECTED_IDS = ["runtime.ensureNode", "runtime.installCloudRuntime", "runtime.removeCloudRuntime"];
 
 beforeEach(() => reg.reset());
 
@@ -33,9 +33,9 @@ test("runtime.ensureNode returns the REAL node version", async () => {
   assert.equal(res.arch, process.arch);
 });
 
-test("runtime.installOctober / removeOctober are honest not-implemented envelopes", async () => {
+test("runtime.installCloudRuntime / removeCloudRuntime are honest not-implemented envelopes", async () => {
   const { call } = build();
-  for (const id of ["runtime.installOctober", "runtime.removeOctober"]) {
+  for (const id of ["runtime.installCloudRuntime", "runtime.removeCloudRuntime"]) {
     const res = await call(id, {});
     assert.equal(res.ok, false, id);
     assert.equal(res.error.code, "not-implemented", id);
@@ -50,7 +50,7 @@ test("registry dispatch round-trip wraps payloads", async () => {
   const ok = await reg.dispatch({ id: "runtime.ensureNode", params: {} });
   assert.equal(ok.ok, true);
   assert.equal(ok.result.node, process.version);
-  const ni = await reg.dispatch({ id: "runtime.installOctober", params: {} });
+  const ni = await reg.dispatch({ id: "runtime.installCloudRuntime", params: {} });
   assert.equal(ni.ok, false);
   assert.equal(ni.error.code, "not-implemented");
 });

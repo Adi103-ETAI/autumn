@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the skills bridge ids (doc 32 W2-2). Real temp fixtures.
+// layer-1 tests for the skills bridge ids (docs/architecture/backend.md W2-2). Real temp fixtures.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -20,7 +20,7 @@ function build() {
   return { handlers, byId, call };
 }
 
-/** Create a fake project root with a skills dir (per the RE on-disk model). */
+/** Create a fake project root with a skills dir (per the on-disk model). */
 function mkProject(t, withSkills = true) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "w2-skills-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

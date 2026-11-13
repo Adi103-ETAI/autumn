@@ -1,15 +1,15 @@
 // autumn — handlers: sessions (18 dispatchable + the sessions.onImportBatch
-// push; doc 31 for the DB-backed ids, doc 35 §5 for the portable library).
+// push; docs/architecture/backend.md for the DB-backed ids, docs/architecture/sessions.md for the portable library).
 //
 // Two layers, both real:
 //
 //   * the DB layer (Wave 1) — the Session rows (messages stored as a JSON
 //     array string, the same convention as Canvas.state);
 //   * the PORTABLE layer (Wave 3) — the sessions the OTHER agents already
-//     wrote on this machine (Claude Code, Codex, Pi, Amp, Grok). The RE
+//     wrote on this machine (Claude Code, Codex, Pi, Amp, Grok). The
 //     discovers them, indexes them in a library file and lets the user
 //     browse, search and import them; autumn does the same, over the local
-//     stores, with the RE's layouts and bounds.
+//     stores, with the layouts and bounds.
 //
 // `onImportBatch` is a push producer, not a handler.
 
@@ -84,7 +84,7 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.folderFacts",
       description:
-        "what kind of folder each path is; params: { paths[] } -> [{path, root, name, kind, home, temporary, driveRoot, system}] — kind is folder | repository | missing (the RE's folder facts, so the UI can warn about importing from a temp folder)",
+        "what kind of folder each path is; params: { paths[] } -> [{path, root, name, kind, home, temporary, driveRoot, system}] — kind is folder | repository | missing (the folder facts, so the UI can warn about importing from a temp folder)",
       schema: (p) => (Array.isArray(p?.paths) ? { ok: true } : { ok: false, message: "paths[] required" }),
       handler: async (p) => {
         if (!Array.isArray(p?.paths)) return badParams("paths[] required");
@@ -338,7 +338,7 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.list",
       description:
-        "the portable sessions of the local agent stores; params: { engine? } -> [{harness, sessionId, title, cwd, cwdExists, lastActive, sizeBytes, tracked}] — the real Claude Code / Codex / Pi / Amp / Grok transcripts found on this machine, newest first (the RE's discovery, with its bounds)",
+        "the portable sessions of the local agent stores; params: { engine? } -> [{harness, sessionId, title, cwd, cwdExists, lastActive, sizeBytes, tracked}] — the real Claude Code / Codex / Pi / Amp / Grok transcripts found on this machine, newest first (the discovery, with its bounds)",
       schema: (p) =>
         p?.engine === undefined || validEngine(p.engine)
           ? { ok: true }
@@ -362,7 +362,7 @@ export function makeSessionsHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "sessions.search",
       description:
-        "search the portable sessions; params: { pattern } -> [{harness, sessionId, title, cwd, lastActive, hits[]}] — the title / cwd / id matches AND the matching transcript lines (the RE's search, with its bounds)",
+        "search the portable sessions; params: { pattern } -> [{harness, sessionId, title, cwd, lastActive, hits[]}] — the title / cwd / id matches AND the matching transcript lines (the search, with its bounds)",
       schema: (p) => (typeof p?.pattern === "string" ? { ok: true } : { ok: false, message: "pattern required (string)" }),
       handler: async (p) => {
         if (typeof p?.pattern !== "string") return badParams("pattern required");

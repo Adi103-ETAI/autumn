@@ -1,13 +1,13 @@
-// autumn — Wave-2 handlers: wallpapers (3 dispatchable; doc 32 §W2-2).
+// autumn — Wave-2 handlers: wallpapers (3 dispatchable; docs/architecture/backend.md-2).
 //
-// RE: the renderer stores refs like `custom:<filename>` and resolves them via
-// `customWallpaperUrl(ref)` = `october-wallpaper://<file>` — a target-only custom
+// the renderer stores refs like `custom:<filename>` and resolves them via
+// `customWallpaperUrl(ref)` — a custom
 // protocol. autumn keeps the same `custom:<file>` ref shape (renderer code identical);
 // the renderer's image `url(ref)` resolves to a data URL handed back inside `list`
 // items, so no second protocol handler exists in main.
 //
-// upload is BY PATH ({ path }) — the RE's dialog-based autonomous upload cannot run
-// headless; the facade documents that. remove returns the refs AFTER removal (RE).
+// upload is BY PATH ({ path }) — the dialog-based autonomous upload cannot run
+// headless; the facade documents that. remove returns the refs AFTER removal ().
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
@@ -53,7 +53,7 @@ export function makeWallpapersHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "wallpapers.list",
       description:
-        "list custom wallpapers (RE: list()); params: {} -> refs string[] (`custom:<file>`), matching the RE list() contract",
+        "list custom wallpapers (list()); params: {} -> refs string[] (`custom:<file>`), matching the list() contract",
       schema: () => ({ ok: true }),
       handler: () => refs(),
     },
@@ -69,7 +69,7 @@ export function makeWallpapersHandlers(deps: W1Deps): RegisteredHandler[] {
       handler: (p) => {
         if (p?.path === undefined) {
           return badParams(
-            "upload needs a file path in autumn (the RE dialog-based upload can't run headless; pass { path })",
+            "upload needs a file path in autumn (the dialog-based upload can't run headless; pass { path })",
           );
         }
         if (typeof p.path !== "string") return badParams("path must be a string");
@@ -102,7 +102,7 @@ export function makeWallpapersHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "wallpapers.remove",
       description:
-        "delete a custom wallpaper by ref (RE: remove(ref) → refs after removal); params: { ref: `custom:<file>` }",
+        "delete a custom wallpaper by ref (remove(ref) → refs after removal); params: { ref: `custom:<file>` }",
       schema: (p) =>
         p?.ref === undefined || (typeof p.ref === "string" && !p.ref.includes("\0"))
           ? { ok: true }

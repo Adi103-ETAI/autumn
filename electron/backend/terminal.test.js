@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the terminal bridge ids (doc 29 §T, doc 31 §5). Fake deps only.
+// layer-1 tests for the terminal bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md). Fake deps only.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");

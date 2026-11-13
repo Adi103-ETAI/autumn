@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the settings bridge ids (doc 32 W2-1). Real JSON store
+// layer-1 tests for the settings bridge ids (docs/architecture/backend.md W2-1). Real JSON store
 // against a temp AUTUMN_USER_DATA_DIR — no Electron, no Prisma.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
@@ -35,7 +35,7 @@ test("id surface: the 4 renderer-used settings ids, all in the manifest", () => 
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
 });
 
-test("settings.get() with no keys returns the WHOLE document (RE shape)", async () => {
+test("settings.get() with no keys returns the WHOLE document (shape)", async () => {
   useTempUserData();
   const { call } = build();
   const initial = await call("settings.get", {});

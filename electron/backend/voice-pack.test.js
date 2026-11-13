@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the on-device voice pack (doc 35 §6): the Parakeet model.
+// layer-1 tests for the on-device voice pack (docs/architecture/voice.md): the Parakeet model.
 //
 // THE WHOLE INSTALL PIPELINE IS EXERCISED FOR REAL against a local HTTP
 // server: the archive is really downloaded, really sha256-verified, really
@@ -8,7 +8,7 @@
 //
 // The model is ~460 MB in production, so the test drives the install with the
 // SAME code against a small archive served locally (the URLs and the hashes
-// are the install options; the defaults are the RE's).
+// are the install options; the defaults are the).
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -109,7 +109,7 @@ function hasBzip2() {
   }
 }
 
-/** The model files the RE's `resolveModelFiles` looks for. */
+/** The model files the `resolveModelFiles` looks for. */
 const MODEL_FILES = [
   { path: `${MODEL_NAME}/encoder.int8.onnx`, data: "encoder" },
   { path: `${MODEL_NAME}/decoder.int8.onnx`, data: "decoder" },
@@ -122,10 +122,10 @@ beforeEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// the constants (the RE's)
+// the constants (the)
 // ---------------------------------------------------------------------------
 
-test("the pack's constants are the RE's", () => {
+test("the pack's constants are the", () => {
   assert.equal(MODEL_NAME, "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8");
   assert.equal(
     MODEL_URL,
@@ -309,7 +309,7 @@ test("the tar reader reads the real entries", () => {
 // the disk check
 // ---------------------------------------------------------------------------
 
-test("the disk check is the RE's (1.25x the pack size)", () => {
+test("the disk check is the (1.25x the pack size)", () => {
   assert.equal(requiredFreeBytes(SHERPA_PACK_EXPECTED_BYTES), 750_000_000);
   assert.equal(describeBytes(750_000_000), "~750 MB");
   assert.equal(describeBytes(2_000_000_000), "~2.0 GB");
@@ -397,7 +397,7 @@ test("the pack manager reports a failure honestly", async () => {
   assert.match(res.errorMessage, /503/);
 });
 
-test("classifyPrepareError is the RE's", () => {
+test("classifyPrepareError is the", () => {
   assert.equal(classifyPrepareError(new Error("ENOSPC: no space left on device")), "disk-space");
   assert.equal(classifyPrepareError(new Error("Voice model download failed its checksum.")), "integrity");
   assert.equal(classifyPrepareError(new Error("Download failed (500)")), "network");

@@ -1,5 +1,5 @@
 "use strict";
-// Wave-1 layer-1 tests for the files bridge ids (doc 29 §T, doc 31 §5).
+// Wave-1 layer-1 tests for the files bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md).
 // REAL fs against fs.mkdtemp fixtures — no mocking of the filesystem.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");

@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the sessions bridge ids (doc 29 §T, doc 31 §5). Fake Prisma deps.
+// layer-1 tests for the sessions bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md). Fake Prisma deps.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");
@@ -114,7 +114,7 @@ test("sessions.folderFacts reports what kind of folder each path is", async () =
   assert.equal(facts.facts[0].path, dir);
   assert.equal(typeof facts.facts[0].home, "boolean");
   assert.equal(facts.facts[1].kind, "missing");
-  // The relative path is ignored (the RE's rule).
+  // The relative path is ignored (the rule).
   const onlyRelative = await call("sessions.folderFacts", { paths: ["relative/path"] });
   assert.deepEqual(onlyRelative.facts, []);
 });

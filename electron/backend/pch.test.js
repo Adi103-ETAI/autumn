@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the projectChatHistory bridge ids (doc 29 §T, doc 31 §5). Fake deps only.
+// layer-1 tests for the projectChatHistory bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md). Fake deps only.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");
@@ -70,7 +70,7 @@ test("projectChatHistory.upsert creates a message row", async () => {
   const res = await call("projectChatHistory.upsert", { canvasId: "c", nodeId: "n1", role: "user", text: "just added" });
   assert.equal(res.text, "just added");
   assert.equal(state.created.length, 1);
-  assert.equal(state.emitted.length, 0); // pch emits nothing (doc 31)
+  assert.equal(state.emitted.length, 0); // pch emits nothing (docs/architecture/backend.md)
 });
 
 test("projectChatHistory.importLegacy is an honest empty import", async () => {

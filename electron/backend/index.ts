@@ -1,11 +1,11 @@
 // autumn — backend host: wires the ported route logic into the IPC registry.
 //
 // This is the "backend moves into Electron main" step of the Wave-0 migration
-// (doc 29): the SAME src/lib/autumn modules the Next routes use are loaded here
+// (docs/architecture/ipc-facade.md): the SAME src/lib/autumn modules the Next routes use are loaded here
 // via electron/ts-register.js, and every handler is registered in the shared
 // registry so it serves `window.autumn.*` calls through the generic registrar.
 //
-// Wave-2 (doc 32): the 12 platform milestone handlers (settings/diagnostics/resources/nav/
+// Wave-2 (docs/architecture/backend.md): the 12 platform milestone handlers (settings/diagnostics/resources/nav/
 // element/runtime/wallpapers/cues/skills/update/auth/agentAccounts) register alongside the
 // Wave-1 factories and
 // the original 14 route handlers. Their shared dependency surface is W1Deps (w1-deps.ts); the
@@ -69,11 +69,11 @@ function realDeps(emit: (id: string, payload: unknown) => void): BackendDeps {
   return { busStore, pty, spawner, db, personas: { PERSONA_BY_ID }, emit };
 }
 
-/** Wave-1 dependencies: BackendDeps + node/electron surfaces (doc 31). */
+/** Wave-1 dependencies: BackendDeps + node/electron surfaces (docs/architecture/backend.md). */
 function realW1Deps(emit: (id: string, payload: unknown) => void): W1Deps {
   // `any` on purpose: the require()d modules are untyped at this boundary and
   // are structurally W1Deps at runtime (Prisma has the Wave-1 models after
-  // `prisma generate`; pty exports onPtyExit/ptyExists/ptyKind — doc 31).
+  // `prisma generate`; pty exports onPtyExit/ptyExists/ptyKind — docs/architecture/backend.md).
   const base: any = realDeps(emit);
   // electron modules are required lazily so headless tests never load them.
   // eslint-disable-next-line @typescript-eslint/no-var-requires

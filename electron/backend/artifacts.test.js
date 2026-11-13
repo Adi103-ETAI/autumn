@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the artifacts bridge ids (doc 29 §T, doc 31 §5). Fake Prisma deps.
+// layer-1 tests for the artifacts bridge ids (docs/architecture/ipc-facade.md, docs/architecture/backend.md). Fake Prisma deps.
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
 require("../ts-register");

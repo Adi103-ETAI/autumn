@@ -1,6 +1,6 @@
-// autumn — Wave-2 handlers: voice (15 dispatchable; doc 32 §2f) — FULL (W2-9).
+// autumn — Wave-2 handlers: voice (15 dispatchable; docs/architecture/backend.md) — FULL (W2-9).
 //
-// RE-derived (October out/preload/index.js + out/main/index.js):
+// The contract:
 //   micPermission()          → a STRING status: "unknown" unless darwin/win32, then
 //     systemPreferences.getMediaAccessStatus("microphone") mapped granted→"granted",
 //     denied|restricted→"denied", not-determined→"prompt", else "unknown".
@@ -14,27 +14,27 @@
 //   stopSpeak()              → stops the live utterance.
 //   mic.start/stop/mute/unmute/lockBypass(on)  (+ mic.onState push)
 //   reportUsage(report)      → {ok:true, …} or {ok:false, code:"invalid_request"} when
-//     the report shape is unusable (RE: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈
+//     the report shape is unusable (sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈
 //     {desktop-ftue, desktop-voice}, seconds an integer 0..3600, optional startedAt).
 //   deleteOldModel()         → {deleted, freedMb}.
 //   deepgramToken(opts)      → {ok:false, code, message} when the policy refuses it,
 //     else a real grant {token, expiresAt, sessionId}.
 //   openaiRealtimeToken(opts)→ a real session secret from /v1/realtime/client_secrets.
 //
-// autumn design (doc 32 §2f) — offline-first, BYO keys, never a fake token:
+// autumn design (docs/architecture/backend.md) — offline-first, BYO keys, never a fake token:
 //   * TTS is the OS voice (macOS `say`, Windows PowerShell System.Speech, Linux
 //     `spd-say`); absent → speak resolves false (never a truthy object).
 //   * mic capture is real ffmpeg (dshow / avfoundation / alsa) into
 //     <userData>/voice/<ts>.wav; ffmpeg absent → honest {supported:false, reason}.
 //   * device enumeration is REAL: `ffmpeg -f dshow -list_devices true` (Windows),
 //     `arecord -l` (Linux), `system_profiler SPAudioDataType` (macOS).
-//   * BYO keys come from the SETTINGS document (RE: getSettings().openaiApiKey) or
+//   * BYO keys come from the SETTINGS document (getSettings().openaiApiKey) or
 //     the environment; without one the answer is {ok:false, code, message} /
 //     {supported:false, reason} — a token is NEVER fabricated.
 //   * usage counters live in <userData>/voice/usage.json.
 //
-// Wave 3 (doc 35 §6) replaced the five boundary ids with REAL ones:
-//   voicePack       the neutral on-device voice-pack contract (the RE's
+// Wave 3 (docs/architecture/voice.md) replaced the five boundary ids with REAL ones:
+//   voicePack       the neutral on-device voice-pack contract (the
 //                   voice:pack-status / pack-prepare / pack-retry) — the
 //                   Parakeet model is downloaded AFTER the install into
 //                   <userData>/voice-models/ (never into the installer),
@@ -85,7 +85,7 @@ const usageFile = () => join(voiceDir(), "usage.json");
 const cacheDir = () => join(voiceDir(), "cache");
 const settingsFile = () => dbPath("app-settings.json");
 
-/** RE constants (voice.ts). */
+/** constants (voice.ts). */
 const DEEPGRAM_TOKEN_PURPOSES = ["desktop-ftue", "desktop-voice"];
 const VOICE_SESSION_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
 const VOICE_USAGE_MAX_SECONDS = 3600;
@@ -102,7 +102,7 @@ function readUsage(): Usage {
   return { sessions: u.sessions ?? 0, seconds: u.seconds ?? 0, byKind: u.byKind ?? {} };
 }
 
-/** The BYO key: the settings document first (RE: getSettings().openaiApiKey), then the env. */
+/** The BYO key: the settings document first (getSettings().openaiApiKey), then the env. */
 function readKey(settingKey: string, envKey: string): string | undefined {
   const settings = loadJson<Record<string, unknown>>(settingsFile(), {});
   const fromSettings = settings[settingKey];
@@ -168,7 +168,7 @@ function parseDevices(text: string): string[] {
 }
 
 /**
- * The voice-intent compiler prompt — the RE's contract: the answer is ONE
+ * The voice-intent compiler prompt — the contract: the answer is ONE
  * strict JSON object, and the agent reports are untrusted status data.
  */
 const INTENT_SYSTEM_PROMPT = [
@@ -182,7 +182,7 @@ const INTENT_SYSTEM_PROMPT = [
   '{"version":1,"kind":"actions","actions":[{"do":"<action>","params":{}}],"say":"...","listen":true}',
 ].join(" ");
 
-/** The RE's clarification answer (the RE's CLARIFY). */
+/** The clarification answer (the CLARIFY). */
 const INTENT_CLARIFY = {
   kind: "ask" as const,
   ask: "Sorry, I didn't catch that — what would you like to do?",
@@ -190,7 +190,7 @@ const INTENT_CLARIFY = {
 };
 
 /**
- * Parse the compiler's answer into the RE's shape
+ * Parse the compiler's answer into the shape
  * ({kind:"steps"|"ask", steps:[…], say?}).
  */
 export function parseIntentResult(raw: string, utterance: string): Record<string, unknown> {
@@ -226,7 +226,7 @@ export function parseIntentResult(raw: string, utterance: string): Record<string
       ...(parsed.listen === true ? { expectsReply: true } : {}),
     };
   }
-  // Anything else is passed through as-is (the RE does the same).
+  // Anything else is passed through as-is (the does the same).
   return { kind: parsed.kind ?? "steps", ...parsed };
 }
 
@@ -242,9 +242,9 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
   // The running voice-intent compile (cancellable).
   let compileController: AbortController | null = null;
 
-  // The voice pack manager (the RE's VoicePackManager over the sherpa driver).
+  // The voice pack manager (the VoicePackManager over the sherpa driver).
   const packManager = new VoicePackManager(sherpaDriver());
-  // The pack progress is pushed to the renderer (the RE's
+  // The pack progress is pushed to the renderer (the
   // event:voice-pack-progress / event:voice-model-progress).
   packManager.onProgress((status: PackStatus) => {
     emit("voice.onPackProgress", status);
@@ -314,7 +314,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.micPermission",
       description:
-        "microphone permission status (RE micPermissionStatus); params: {} -> 'granted'|'denied'|'prompt'|'unknown' (string; 'unknown' without the Electron systemPreferences API)",
+        "microphone permission status (micPermissionStatus); params: {} -> 'granted'|'denied'|'prompt'|'unknown' (string; 'unknown' without the Electron systemPreferences API)",
       handler: () => {
         if (process.platform !== "darwin" && process.platform !== "win32") return "unknown";
         const sp = lazyElectron()?.systemPreferences;
@@ -334,14 +334,14 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.ensureMicAccess",
       description:
-        "ensure microphone access (RE ensureMicAccess); params: {} -> boolean (win32: not-denied; darwin: real askForMediaAccess when Electron is present; other platforms: true). autumn extension: {devices:true} also returns the REAL enumerated input devices",
+        "ensure microphone access (ensureMicAccess); params: {} -> boolean (win32: not-denied; darwin: real askForMediaAccess when Electron is present; other platforms: true). autumn extension: {devices:true} also returns the REAL enumerated input devices",
       handler: async (params) => {
         const { obj } = paramsOf(params);
         const wantDevices = obj.devices === true;
         let granted: boolean;
         if (process.platform === "win32") {
           const sp = lazyElectron()?.systemPreferences;
-          if (!sp?.getMediaAccessStatus) granted = true; // RE: non-granted status on win32 without the API → not denied
+          if (!sp?.getMediaAccessStatus) granted = true; // non-granted status on win32 without the API → not denied
           else {
             try {
               granted = sp.getMediaAccessStatus("microphone") !== "denied";
@@ -350,7 +350,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
             }
           }
         } else if (process.platform !== "darwin") {
-          granted = true; // RE: every other platform → true
+          granted = true; // every other platform → true
         } else {
           const sp = lazyElectron()?.systemPreferences;
           if (!sp) granted = false; // cannot prompt without Electron — honest false, not a fake grant
@@ -378,7 +378,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.openMicSettings",
       description:
-        "open the OS microphone privacy settings (RE); params: {} -> {opened:true} (darwin/win32 via shell.openExternal) | {opened:false, guidance} on Linux or without Electron — guidance, not an error",
+        "open the OS microphone privacy settings (); params: {} -> {opened:true} (darwin/win32 via shell.openExternal) | {opened:false, guidance} on Linux or without Electron — guidance, not an error",
       handler: async () => {
         const electron = lazyElectron();
         const urls: Record<string, string> = {
@@ -409,7 +409,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.speak",
       description:
-        "speak text with the OS TTS (RE voiceSpeak: positional text, sliced to 500 chars); params: text or {text, voice?, rate?} -> boolean (true only when the platform TTS actually ran to completion; false when unavailable/failed)",
+        "speak text with the OS TTS (voiceSpeak: positional text, sliced to 500 chars); params: text or {text, voice?, rate?} -> boolean (true only when the platform TTS actually ran to completion; false when unavailable/failed)",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const raw = str(obj, pos, "text");
@@ -441,7 +441,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
     {
       kind: "bridge",
       id: "voice.stopSpeak",
-      description: "stop OS TTS playback (RE engineStopSpeaking); params: {} -> boolean (true when a live utterance was killed)",
+      description: "stop OS TTS playback (engineStopSpeaking); params: {} -> boolean (true when a live utterance was killed)",
       handler: () => {
         if (!speaking) return false;
         try {
@@ -459,7 +459,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.mic",
       description:
-        "microphone control (RE voice.mic: start/stop/mute/unmute/lockBypass + doc §2f record mode); params: {action:'start'|'stop'|'mute'|'unmute'|'lockBypass'|'state'|'devices', durationMs?, outFile?} -> action results; start records via ffmpeg → {supported:false, reason} when ffmpeg is absent",
+        "microphone control (voice.mic: start/stop/mute/unmute/lockBypass + doc §2f record mode); params: {action:'start'|'stop'|'mute'|'unmute'|'lockBypass'|'state'|'devices', durationMs?, outFile?} -> action results; start records via ffmpeg → {supported:false, reason} when ffmpeg is absent",
       handler: async (params) => {
         const { obj, pos } = paramsOf(params);
         const action = str(obj, pos, "action") ?? (obj.durationMs || obj.outFile ? "start" : "state");
@@ -553,7 +553,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.deepgramToken",
       description:
-        "mint a scoped Deepgram token (RE voiceDeepgramToken); params: {purpose?, ftueVersion?} -> {ok:false, code, message} when the policy refuses it, else a real grant {token, expiresAt, sessionId}; the BYO key comes from the settings document (deepgramApiKey) or DEEPGRAM_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a token is NEVER fabricated",
+        "mint a scoped Deepgram token (voiceDeepgramToken); params: {purpose?, ftueVersion?} -> {ok:false, code, message} when the policy refuses it, else a real grant {token, expiresAt, sessionId}; the BYO key comes from the settings document (deepgramApiKey) or DEEPGRAM_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a token is NEVER fabricated",
       handler: async (params) => {
         const { obj } = paramsOf(params);
         const purpose = typeof obj.purpose === "string" ? obj.purpose : "desktop-voice";
@@ -606,7 +606,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.openaiRealtimeToken",
       description:
-        "mint an OpenAI Realtime session secret (RE mintOpenaiRealtimeToken); params: {language?, delay?, model?, voice?} -> the real session JSON from /v1/realtime/client_secrets; the BYO key comes from the settings document (openaiApiKey) or OPENAI_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a session is NEVER fabricated",
+        "mint an OpenAI Realtime session secret (mintOpenaiRealtimeToken); params: {language?, delay?, model?, voice?} -> the real session JSON from /v1/realtime/client_secrets; the BYO key comes from the settings document (openaiApiKey) or OPENAI_API_KEY — without one: {ok:false, code:'voice_grant_unavailable'} — a session is NEVER fabricated",
       handler: async (params) => {
         const { obj } = paramsOf(params);
         const key = readKey("openaiApiKey", "OPENAI_API_KEY");
@@ -659,11 +659,11 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.reportUsage",
       description:
-        "record voice usage counters (RE voiceReportUsage); params: RE {sessionId, purpose, seconds, startedAt?} -> {ok:true, usage}; an unusable shape answers {ok:false, code:'invalid_request'} (RE validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue, desktop-voice}, seconds an integer 0..3600) — counters persisted to <userData>/voice/usage.json",
+        "record voice usage counters (voiceReportUsage); params: {sessionId, purpose, seconds, startedAt?} -> {ok:true, usage}; an unusable shape answers {ok:false, code:'invalid_request'} (validation: sessionId /^[A-Za-z0-9_-]{8,128}$/, purpose ∈ {desktop-ftue, desktop-voice}, seconds an integer 0..3600) — counters persisted to <userData>/voice/usage.json",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const single = typeof params === "string" ? params : undefined;
-        // object keys first; positional RE order is (sessionId, purpose, seconds)
+        // object keys first; positional order is (sessionId, purpose, seconds)
         const sessionId = ostr(obj, "sessionId") ?? (typeof pos[0] === "string" ? pos[0] : undefined);
         const purpose = ostr(obj, "purpose") ?? (typeof pos[1] === "string" ? pos[1] : undefined);
         const seconds = obj.seconds !== undefined ? obj.seconds : pos[2];
@@ -674,7 +674,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
         const reShape = sessionId !== undefined && purpose !== undefined && typeof seconds === "number";
         const docShape = (kind !== undefined && typeof ms === "number") || single !== undefined;
         if (reShape) {
-          // RE validation (isVoiceUsageReport).
+          // validation (isVoiceUsageReport).
           if (typeof sessionId !== "string" || !VOICE_SESSION_ID_RE.test(sessionId)) {
             return { ok: false, code: "invalid_request" };
           }
@@ -710,7 +710,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.deleteOldModel",
       description:
-        "delete stale voice model/cache files; params: {olderThanDays?} (default 30) -> {deleted, freedMb} (RE shape) — real files under <userData>/voice/cache/ only",
+        "delete stale voice model/cache files; params: {olderThanDays?} (default 30) -> {deleted, freedMb} (shape) — real files under <userData>/voice/cache/ only",
       handler: (params) => {
         const { obj, pos } = paramsOf(params);
         const days = typeof obj.olderThanDays === "number" && obj.olderThanDays >= 0 ? obj.olderThanDays : 30;
@@ -741,12 +741,12 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       },
     },
 
-    // ----- the on-device voice pack (Wave 3, doc 35 §6) ----------------------
+    // ----- the on-device voice pack (Wave 3, docs/architecture/voice.md) ----------------------
     {
       kind: "bridge",
       id: "voice.voicePack",
       description:
-        "the on-device voice pack; params: { action?: 'status'|'prepare'|'retry'|'delete' } -> the pack status {version, state, phase, components, engine, asrModel, progress?, errorCode?, errorMessage?} — the NEUTRAL contract the RE's voice:pack-status/prepare/retry expose; 'prepare' downloads the Parakeet model (sha256-verified, traversal-guarded) into <userData>/voice-models/ AFTER the install — the installer never grows",
+        "the on-device voice pack; params: { action?: 'status'|'prepare'|'retry'|'delete' } -> the pack status {version, state, phase, components, engine, asrModel, progress?, errorCode?, errorMessage?} — the NEUTRAL contract the voice:pack-status/prepare/retry expose; 'prepare' downloads the Parakeet model (sha256-verified, traversal-guarded) into <userData>/voice-models/ AFTER the install — the installer never grows",
       schema: (p) => {
         const { obj } = paramsOf(p);
         const action = obj.action ?? "status";
@@ -771,7 +771,7 @@ export function makeVoiceHandlers(deps: W1Deps): RegisteredHandler[] {
       kind: "bridge",
       id: "voice.parakeet",
       description:
-        "the legacy Parakeet status (the RE's deprecated voice:parakeet-* aliases); params: { action?: 'status'|'ensureModel' } -> {available, model, progress?, error?, modelName, sha256, installRoot, runtimeInstalled} — 'status' never downloads; 'ensureModel' really downloads and verifies the model",
+        "the legacy Parakeet status (the deprecated voice:parakeet-* aliases); params: { action?: 'status'|'ensureModel' } -> {available, model, progress?, error?, modelName, sha256, installRoot, runtimeInstalled} — 'status' never downloads; 'ensureModel' really downloads and verifies the model",
       schema: (p) => {
         const { obj } = paramsOf(p);
         const action = obj.action ?? "status";

@@ -1,5 +1,5 @@
 "use strict";
-// autumn — M3 renderer guard (doc 30 §8): Next.js is now RENDERER-ONLY.
+// autumn — M3 renderer guard (docs/architecture/ipc-facade.md): Next.js is now RENDERER-ONLY.
 //
 // The backend lives exclusively in the Electron main process (14 handlers in
 // electron/backend). This test permanently enforces the two invariants that
@@ -70,7 +70,7 @@ test("the API routes are gone (Next is renderer-only)", () => {
     fs.existsSync(apiDir),
     false,
     "src/app/api must not exist — the backend is hosted in Electron main " +
-      "(electron/backend/handlers.ts); see doc 30 §8",
+      "(electron/backend/handlers.ts); see docs/architecture/ipc-facade.md",
   );
 });
 

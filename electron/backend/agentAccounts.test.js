@@ -1,5 +1,5 @@
 "use strict";
-// layer-1 tests for the agentAccounts bridge ids (doc 32 W2-4). RE-faithful
+// layer-1 tests for the agentAccounts bridge ids (docs/architecture/backend.md). faithful
 // (agent-accounts:* IPC family): PATH probe, profile-env spawn, attempt lifecycle,
 // avatar int range, system-login cache. Fake spawn — no real CLIs, no Electron.
 const { test, beforeEach } = require("node:test");
@@ -173,24 +173,24 @@ test("beginAdd unknown provider → unknown-provider", async (t) => {
   assert.equal(res.reason, "unknown-provider");
 });
 
-test("beginAdd creates a pending account + attempt (RE: {ok,id,attemptId,terminalId})", async (t) => {
+test("beginAdd creates a pending account + attempt ({ok,id,attemptId,terminalId})", async (t) => {
   const dir = useTempUserData(t);
   makeFakeBin(t);
   const { call } = build();
-  const res = await call("agentAccounts.beginAdd", { args: ["claude"] }); // positional (RE)
+  const res = await call("agentAccounts.beginAdd", { args: ["claude"] }); // positional
   assert.equal(res.ok, true);
   assert.match(res.id, /^[a-f0-9-]{36}$/);
   assert.match(res.attemptId, /^[a-f0-9-]{36}$/);
-  assert.equal(res.terminalId, `acct-setup-${res.attemptId}`); // RE setupTerminalId
+  assert.equal(res.terminalId, `acct-setup-${res.attemptId}`); // setupTerminalId
   const rows = await call("agentAccounts.list", {});
   assert.equal(rows.length, 1);
   assert.equal(rows[0].state, "pending");
   assert.equal(rows[0].provider, "claude");
-  // codex profiles get a seeded config.toml (RE seedProfile) — claude does not
+  // codex profiles get a seeded config.toml (seedProfile) — claude does not
   assert.ok(!fs.existsSync(path.join(dir, "agent-accounts", "claude", res.id, "config.toml")));
 });
 
-test("second beginAdd while a login is in flight → login-in-progress (RE gate)", async (t) => {
+test("second beginAdd while a login is in flight → login-in-progress (gate)", async (t) => {
   useTempUserData(t);
   makeFakeBin(t);
   const { call } = build();
@@ -220,21 +220,21 @@ test("probe spawns the real CLI shape with profile env (CLAUDE_CONFIG_DIR + cred
 
   const identity = await call("agentAccounts.probe", { id: begun.id });
   assert.equal(identity.loggedIn, true);
-  assert.equal(identity.firstParty, true, "firstParty = authMethod claude.ai + apiProvider firstParty (RE)");
+  assert.equal(identity.firstParty, true, "firstParty = authMethod claude.ai + apiProvider firstParty");
   assert.equal(identity.email, "ada@example.com");
 
   const call0 = spawn.calls[0];
-  assert.deepEqual(call0.args, ["auth", "status", "--json"]); // RE probe args
+  assert.deepEqual(call0.args, ["auth", "status", "--json"]); // probe args
   assert.equal(call0.opts.env.CLAUDE_CONFIG_DIR, path.join(dir, "agent-accounts", "claude", begun.id));
   assert.ok(!("ANTHROPIC_API_KEY" in call0.opts.env), "credential scrub must strip ANTHROPIC_API_KEY");
 
-  // identity write-through into meta (RE cacheIdentity)
+  // identity write-through into meta (cacheIdentity)
   const rows = await call("agentAccounts.list", {});
   assert.equal(rows[0].identity.email, "ada@example.com");
   assert.equal(typeof rows[0].identityProbedAt, "number");
 });
 
-test("probe: gateway login is NOT firstParty (RE anti-bedrock guard)", async (t) => {
+test("probe: gateway login is NOT firstParty (anti-bedrock guard)", async (t) => {
   useTempUserData(t);
   makeFakeBin(t);
   const spawn = makeSpawn(() => ({ code: 0, out: CLAUDE_GATEWAY, err: "" }));
@@ -245,7 +245,7 @@ test("probe: gateway login is NOT firstParty (RE anti-bedrock guard)", async (t)
   assert.equal(identity.firstParty, false);
 });
 
-test("probe: unknown id or missing binary → {loggedIn:false,firstParty:false} (RE NO_IDENTITY)", async (t) => {
+test("probe: unknown id or missing binary → {loggedIn:false,firstParty:false} (NO_IDENTITY)", async (t) => {
   useTempUserData(t);
   makeEmptyPath(t);
   const { call } = build();
@@ -265,7 +265,7 @@ test("finalize happy path: attempt ownership + firstParty → state ready + uniq
   const { call } = build(spawn);
   const begun = await call("agentAccounts.beginAdd", { provider: "claude" });
 
-  const res = await call("agentAccounts.finalize", { args: [begun.id, begun.attemptId, "Ada"] }); // positional RE
+  const res = await call("agentAccounts.finalize", { args: [begun.id, begun.attemptId, "Ada"] }); // positional
   assert.equal(res.ok, true);
   assert.equal(res.account.state, "ready");
   assert.equal(res.account.label, "Ada");
@@ -319,7 +319,7 @@ test("finalize twice → second loses the attempt (released)", async (t) => {
 // rename / avatar / remove / cancel / abandon / reLogin / systemLogin
 // ---------------------------------------------------------------------------
 
-test("rename: unique label per provider (RE uniqueLabel), unknown id → reason", async (t) => {
+test("rename: unique label per provider (uniqueLabel), unknown id → reason", async (t) => {
   useTempUserData(t);
   makeFakeBin(t);
   const spawn = makeSpawn(() => ({ code: 0, out: CLAUDE_LOGGED_IN, err: "" }));
@@ -338,7 +338,7 @@ test("rename: unique label per provider (RE uniqueLabel), unknown id → reason"
   assert.deepEqual(ghost, { ok: false, reason: "unknown-account" });
 });
 
-test("setAvatar: integer 20..44 only (RE ACCOUNT_AVATAR_MIN/MAX), stored in meta", async (t) => {
+test("setAvatar: integer 20..44 only (ACCOUNT_AVATAR_MIN/MAX), stored in meta", async (t) => {
   useTempUserData(t);
   makeFakeBin(t);
   const { call } = build();
@@ -405,13 +405,13 @@ test("remove: in-use guard, logout, delete; unknown id is idempotent {ok:true}",
   const busy = await call("agentAccounts.remove", { id: a.id, usedBy: ["node-1"] });
   assert.deepEqual(busy, { ok: false, reason: "in-use", terminalIds: ["node-1"] });
 
-  const done = await call("agentAccounts.remove", { args: [a.id] }); // positional (RE)
+  const done = await call("agentAccounts.remove", { args: [a.id] }); // positional
   assert.deepEqual(done, { ok: true });
   assert.deepEqual(await call("agentAccounts.list", {}), []);
   assert.ok(spawn.calls.some((c) => c.args.join(" ") === "auth logout"));
 
   const again = await call("agentAccounts.remove", { id: a.id });
-  assert.deepEqual(again, { ok: true }, "removing an unknown id is idempotent (RE)");
+  assert.deepEqual(again, { ok: true }, "removing an unknown id is idempotent");
 });
 
 test("systemLogin: claude|codex only, 5min cache (no re-spawn without refresh)", async (t) => {
@@ -420,7 +420,7 @@ test("systemLogin: claude|codex only, 5min cache (no re-spawn without refresh)",
   const spawn = makeSpawn(() => ({ code: 0, out: CLAUDE_LOGGED_IN, err: "" }));
   const { call } = build(spawn);
 
-  assert.equal(await call("agentAccounts.systemLogin", { provider: "gemini" }), null, "RE returns null for non claude/codex");
+  assert.equal(await call("agentAccounts.systemLogin", { provider: "gemini" }), null, "returns null for non claude/codex");
 
   const first = await call("agentAccounts.systemLogin", { args: ["claude"] });
   assert.equal(first.loggedIn, true);

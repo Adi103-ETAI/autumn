@@ -1,6 +1,6 @@
-// autumn — Wave-3 handlers: storage (7 dispatchable; doc 35 §1).
+// autumn — Wave-3 handlers: storage (7 dispatchable; docs/architecture/storage.md).
 //
-// The RE (October v1.0.56) delegates cloud storage to a bundled, hash-verified
+// Autumn delegates cloud storage to a bundled, hash-verified
 // **rclone** sidecar: it downloads `rclone-<version>-<os>-<arch>.zip` on
 // demand into <userData>/rclone/bin, records the archive's sha256 beside it,
 // and drives it with `rclone listremotes / lsjson / authorize / copy`.
@@ -9,7 +9,7 @@
 // installer small (the sidecar is ~25 MB and is downloaded when the user first
 // uses cloud storage).
 //
-// RE-derived details (doc 24 §5 + main-index.js):
+// The contract (docs/architecture/storage.md):
 //   RCLONE_VERSION      "v1.74.3"
 //   asset               rclone-<version>-{osx|windows|linux}-{arm64|amd64}.zip
 //   install dir         <userData>/rclone
@@ -39,7 +39,7 @@ import {
 } from "./sidecar";
 
 const RCLONE_VERSION = "v1.74.3";
-// RCLONE_VERSION already carries the leading "v" (the RE's value).
+// RCLONE_VERSION already carries the leading "v" (the value).
 const SUMS_URL = `https://downloads.rclone.org/${RCLONE_VERSION}/SHA256SUMS`;
 const OAUTH_REMOTES = ["drive", "dropbox", "onedrive"];
 
@@ -65,7 +65,7 @@ const rcloneBin = () => join(rcloneDir(), "bin", process.platform === "win32" ? 
 const rcloneConfig = () => join(rcloneDir(), "rclone.conf");
 const rcloneMarker = () => join(rcloneDir(), "bin", ".rclone-archive-sha256");
 
-/** The RE's asset naming (doc 24 §5). */
+/** The asset naming (docs/architecture/storage.md). */
 export function rcloneAssetName(version: string, platform: string, arch: string): string | null {
   const os = platform === "darwin" ? "osx" : platform === "win32" ? "windows" : platform === "linux" ? "linux" : null;
   const a = arch === "arm64" ? "arm64" : arch === "x64" ? "amd64" : null;
@@ -74,7 +74,7 @@ export function rcloneAssetName(version: string, platform: string, arch: string)
 }
 
 // ---------------------------------------------------------------------------
-// output parsers (the RE's shapes)
+// output parsers (the shapes)
 // ---------------------------------------------------------------------------
 
 /** `rclone listremotes` → [{name, type}]. */

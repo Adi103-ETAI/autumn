@@ -1,9 +1,9 @@
 // autumn — backend handlers: the seven Next API routes ported into registry
-// handlers (Wave-0 migration, doc 29).
+// handlers (Wave-0 migration, docs/architecture/ipc-facade.md).
 //
 // Each handler is a plain async function (params, ctx) => payload | envelope,
 // with ALL dependencies injected (bus store, pty, spawner, prisma, personas,
-// emit) so every handler is testable headless — layer 1 of doc 29 §T. Route
+// emit) so every handler is testable headless — layer 1 of docs/architecture/ipc-facade.md. Route
 // semantics (validation, clamping, defaults, result shapes) are preserved
 // faithfully from the src/app/api/*/route.ts originals; the HTTP plumbing
 // (NextRequest/NextResponse/SSE framing) is replaced by:

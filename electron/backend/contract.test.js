@@ -1,8 +1,8 @@
 "use strict";
-// Renderer ↔ backend contract test (doc 31 §0, doc 29 §T layers 4 & 5).
+// Renderer ↔ backend contract test (docs/architecture/backend.md, docs/architecture/ipc-facade.md layers 4 & 5).
 //
 // For every namespace the TARGET's renderer uses (manifest.rendererUsage) that
-// belongs to Wave 1 (the 17 namespaces in doc 31):
+// belongs to Wave 1 (the 17 namespaces in docs/architecture/backend.md):
 //   - every NON-`on*` method the renderer uses MUST dispatch-resolve — either
 //     registered as a handler in this process (Wave-0 makeHandlers / Wave-1
 //     factories) or deliberately left out (none — the contract requires all);
@@ -138,7 +138,7 @@ test("contract: every Wave-1 handler/description is present and every id is brid
 });
 
 // ---------------------------------------------------------------------------
-// Wave-2 contract (doc 32 §0 / §7 W2-6): the 19 platform namespaces, 115
+// Wave-2 contract (docs/architecture/backend.md / §7 W2-6): the 19 platform namespaces, 115
 // renderer-used dispatchable ids + 6 `on*` subscriptions. Same two rules as
 // Wave 1 — every renderer-used non-on* id dispatch-resolves, every on* is a
 // facade subscription — plus: bridge kind, descriptions, no duplicate ids
@@ -171,7 +171,7 @@ test("contract(W2): the 19 Wave-2 namespaces exist in the bridge oracle and in r
     assert.ok(bridge[ns], `namespace ${ns} missing from manifest bridge.namespaces`);
     assert.ok(usage[ns], `namespace ${ns} missing from manifest rendererUsage`);
   }
-  assert.equal(WAVE2_NAMESPACES.length, 19, "doc 32 §0 scope is 19 namespaces");
+  assert.equal(WAVE2_NAMESPACES.length, 19, "docs/architecture/backend.md scope is 19 namespaces");
 });
 
 test("contract(W2): every renderer-used non-on* Wave-2 method dispatch-resolves", async () => {
@@ -187,7 +187,7 @@ test("contract(W2): every renderer-used non-on* Wave-2 method dispatch-resolves"
       if (!reg.has("bridge", id)) missing.push(id);
     }
   }
-  assert.equal(checked, 115, `doc 32 §0 scope is 115 renderer-used dispatchable ids, got ${checked}`);
+  assert.equal(checked, 115, `docs/architecture/backend.md scope is 115 renderer-used dispatchable ids, got ${checked}`);
   assert.deepEqual(missing, [], `renderer-used Wave-2 methods with no backend: ${missing.join(", ")}`);
 });
 
@@ -211,7 +211,7 @@ test("contract(W2): every renderer-used on* Wave-2 method exists in the facade a
       if (typeof member !== "function") missing.push(`${ns}.${method}`);
     }
   }
-  assert.equal(checked, 6, `doc 32 §0 scope is 6 on* subscriptions, got ${checked}`);
+  assert.equal(checked, 6, `docs/architecture/backend.md scope is 6 on* subscriptions, got ${checked}`);
   assert.deepEqual(missing, [], `renderer-used Wave-2 on* methods missing from facade: ${missing.join(", ")}`);
 });
 
@@ -238,11 +238,11 @@ test("contract(W2): every Wave-2 handler is bridge-kind, described, and unique a
 
 test("contract(W2): every boundary id dispatches and answers the not-implemented envelope", async () => {
   registerAll();
-  // The voice-pack boundary ids were IMPLEMENTED in Wave 3 (doc 35 §6) — they
+  // The voice-pack boundary ids were IMPLEMENTED in Wave 3 (docs/architecture/voice.md) — they
   // are real now, so they are no longer boundary ids.
   const BOUNDARY = [
     "backends.convexAuthStatus", "backends.convexCreate", "backends.convexLogin",
-    "runtime.installOctober", "runtime.removeOctober",
+    "runtime.installCloudRuntime", "runtime.removeCloudRuntime",
   ];
   for (const id of BOUNDARY) {
     assert.ok(reg.has("bridge", id), `${id} must dispatch`);

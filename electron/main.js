@@ -28,7 +28,7 @@ function realPath(p) {
   return existsSync(candidate) ? candidate : p;
 }
 
-// autumn IPC core (doc 29 Wave 0): every window.autumn.* call lands in the generic
+// autumn IPC core (docs/architecture/ipc-facade.md Wave 0): every window.autumn.* call lands in the generic
 // registrar -> registry.dispatch() -> auth -> schema -> handler -> envelope.
 const { attachIpcMain } = require("./ipc/ipcmain");
 const registry = require("./ipc/registry");
@@ -167,7 +167,7 @@ ipcMain.handle("autumn:openFileDialog", async (_e, opts = {}) => {
   return result.canceled ? null : result.filePaths;
 });
 
-// ---- IPC registrar: all window.autumn.* traffic (doc 29 Wave 0) ----
+// ---- IPC registrar: all window.autumn.* traffic (docs/architecture/ipc-facade.md Wave 0) ----
 // Principal derives from the sender's origin (fail-closed): only pages loaded
 // from our own server are `desktop`.
 const APP_ORIGINS = [BASE, `${PROTOCOL}://localhost:${PORT}`];

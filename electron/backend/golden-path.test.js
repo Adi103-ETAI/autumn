@@ -49,7 +49,7 @@ const TARGET_DISPATCH_IDS = [
 ];
 
 function build(t) {
-  // Real throwaway git repository (doc 31 §5 allows real git for git tests).
+  // Real throwaway git repository (docs/architecture/backend.md allows real git for git tests).
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), "w1-golden-"));
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
 

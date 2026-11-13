@@ -1,12 +1,12 @@
 "use strict";
-// layer-1 tests for the browser bridge ids (doc 32 W2-8 §2e). 11 dispatchable
+// layer-1 tests for the browser bridge ids (docs/architecture/backend.md W2-8 §2e). 11 dispatchable
 // (view registry, profiles, history, downloads, import, links, capture,
 // present, workspace preview, clear data) + 2 push-only subscriptions
 // (onActivity, onPresentationStopped).
 //
-// RE shapes that must hold: register/unregister/setLinks/capture/present take
+// shapes that must hold: register/unregister/setLinks/capture/present take
 // positional args; history.prefix must be a string ≤256 ("Invalid history
-// query."); profiles expose the RE profile manager (resolve/create/rename/
+// query."); profiles expose the profile manager (resolve/create/rename/
 // duplicate/clear/delete/setAgentAccess/bind/discardUnrecoverable) over REAL
 // session partitions; present's enabled gate is a boolean; import really
 // parses a cookie file.
@@ -78,7 +78,7 @@ test("id surface: 11 dispatchable browser ids in the manifest; the 2 on* ids are
   }
 });
 
-test("register/unregister track views (RE positional shape)", async () => {
+test("register/unregister track views (positional shape)", async () => {
   useTempUserData();
   const { call } = build();
   const regd = await call("browser.register", { args: ["canvas-1", "node-9", 42, "doc-a"] });
@@ -97,7 +97,7 @@ test("register/unregister track views (RE positional shape)", async () => {
   assert.equal(un2.unregistered, false, "unregistering twice is idempotent");
 });
 
-test("profiles: the RE profile manager over REAL session partitions", async () => {
+test("profiles: the profile manager over REAL session partitions", async () => {
   useTempUserData();
   const { call } = build();
   const list = await call("browser.profiles", {});
@@ -107,8 +107,8 @@ test("profiles: the RE profile manager over REAL session partitions", async () =
   assert.equal(list[0].agentAccess, "allowed");
 
   const created = await call("browser.profiles", { action: "create", name: "Work Profile" });
-  assert.match(created.id, /^bp_[0-9a-f-]{36}$/, "RE profile id shape");
-  assert.match(created.partition, /^persist:autumn-bp-[0-9a-f-]{36}$/, "RE partition shape");
+  assert.match(created.id, /^bp_[0-9a-f-]{36}$/, "profile id shape");
+  assert.match(created.partition, /^persist:autumn-bp-[0-9a-f-]{36}$/, "partition shape");
   assert.ok(created.boundNodes === 0);
   assert.ok(fs.existsSync(path.join(_browserDir(), "partitions", created.id)), "the profile dir really exists");
 
@@ -144,7 +144,7 @@ test("profiles: the RE profile manager over REAL session partitions", async () =
   assert.equal(unknown.error.code, "bad-params");
 });
 
-test("profiles: agent access ladder, binding and the RE review gate", async () => {
+test("profiles: agent access ladder, binding and the review gate", async () => {
   useTempUserData();
   const { call } = build();
   const created = await call("browser.profiles", { action: "create", name: "Policy" });
@@ -186,7 +186,7 @@ test("profiles: clear wipes the partition's history; discardUnrecoverable drops 
   assert.equal(after.length, 1, "only the default profile survives");
 });
 
-test("history: newest-first, prefix filter, RE 256-char validation, clear", async () => {
+test("history: newest-first, prefix filter, 256-char validation, clear", async () => {
   useTempUserData();
   const { call } = build();
   _appendHistory("persist:autumn-embedded", "https://example.com/one", "One");
@@ -271,7 +271,7 @@ test("import: sources really detect the installed browsers; run imports a cookie
   assert.equal(empty.error.code, "handler-error");
 });
 
-test("setLinks: validates and persists the allowlist; RE pair shape; applied only with a live webContents", async () => {
+test("setLinks: validates and persists the allowlist; pair shape; applied only with a live webContents", async () => {
   useTempUserData();
   const { call, register } = build();
   const ok = await call("browser.setLinks", { allowlist: ["https://ok.example/*", { pattern: "*.cdn.net" }] });
@@ -280,7 +280,7 @@ test("setLinks: validates and persists the allowlist; RE pair shape; applied onl
   assert.equal(ok.ready, true, "no browser ids were named → nothing pending");
   assert.deepEqual(_readLinks().map((r) => r.pattern), ["https://ok.example/*", "*.cdn.net"]);
 
-  // RE pairs: [pattern, browserId].
+  // pairs: [pattern, browserId].
   const pairs = await call("browser.setLinks", { args: ["canvas-1", [["https://x.test/*", "node-1"]]] });
   assert.equal(pairs.links, 1);
   assert.equal(pairs.ready, false, "the named browser is not live → pending");
@@ -321,7 +321,7 @@ test("capture: null when there is no live view (renderer treats null as failure 
   assert.equal(res, null, "falsy result for a failed/absent capture");
 });
 
-test("present: RE boolean gate error, stop idempotent, open honest headless", async () => {
+test("present: boolean gate error, stop idempotent, open honest headless", async () => {
   useTempUserData();
   const { call, state } = build();
   const gated = await call("browser.present", { args: ["c1", "cloud-1", "n1", "not-a-boolean"] });
