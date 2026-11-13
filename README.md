@@ -1,9 +1,6 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/header/logo-dark.svg">
-    <img src="assets/header/logo-light.svg" alt="Autumn" width="560">
-  </picture>
-</div>
+<p align="center">
+  <img src="assets/autumn_banner.png" alt="Autumn — spatial" />
+</p>
 
 <pre align="center">
          _    _ _______ _    _ __  __ _   _ 
