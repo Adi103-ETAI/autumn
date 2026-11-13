@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Autumn" }],
   icons: {
     icon: [
-      { url: "/nature.png", type: "image/png", sizes: "512x512" },
+      { url: "/autumn-icon.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: [{ url: "/nature.png", sizes: "512x512" }],
+    apple: [{ url: "/autumn-icon.png", sizes: "512x512" }],
   },
 };
 

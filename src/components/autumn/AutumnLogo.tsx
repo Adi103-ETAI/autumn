@@ -5,7 +5,7 @@ import Image from "next/image";
 /**
  * AutumnLogo — the brand mark.
  *
- * Renders the leaf PNG (`/nature.png`) as the Autumn logo.
+ * Renders the mark (`/autumn-icon.png`) as the Autumn logo.
  * The leaf carries the autumn colour palette, so no gradient container is
  * needed — just a subtle glow for depth.
  *
@@ -29,7 +29,7 @@ export function AutumnLogo({
 }) {
   return (
     <Image
-      src="/nature.png"
+      src="/autumn-icon.png"
       alt="Autumn"
       width={size}
       height={size}
