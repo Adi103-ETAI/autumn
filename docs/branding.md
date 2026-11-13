@@ -10,9 +10,9 @@ Autumn's brand is a **maple leaf** and the word **AUTUMN**. Nothing else.
 |---|---|---|
 | The mark | `public/nature.png` (512×512, transparent) | The app icon, the favicon, the in-app brand mark. |
 | The installer icon | `assets/icon.png` (512×512, transparent) | The source for the Windows `.ico` and the macOS `.icns` that `electron-builder` generates. |
-| The banner | `assets/autumn_banner.png` | The README's header: the leaf, the wordmark and the signature. |
+| The banner | `assets/autumn_banner.png` | The README's header: the leaf, the AUTUMN logotype and the promise. |
 | The logotype | `assets/header/logo-{light,dark}.svg` | The leaf in pixel art plus the AUTUMN logotype, in a light and a dark variant. |
-| The wordmark | `brand/autumn-ascii.txt` | The README, the release notes, anywhere a terminal is. |
+| The wordmark | `brand/autumn-ascii.txt` | The app's empty canvas, the release notes, anywhere a terminal is. |
 
 The mark is **one leaf** — the crimson one. It is never redrawn, never
 recoloured and never put in a rounded box.
@@ -27,8 +27,12 @@ The README opens with the banner:
 </p>
 ```
 
-Under it comes the ASCII wordmark, so the README reads the same in a browser
-and in a terminal.
+The banner's type is white, so it carries **Autumn's own dark surface**
+(`#0a0d12`, the canvas colour the app uses) — it reads the same on a light
+and on a dark page.
+
+The ASCII wordmark (`brand/autumn-ascii.txt`) is the terminal's twin of the
+banner: the app's empty canvas shows it next to the leaf.
 
 The **logotype** — the leaf in pixel art next to AUTUMN — is a scalable asset
 in a light and a dark variant, so a page that follows the reader's theme can
