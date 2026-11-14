@@ -60,12 +60,42 @@ Autumn has one rule that shapes everything:
 Big binaries are **not** in the installer. They are fetched on demand, verified
 against a published checksum, and can be deleted again from the app.
 
+## Download
+
+Autumn ships as a desktop app for all three platforms. The releases carry the
+installers and the update metadata:
+
+| | |
+|---|---|
+| **Windows** | [`Autumn-1.0.0-x64.exe`](https://github.com/adiisinghh/autumn/releases/latest) — the NSIS installer (a setup wizard, no admin rights needed) |
+| **macOS** | [`Autumn-1.0.0-x64.dmg`](https://github.com/adiisinghh/autumn/releases/latest) — drag it into your Applications |
+| **Linux** | [`Autumn-1.0.0-x64.AppImage`](https://github.com/adiisinghh/autumn/releases/latest) — make it executable and run it |
+
+All of them are on the [releases page](https://github.com/adiisinghh/autumn/releases/latest).
+
+**Windows and macOS: the installers are not signed yet**, so your browser and
+the OS will warn you the first time ("Windows protected your PC", "cannot be
+opened because it is from an unidentified developer"). The app is yours — the
+code is open — but the warning is honest. Signing is the next step on the
+roadmap.
+
+The installers are about **200 MB**. The heavy pieces are downloaded separately,
+on demand, and only when you ask for them:
+
+| | | |
+|---|---|---|
+| the storage sidecar (rclone) | ~25 MB | when you connect a cloud drive |
+| the speech model (Parakeet) | ~600 MB | when you turn on on-device voice |
+| the speech runtime | ~30 MB | with the speech model |
+
 ## Quick start
+
+Build it yourself:
 
 ```bash
 npm install          # install the dependencies
 npm run dev          # the Next.js renderer + the Electron shell
-npm test             # 591 tests
+npm test             # 629 tests
 ```
 
 You need at least one agent CLI on your `PATH` (Claude Code, Codex, OpenCode,
