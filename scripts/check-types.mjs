@@ -1,10 +1,11 @@
 // autumn — CI type check.
 //
-// `tsc --noEmit` reports errors in src/ that PRE-DATE the Wave-2 work (the
-// renderer is the user's area; next.config.ts sets typescript.ignoreBuildErrors
-// so the Next build is not blocked by them). The Electron backend is ours, so
-// THIS is the gate: the CI fails when electron/ has an error and tolerates the
-// known src/ ones (reported, not hidden).
+// The whole project type-checks: the Electron backend AND the renderer.
+// `tsc --noEmit` reports every error, and none of them are tolerated — a
+// type error is a bug that the compiler found for free.
+//
+// (The Next build itself ignores type errors — next.config.ts sets
+// typescript.ignoreBuildErrors — so this script is the gate.)
 
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -19,19 +20,11 @@ const res = spawnSync("npx", ["tsc", "--noEmit", "--incremental", "false"], {
 });
 
 const output = `${res.stdout ?? ""}${res.stderr ?? ""}`;
-const lines = output.split("\n");
-const errors = lines.filter((l) => /error TS\d+/.test(l));
+const errors = output.split("\n").filter((l) => /error TS\d+/.test(l));
 
-const ours = errors.filter((l) => l.startsWith("electron/"));
-const theirs = errors.filter((l) => l.startsWith("src/"));
-
-if (theirs.length) {
-  console.log(`[typecheck] ${theirs.length} pre-existing src/ error(s) — not ours, not fatal:`);
-  for (const e of theirs) console.log(`  ${e}`);
-}
-if (ours.length) {
-  console.error(`[typecheck] ${ours.length} error(s) in electron/ — these are ours:`);
-  for (const e of ours) console.error(`  ${e}`);
+if (errors.length) {
+  console.error(`[typecheck] ${errors.length} type error(s):`);
+  for (const e of errors) console.error(`  ${e}`);
   process.exit(1);
 }
-console.log("[typecheck] electron/ is clean");
+console.log("[typecheck] the whole project is clean (electron/ and src/)");

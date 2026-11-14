@@ -128,7 +128,7 @@ const AI_TOOL_LABEL: Record<string, string> = {
 };
 
 // Current step's option list (for the mockup chip row + the option buttons).
-function optionsForStep(step: number): OptionDef<string>[] {
+function optionsForStep(step: number): readonly OptionDef<string>[] {
   if (step === 0) return ROLE_OPTIONS as unknown as OptionDef<string>[];
   if (step === 1) return PROJECT_OPTIONS as unknown as OptionDef<string>[];
   if (step === 2) return AI_TOOL_OPTIONS;

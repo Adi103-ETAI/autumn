@@ -40,7 +40,7 @@ interface SavedCanvas {
   createdAt: string;
 }
 
-const CANVAS_PRESETS: (CanvasPreset & { icon: React.ComponentType<{ className?: string }> })[] = [
+const CANVAS_PRESETS: CanvasPreset[] = [
   {
     id: "empty",
     name: "Empty Canvas",
@@ -257,7 +257,7 @@ export function CanvasSwitcher({
                     variant="ghost"
                     size="icon"
                     className="size-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => void handleDuplicate(c.id, c.name)}
+                    onClick={() => void handleDuplicate(c.id)}
                     aria-label="Duplicate canvas"
                   >
                     <Copy className="size-3.5 text-sky-400" />

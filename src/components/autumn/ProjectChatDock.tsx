@@ -98,6 +98,7 @@ function ProjectChatPanel({
         };
         return {
           id: n.id,
+          kind: "chat" as const,
           name: n.name,
           status: d.status ?? "idle",
           harness: d.harness ?? "claude-code",

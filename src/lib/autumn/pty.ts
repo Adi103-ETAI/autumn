@@ -20,10 +20,19 @@ import fs from "node:fs";
 // Lazily require node-pty so the app still boots where the native build is
 // unavailable (it just won't serve live terminals).
 let ptyModule: typeof import("node-pty") | null = null;
+let ptyLoadFailed = false;
 function loadPty(): typeof import("node-pty") {
+  if (!ptyModule && !ptyLoadFailed) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      ptyModule = require("node-pty");
+    } catch {
+      // The native build is unavailable on this machine — the app still boots.
+      ptyLoadFailed = true;
+    }
+  }
   if (!ptyModule) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    ptyModule = require("node-pty");
+    throw new Error("the PTY native module is not available on this machine");
   }
   return ptyModule;
 }
@@ -101,7 +110,7 @@ function defaultEnv(): NodeJS.ProcessEnv {
     "GEMINI_API_KEY",
     "OPENAI_API_KEY",
   ]);
-  const out: NodeJS.ProcessEnv = {};
+  const out: NodeJS.ProcessEnv = { NODE_ENV: process.env.NODE_ENV ?? "production" };
   for (const k of allow) {
     if (process.env[k] !== undefined) out[k] = process.env[k];
   }

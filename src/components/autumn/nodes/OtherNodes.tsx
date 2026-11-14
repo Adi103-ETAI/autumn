@@ -275,7 +275,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       }
 
       // Per-key input -> PTY via bridge
-      term.onData((data) => {
+      term?.onData((data) => {
         api.terminal.input({ node: id, data }).catch(() => {});
       });
 

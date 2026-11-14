@@ -35,7 +35,7 @@ export function buildSeedCanvas(): {
         {
           id: "m1",
           role: "system",
-          text: `${atlas.name} online · ${atlas.harness} · ${atlas.tagline}`,
+          text: `${atlas.name} online · ${atlas.harness ?? "claude-code"} · ${atlas.tagline}`,
           ts: now,
         },
       ],

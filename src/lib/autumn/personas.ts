@@ -4,6 +4,8 @@
 // Harness is NOT pre-defined — agents can run any harness (claude/codex/gemini/etc.)
 // on demand via the terminal. The Commander picks harness at spawn time.
 
+import type { AgentHarness } from "./types";
+
 export interface Persona {
   id: string;
   name: string;
@@ -13,6 +15,8 @@ export interface Persona {
   icon: string; // leaf logo path e.g. /autumn-agents/atlas.png
   tagline: string; // one-line character
   specialty: string; // what they're good at
+  /** The harness the persona prefers — the Commander may still pick another. */
+  harness?: AgentHarness;
 }
 
 // 4 core personas — leaf icons in public/autumn-agents/*.png — add more later.
