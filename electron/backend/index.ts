@@ -242,4 +242,7 @@ export function registerBackend(
 
 // Wave 1 factories export: the contract test registers the wave-2 set too.
 export { makeHandlers, W1_FACTORIES, W2_FACTORIES };
+
+// The core server (the cli's entry point) — see docs/architecture/core-protocol.md.
+export { startCoreServer } from "./core-server";
 export type { BackendDeps, RegisteredHandler, W1Deps };
