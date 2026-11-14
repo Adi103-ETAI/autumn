@@ -19,22 +19,28 @@ test("unknown principal is denied", () => {
   assert.match(r.reason, /unknown principal/);
 });
 
-test("non-desktop principal is denied by default (fail-closed Wave-0 skeleton)", () => {
-  for (const p of ["cli", "remote", "local-client", "capability"]) {
-    const r = coreMethodAllowed(p, "core.status");
-    assert.equal(r.allowed, false, p);
-    assert.match(r.reason, /not granted|Wave 4/);
-  }
+test("a non-desktop principal is refused the methods outside its table", () => {
+  // the cli may drive a terminal…
+  assert.equal(coreMethodAllowed("cli", "terminal.create").allowed, true);
+  // …but not the repository.
+  const r = coreMethodAllowed("cli", "git.mutate");
+  assert.equal(r.allowed, false);
+  assert.match(r.reason, /not granted/);
+  // the capability principal has no table of its own: it needs a grant.
+  const cap = coreMethodAllowed("capability", "core.status");
+  assert.equal(cap.allowed, false);
+  assert.match(cap.reason, /capability token/);
 });
 
-test("explicit rules grant a non-desktop principal a specific method", () => {
-  const rules = { "remote.status": ["remote"], "cli.status": ["cli", "remote"] };
-  assert.equal(coreMethodAllowed("remote", "remote.status", rules).allowed, true);
-  assert.equal(coreMethodAllowed("cli", "cli.status", rules).allowed, true);
-  // set form
-  const setRules = { "localClient.pending": new Set(["local-client"]) };
-  assert.equal(coreMethodAllowed("local-client", "localClient.pending", setRules).allowed, true);
-  // grant does not leak to other methods or principals
-  assert.equal(coreMethodAllowed("cli", "remote.status", rules).allowed, false);
-  assert.equal(coreMethodAllowed("capability", "remote.status", rules).allowed, false);
+test("a capability token carries its own grant", () => {
+  const grant = { methods: ["facts.query", "core.status"] };
+  assert.equal(coreMethodAllowed("capability", "facts.query", grant).allowed, true);
+  assert.equal(coreMethodAllowed("capability", "core.status", grant).allowed, true);
+  // the grant does not leak to other methods
+  assert.equal(coreMethodAllowed("capability", "git.mutate", grant).allowed, false);
+  // and an expired token is refused
+  assert.equal(
+    coreMethodAllowed("capability", "facts.query", { ...grant, expiresAt: Date.now() - 1 }).allowed,
+    false,
+  );
 });

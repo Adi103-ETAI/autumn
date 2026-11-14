@@ -159,7 +159,8 @@ test("honest baseline: conformance reports implemented/total", async () => {
   }
   // The report line (visible in test output via assert message on failure only).
   assert.ok(impl.length >= 0);
-  // Future waves flip this: assert.equal(impl.filter(h=>h.kind==="core").length, 129)
+  // The core surface is 129/129 — asserted with the real backend in
+  // electron/backend/core.test.js (this process registers none).
   const coreDone = impl.filter((h) => h.kind === "core").length;
   const targetBridgeDone = impl.filter(
     (h) => h.kind === "bridge" && !h.id.startsWith("__ops."),

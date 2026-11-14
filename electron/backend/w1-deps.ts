@@ -35,6 +35,11 @@ export interface W1PtyDep {
   ptyExists(nodeId: string): boolean;
   ptyKind(nodeId: string): "shell" | "agent" | undefined;
   ptyCount(): number;
+  /**
+   * The live terminals (the core protocol lists them). OPTIONAL: a fake
+   * without it simply has no terminals to list.
+   */
+  list?(): Array<{ nodeId: string; kind: "shell" | "agent"; cwd?: string }>;
   /** Wave-1 exit subscription (src/lib/autumn/pty.ts onPtyExit). */
   onPtyExit(
     cb: (nodeId: string, info: { exitCode: number; signal?: number; kind: "shell" | "agent" }) => void,

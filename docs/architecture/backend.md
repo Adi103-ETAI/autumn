@@ -91,7 +91,8 @@ The contract has 68 namespaces. This is what is implemented today:
 | `wallpapers` | 3 | 3 | The wallpapers. |
 | `worktrees` | 10 | 9 | The git worktrees. |
 
-**340 of 504 methods are implemented.** The rest belong to the hosted tier
+**340 of 504 bridge methods are implemented, and all 129 core methods are.**
+See [the core protocol](./core-protocol.md) for the second method set. The rest belong to the hosted tier
 (`cloud`, `cloudAgents`, `compute`, `hostedMessaging`, `agentConnections`,
 `codeSync`, `share`, `plan`, `projects`, `workspace`, `servers`, `facts`,
 `activity`…) — the part of the product that lives on someone else's machine.

@@ -48,6 +48,7 @@ import { makeRemotionHandlers } from "./remotion";
 import { makeStorageHandlers } from "./storage";
 import { makeSupermemoryHandlers } from "./supermemory";
 import { makeAutopilotHandlers } from "./autopilot";
+import { makeCoreHandlers } from "./core";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -211,13 +212,24 @@ export function registerBackend(
     ...W1_FACTORIES.flatMap((make) => make(deps)),
     ...W2_FACTORIES.flatMap((make) => make(deps)),
   ];
+  // The core protocol (129 methods / 21 groups) is the bus-facing view of the
+  // SAME backend — so a core method delegates to the bridge handler that
+  // already does the work.
+  const bridgeById = new Map(handlers.map((h) => [h.id, h]));
+  const coreHandlers = makeCoreHandlers(deps, (id) => bridgeById.get(id));
   for (const h of handlers) {
     registry.register(h.kind, h.id, h.handler, {
       schema: h.schema,
       description: h.description,
     });
   }
-  return handlers;
+  for (const h of coreHandlers) {
+    registry.register(h.kind, h.id, h.handler, {
+      schema: h.schema,
+      description: h.description,
+    });
+  }
+  return [...handlers, ...coreHandlers];
 }
 
 // Wave 1 factories export: the contract test registers the wave-2 set too.

@@ -220,6 +220,14 @@ export function createPty(opts: CreatePtyOptions): boolean {
   }
 }
 
+/** The live terminals — the core protocol's `terminal.list`. */
+export function list(): Array<{ nodeId: string; kind: "shell" | "agent" }> {
+  return [...sessions.entries()].map(([nodeId, session]) => ({
+    nodeId,
+    kind: session.kind,
+  }));
+}
+
 export function subscribePty(
   nodeId: string,
   cb: (chunk: string) => void,

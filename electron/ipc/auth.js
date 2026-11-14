@@ -1,43 +1,79 @@
 "use strict";
-// autumn IPC auth — per-principal method authorization (docs/architecture/ipc-facade.md layer 3).
+// autumn IPC auth — per-principal method authorization
+// (docs/architecture/core-protocol.md layer 3).
 //
-// autumn's core protocol authorizes each call by *principal*
-// (desktop | cli | remote | local-client | capability) via coreMethodAllowed().
-// The principal model: the desktop principal is the full one today.
+// autumn's core protocol authorizes every call by *principal*:
 //
-// Wave-0 skeleton: FAIL-CLOSED. The real per-method principal matrix is filled in Wave 4
-// from the core-methods + allow-lists. Until then only the `desktop`
-// principal — the app's own renderer — is broadly allowed; every other principal is denied
-// unless an explicit rule grants it. This keeps the *mechanism* real and testable without
-// inventing the target's auth table.
+//   desktop       the app's own renderer — everything
+//   cli           the command line — drive a terminal, look around
+//   remote        the phone relay
+//   local-client  the in-app surfaces (the dock, the panels)
+//   capability    a capability token — an explicit, expiring method list
+//
+// The table is the product's: `core-protocol.js` holds exactly which method
+// each principal may call. A capability principal carries its own list and
+// an expiry, so a token can be given exactly the access it needs.
+
+const {
+  CORE_METHOD_SET,
+  CORE_CLI_METHOD_SET,
+  CORE_LOCAL_CLIENT_METHOD_SET,
+  CORE_REMOTE_METHOD_SET,
+} = require("./core-protocol");
 
 const PRINCIPALS = ["desktop", "cli", "remote", "local-client", "capability"];
 
 /**
- * @param {string} principal
- * @param {string} method   dotted method id ("ns.method" bridge | "group.method" core)
- * @param {object} [rules]  method -> true | string[] | Set<string> of allowed principals
- *                          (non-desktop). Omit until Wave 4.
+ * May this principal call this method?
+ *
+ * @param {string} principal   desktop | cli | remote | local-client | capability
+ * @param {string} method      dotted method id ("ns.method" bridge | "group.method" core)
+ * @param {object} [options]
+ * @param {string[]} [options.methods]  the capability principal's own method list
+ * @param {number}   [options.expiresAt] the capability principal's expiry (ms)
  * @returns {{allowed: boolean, reason: string}}
  */
-function coreMethodAllowed(principal, method, rules) {
+function coreMethodAllowed(principal, method, options = {}) {
   if (!PRINCIPALS.includes(principal)) {
     return { allowed: false, reason: `unknown principal "${principal}"` };
   }
   if (principal === "desktop") {
-    return { allowed: true, reason: "desktop principal (default allow)" };
+    return { allowed: true, reason: "the desktop principal may call everything" };
   }
-  const rule = rules ? rules[method] : undefined;
-  if (rule === true) return { allowed: true, reason: "explicit allow" };
-  const grant =
-    rule instanceof Set ? rule.has(principal) :
-    Array.isArray(rule) ? rule.includes(principal) :
-    null;
-  if (grant) return { allowed: true, reason: `granted "${method}" to ${principal}` };
+  if (principal === "local-client") {
+    return allow(CORE_LOCAL_CLIENT_METHOD_SET, method, principal);
+  }
+  if (principal === "cli") {
+    return allow(CORE_CLI_METHOD_SET, method, principal);
+  }
+  if (principal === "remote") {
+    return allow(CORE_REMOTE_METHOD_SET, method, principal);
+  }
+  // A capability principal carries its own list and an expiry.
+  const list = Array.isArray(options.methods) ? options.methods : null;
+  const expiresAt = typeof options.expiresAt === "number" ? options.expiresAt : null;
+  if (!list || !list.includes(method)) {
+    return { allowed: false, reason: `the capability token is not granted "${method}"` };
+  }
+  if (expiresAt !== null && expiresAt <= Date.now()) {
+    return { allowed: false, reason: "the capability token has expired" };
+  }
+  return { allowed: true, reason: `granted "${method}" to the capability token` };
+}
+
+function allow(set, method, principal) {
+  if (set.has(method)) {
+    return { allowed: true, reason: `the ${principal} principal may call "${method}"` };
+  }
   return {
     allowed: false,
-    reason: `principal "${principal}" not granted "${method}" (the real matrix is filled in later)`,
+    reason: `the ${principal} principal is not granted "${method}"`,
   };
 }
 
-module.exports = { coreMethodAllowed, PRINCIPALS };
+/** Is this a method the protocol knows at all? */
+function isKnownCoreMethod(method) {
+  return CORE_METHOD_SET.has(method);
+}
+
+module.exports = { coreMethodAllowed, isKnownCoreMethod, PRINCIPALS };
