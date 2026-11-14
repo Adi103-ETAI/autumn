@@ -16,7 +16,7 @@
 //     headless — no Electron needed (docs/architecture/ipc-facade.md).
 //   - The registry tracks only IMPLEMENTED handlers; unimplemented manifest methods
 //     surface as not-found (facade stubs return not-implemented at the preload edge).
-//   - authRules default to the fail-closed skeleton in ./auth (real matrix = Wave 4).
+//   - the per-principal table lives in ./auth, the method surface in ./core-protocol.
 
 const { ok, err, isEnvelope, ERR } = require("./envelope");
 const { coreMethodAllowed, PRINCIPALS } = require("./auth");
@@ -41,6 +41,7 @@ function register(kind, id, handler, opts = {}) {
     id,
     handler,
     schema: opts.schema || null,
+    // The capability grant of this handler: {methods?, expiresAt?}.
     authRules: opts.authRules || null,
     description: opts.description || "",
   });
@@ -66,17 +67,19 @@ function implemented() {
 
 /**
  * Dispatch a call and always resolve to an envelope (never throws).
- * @param {{kind?: "bridge"|"core", id: string, principal?: string, params?: object}} req
+ * @param {{kind?: "bridge"|"core", id: string, principal?: string, params?: object,
+ *          capability?: {methods?: string[], expiresAt?: number}}} req
  * @returns {Promise<{ok:boolean, result?:any, error?:{code:string,message:string,detail?:any}}>}
  */
 async function dispatch(req = {}) {
-  const { kind = "bridge", id, principal = "desktop", params = {} } = req;
+  const { kind = "bridge", id, principal = "desktop", params = {}, capability } = req;
   if (typeof id !== "string" || !id) return err(ERR.BAD_PARAMS, "dispatch requires an id");
 
   const h = handlers.get(key(kind, id));
   if (!h) return err(ERR.NOT_FOUND, `no handler for ${kind}:${id}`);
 
-  const auth = coreMethodAllowed(principal, id, h.authRules || undefined);
+  // A capability principal carries its own grant; a handler may narrow it.
+  const auth = coreMethodAllowed(principal, id, { ...(h.authRules || {}), ...(capability || {}) });
   if (!auth.allowed) return err(ERR.FORBIDDEN, auth.reason);
 
   if (h.schema) {

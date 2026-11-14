@@ -127,7 +127,7 @@ subscriptions, generated so it can never drift from the code.
 
 ## Author
 
-**Aditya** — <adi.singh1426@gmail.com> · [@adiisinghh](https://github.com/adiisinghh)
+**Aditya** — <adi.singh1426@gmail.com> · [@adii.singh_](https://instagram.com/adii.singh_)
 
 ## License
 

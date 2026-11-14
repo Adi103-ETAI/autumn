@@ -157,7 +157,7 @@ export function CanvasToolbar() {
   const handleBrowserClick = () => addNode({ kind: "youtube" });
   const handleVideoClick = () => addNode({ kind: "remotion" });
   const handleMobileClick = () =>
-    addNode({ kind: "screen", data: { screenKind: "phone" } });
+    addNode({ kind: "screen", data: { screenKind: "phone", name: "Phone", route: "/", url: "/preview" } });
   const handleTerminalClick = () => addNode({ kind: "terminal" });
   const handleNoteClick = () => addNode({ kind: "sticky" });
 

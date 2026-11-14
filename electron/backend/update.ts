@@ -23,6 +23,10 @@ import type { RegisteredHandler } from "./handlers";
 import type { W1Deps } from "./w1-deps";
 import { dbPath, loadJson, saveJson } from "./store";
 
+const handlerError = (message: string) => ({
+  ok: false as const,
+  error: { code: "handler-error" as const, message },
+});
 const badParams = (message: string) => ({
   ok: false as const,
   error: { code: "bad-params" as const, message },
@@ -192,6 +196,44 @@ export function makeUpdateHandlers(deps: W1Deps): RegisteredHandler[] {
           write({ ...read(), status: "error", error: String((e as Error)?.message ?? e) });
           return { ok: false, error: { code: "handler-error", message: String((e as Error)?.message ?? e) } };
         }
+      },
+    },
+    {
+      kind: "bridge",
+      id: "update.start",
+      description:
+        "start the update; params: {} -> { started, version } — the real electron-updater downloads the release and installs it on quit",
+      handler: async () => {
+        const updater = getUpdater();
+        if (!updater) {
+          return handlerError("the updater only runs in the packaged app");
+        }
+        try {
+          updater.checkForUpdates();
+        } catch (e) {
+          return handlerError(`the update could not be started: ${(e as Error)?.message ?? e}`);
+        }
+        const state = read();
+        write({ ...state, status: "checking", checkedAt: now() });
+        return { started: true, version: state.version ?? null };
+      },
+    },
+    {
+      kind: "bridge",
+      id: "update.install",
+      description:
+        "install the update that was downloaded; params: {} -> { installing } — the app restarts when the install finishes",
+      handler: async () => {
+        const updater = getUpdater();
+        if (!updater) {
+          return handlerError("the updater only runs in the packaged app");
+        }
+        try {
+          updater.quitAndInstall();
+        } catch (e) {
+          return handlerError(`the update could not be installed: ${(e as Error)?.message ?? e}`);
+        }
+        return { installing: true };
       },
     },
   ];

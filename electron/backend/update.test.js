@@ -35,12 +35,27 @@ beforeEach(() => {
   for (const p of [require.resolve("./update.ts")]) delete require.cache[p];
 });
 
-test("id surface: the 2 renderer-used update ids, all in the manifest", () => {
+test("id surface: the 4 update ids, all in the manifest", () => {
   useTempUserData();
   const { handlers } = build();
-  assert.equal(handlers.length, 2);
-  assert.deepEqual(handlers.map((h) => h.id).sort(), [...EXPECTED_IDS].sort());
+  assert.equal(handlers.length, 4);
+  assert.deepEqual(
+    handlers.map((h) => h.id).sort(),
+    ["update.state", "update.check", "update.start", "update.install"].sort(),
+  );
   for (const h of handlers) assert.ok(reg.inManifest("bridge", h.id), `${h.id} not in manifest`);
+});
+
+test("update.start / update.install are honest outside the packaged app", async () => {
+  useTempUserData();
+  const { call } = build();
+  const start = await call("update.start", {});
+  assert.equal(start.ok, false);
+  assert.equal(start.error.code, "handler-error");
+  assert.match(start.error.message, /packaged app/);
+  const install = await call("update.install", {});
+  assert.equal(install.ok, false);
+  assert.equal(install.error.code, "handler-error");
 });
 
 test("update.state in dev is honest: status 'unsupported' shape after a check attempt", async () => {

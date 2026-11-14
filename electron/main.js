@@ -180,6 +180,33 @@ if (isDev) {
   console.log(`[main] backend: ${backendHandlers.length} handlers registered`);
 }
 
+// ---- The core server: the cli (and any capability token) talks the core
+// protocol to this app over the loopback interface. The principal table
+// decides what it may call (docs/architecture/core-protocol.md).
+const { startCoreServer } = isDev
+  ? require("./backend/index.ts")
+  : require("./dist/backend.cjs");
+if (startCoreServer) {
+  startCoreServer({
+    dispatch: (req) => registry.dispatch({ ...req, kind: req.kind ?? "core" }),
+  })
+    .then((core) => {
+      const addressFile = path.join(require("node:os").homedir(), ".autumn", "core-address.json");
+      try {
+        require("node:fs").mkdirSync(path.dirname(addressFile), { recursive: true });
+        require("node:fs").writeFileSync(
+          addressFile,
+          JSON.stringify({ url: core.url, port: core.port }, null, 2),
+          "utf8",
+        );
+      } catch {
+        /* the CLI can still be pointed at the app with AUTUMN_CORE_URL */
+      }
+      console.log(`[main] core server: ${core.url}`);
+    })
+    .catch((e) => console.warn(`[main] the core server could not start: ${e?.message ?? e}`));
+}
+
 // First REAL facade method, proving the whole path end-to-end:
 // renderer -> facade -> autumn:invoke -> registry -> handler -> envelope.
 // (Native folder picker; the legacy openFileDialog member keeps working above

@@ -38,6 +38,7 @@ const { makeSessionsHandlers } = require("./sessions.ts");
 const { makeTasksHandlers } = require("./tasks.ts");
 const { makeAgentHandlers } = require("./agent.ts");
 const { makePchHandlers } = require("./pch.ts");
+const { makeCoreHandlers } = require("./core/index.ts");
 
 const W1_FACTORIES = [
   makeBusHandlers, makeTerminalHandlers, makeCanvasHandlers, makeFilesHandlers,
@@ -262,6 +263,39 @@ test("contract(W3): the voice-pack ids are implemented, not boundary ids", async
     assert.equal(env.ok, true, `${id} must resolve`);
     assert.notEqual(env.error?.code, "not-implemented", `${id} must not be a boundary id any more`);
   }
+});
+
+test("contract(W4): the whole surface is implemented — 504 bridge + 129 core", async () => {
+  // The backend registers the bridge handlers and the core handlers.
+  const deps = fakeDeps();
+  const bridge = [
+    ...makeHandlers(deps),
+    ...W1_FACTORIES.flatMap((make) => make(deps)),
+    ...W2_FACTORIES.flatMap((make) => make(deps)),
+  ];
+  const bridgeById = new Map(bridge.map((h) => [h.id, h]));
+  const core = makeCoreHandlers(deps, (id) => bridgeById.get(id));
+  reg.reset();
+  for (const h of [...bridge, ...core]) {
+    reg.register(h.kind, h.id, h.handler, { schema: h.schema, description: h.description });
+  }
+  // every bridge method of the contract is registered
+  const missingBridge = [];
+  for (const [ns, methods] of Object.entries(manifest.bridge.namespaces)) {
+    for (const method of methods) {
+      if (isEventMethod(method)) continue;
+      if (!reg.has("bridge", `${ns}.${method}`)) missingBridge.push(`${ns}.${method}`);
+    }
+  }
+  assert.deepEqual(missingBridge, [], `bridge methods with no handler: ${missingBridge.join(", ")}`);
+  // every core method of the contract is registered
+  const missingCore = [];
+  for (const methods of Object.values(manifest.core.groups)) {
+    for (const method of methods) {
+      if (!reg.has("core", method)) missingCore.push(method);
+    }
+  }
+  assert.deepEqual(missingCore, [], `core methods with no handler: ${missingCore.join(", ")}`);
 });
 
 test("contract(W2): the registered surface covers every renderer-used id across ALL waves", async () => {

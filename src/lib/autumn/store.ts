@@ -490,7 +490,7 @@ export interface AutumnStore {
   toggleRightPanel: () => void;
   addProjectFile: (file: Omit<ProjectFile, "id" | "addedAt">) => void;
   removeProjectFile: (id: string) => void;
-  addSkill: (skill: Omit<Skill, "installedAt" | "installed">) => void;
+  addSkill: (skill: Omit<Skill, "installedAt" | "installed" | "id"> & { id?: string }) => void;
   removeSkill: (id: string) => void;
   toggleSkillInstall: (id: string) => void;
   addBackend: (category: "data" | "ai", name: string) => void;
@@ -820,7 +820,7 @@ export const useAutumnStore = create<AutumnStore>((set, get) => ({
     set((s) => ({
       skills: [
         ...s.skills,
-        { ...skill, id: skill.id || `skill${Date.now()}`, installed: false },
+        { ...skill, id: skill.id ?? `skill${Date.now()}`, installed: false },
       ],
     })),
   removeSkill: (id) =>

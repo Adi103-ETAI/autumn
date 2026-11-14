@@ -77,9 +77,12 @@ node --test "electron/backend/*.test.js"          # one directory
 ## Type-check and lint
 
 ```bash
-npx tsc --noEmit --incremental false   # the types must be clean
+node scripts/check-types.mjs   # the whole project (electron/ and src/) must be clean
 npm run lint
 ```
+
+The renderer had type errors for a long time; they are gone, and the CI now
+fails on any of them — a type error is a bug the compiler found for free.
 
 ## Build the installers
 

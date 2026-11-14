@@ -79,8 +79,8 @@ export function decodeCanvasFromHash(hash: string): CanvasShareState | null {
     if (!b64url) return null;
     const compressed = base64UrlToBytes(b64url);
     // pako.ungzip autodetects gzip headers and returns the inflated bytes.
-    // Passing `{ to: "string" }` makes it return a UTF-8 decoded string.
-    const json = ungzip(compressed, { to: "string" });
+    // `to: "string"` makes it return a UTF-8 decoded string.
+    const json = ungzip(compressed, { to: "string" } as never) as unknown as string;
     const parsed = JSON.parse(json) as Partial<CanvasShareState>;
     if (
       !parsed ||

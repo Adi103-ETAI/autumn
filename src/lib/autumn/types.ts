@@ -193,6 +193,7 @@ export interface CanvasSnapshotNode {
   harness?: string;
   doing?: string;
   route?: string;
+  personaId?: string;
 }
 
 export interface CanvasSnapshot {
@@ -205,7 +206,8 @@ export interface CanvasPreset {
   id: string;
   name: string;
   description: string;
-  icon: string; // Lucide icon name
+  /** The Lucide icon component of the preset. */
+  icon: React.ComponentType<{ className?: string }>;
   nodeCount: number;
 }
 
