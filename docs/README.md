@@ -14,6 +14,7 @@ repository today.
 | [Development](./development.md) | How do I run, test, build and release it? |
 | [Architecture](./architecture/README.md) | How is it put together? |
 | [Brand](./branding.md) | What does Autumn look like, and what are the rules? |
+| [The road ahead](./roadmap.md) | What is left: the surfaces, the golden paths, the release. |
 | [Data and privacy](./architecture/data-and-privacy.md) | Where does my data live, and what leaves the machine? |
 
 ## The subsystems
