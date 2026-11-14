@@ -51,7 +51,7 @@ import { makeAutopilotHandlers } from "./autopilot";
 import { makeCoreHandlers } from "./core";
 import { makeProjectsHandlers } from "./projects";
 import { makeLocalSurfaceHandlers } from "./app-surface";
-import { makeLocalExtrasHandlers } from "./local-extras";
+import { makeLocalExtrasHandlers } from "./extras";
 import { makeHostedHandlers } from "./hosted";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
