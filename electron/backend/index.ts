@@ -49,6 +49,10 @@ import { makeStorageHandlers } from "./storage";
 import { makeSupermemoryHandlers } from "./supermemory";
 import { makeAutopilotHandlers } from "./autopilot";
 import { makeCoreHandlers } from "./core";
+import { makeProjectsHandlers } from "./projects";
+import { makeLocalSurfaceHandlers } from "./app-surface";
+import { makeLocalExtrasHandlers } from "./local-extras";
+import { makeHostedHandlers } from "./hosted";
 
 // CJS registry (electron/ipc/registry.js) — plain require through the ts hook.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -194,6 +198,10 @@ const W2_FACTORIES = [
   makeStorageHandlers,
   makeSupermemoryHandlers,
   makeAutopilotHandlers,
+  makeProjectsHandlers,
+  makeLocalSurfaceHandlers,
+  makeLocalExtrasHandlers,
+  makeHostedHandlers,
 ];
 
 /**

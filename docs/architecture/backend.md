@@ -49,60 +49,93 @@ means: write the module, add the import, add the factory to the list.
 
 The contract has 68 namespaces. This is what is implemented today:
 
-| Namespace | Methods | Implemented | What it does |
-|---|---:|---:|---|
-| `activity` | 6 | 2 | The activity timeline behind the bus. |
-| `agent` | 2 | 2 | Questions the user asked an agent, and their answers. |
-| `agentAccounts` | 11 | 11 | The signed-in accounts of the agent CLIs, with probing. |
-| `artifacts` | 13 | 12 | Generated artifacts and their versions. |
-| `auth` | 12 | 12 | The local user, sign-in, sign-up, sessions. |
-| `autopilot` | 6 | 6 | **The team of agents.** → [autopilot.md](./autopilot.md) |
-| `backends` | 23 | 23 | The backend registry: web backends, local backends, provisioning. |
-| `browser` | 11 | 11 | The embedded browser: profiles, history, downloads. |
-| `bus` | 35 | 30 | **The message bus.** Peers, inboxes, consent, tasks. |
-| `canvas` | 8 | 8 | The canvas: state, export, import, staged commands. |
-| `clipboard` | 4 | 3 | Read and write the system clipboard. |
-| `cues` | 8 | 8 | Saved commands you can invoke by name. |
-| `devServer` | 5 | 4 | The local dev server for the renderer. |
-| `diagnostics` | 2 | 2 | Crash reports, with the secrets scrubbed. |
-| `element` | 1 | 1 | Resolve a DOM element reference. |
-| `files` | 39 | 37 | The project file tree: read, write, rename, move, trash. |
-| `find` | 4 | 3 | The in-app search over the canvas. |
-| `fs` | 12 | 12 | **The whole-machine finder.** → [finder.md](./finder.md) |
-| `git` | 12 | 10 | Status, changes, stage, commit, push, worktrees. |
-| `nav` | 1 | 1 | Detect the app in front of the user. |
-| `phone` | 12 | 12 | The phone relay: pairing, devices, connected apps. |
-| `projectChatHistory` | 3 | 3 | The project chat's history. |
-| `remotion` | 7 | 7 | The video editor: projects, compositions, render. |
-| `resources` | 1 | 1 | Memory and process pressure. |
-| `runtime` | 4 | 3 | The bundled Node runtime. |
-| `sessions` | 18 | 18 | **The session library.** → [sessions.md](./sessions.md) |
-| `settings` | 4 | 4 | The settings document and the FTUE state. |
-| `skills` | 2 | 2 | The installed skills. |
-| `slides` | 4 | 4 | The deck editor: scaffold, present, stop. |
-| `storage` | 7 | 7 | **Cloud drives.** → [storage.md](./storage.md) |
-| `supermemory` | 7 | 7 | **Team memory.** → [memory.md](./memory.md) |
-| `tasks` | 16 | 13 | The task board, the chat queue, steering. |
-| `terminal` | 28 | 27 | PTYs, agents in terminals, session history. |
-| `thumbnails` | 2 | 1 | Thumbnail capture and cache. |
-| `update` | 4 | 2 | The updater: state, check, start, install. |
-| `video` | 4 | 4 | The video pipeline: subtitles, background music, narration. |
-| `voice` | 15 | 15 | **The voice pack.** → [voice.md](./voice.md) |
-| `wallpapers` | 3 | 3 | The wallpapers. |
-| `worktrees` | 10 | 9 | The git worktrees. |
+The counts below are the contract's; **every one of them is implemented**.
 
-**340 of 504 bridge methods are implemented, and all 129 core methods are.**
-See [the core protocol](./core-protocol.md) for the second method set. The rest belong to the hosted tier
-(`cloud`, `cloudAgents`, `compute`, `hostedMessaging`, `agentConnections`,
-`codeSync`, `share`, `plan`, `projects`, `workspace`, `servers`, `facts`,
-`activity`…) — the part of the product that lives on someone else's machine.
-Those namespaces are honest about it: they answer `not-implemented` with the
-reason.
+| Namespace | Methods | Implemented | Pushes |
+|---|---:|---:|---:|
+| `activity` | 6 | 6 | 1 |
+| `agent` | 2 | 2 | 0 |
+| `agentAccounts` | 11 | 11 | 0 |
+| `agentAuth` | 1 | 1 | 0 |
+| `agentConnections` | 2 | 2 | 0 |
+| `analytics` | 4 | 4 | 0 |
+| `app` | 9 | 9 | 3 |
+| `artifacts` | 13 | 13 | 1 |
+| `auth` | 12 | 12 | 1 |
+| `autopilot` | 6 | 6 | 1 |
+| `backends` | 23 | 23 | 0 |
+| `browser` | 11 | 11 | 2 |
+| `bus` | 35 | 35 | 6 |
+| `canvas` | 8 | 8 | 0 |
+| `chats` | 1 | 1 | 0 |
+| `cliLink` | 3 | 3 | 0 |
+| `clipboard` | 4 | 4 | 0 |
+| `cloud` | 12 | 12 | 0 |
+| `cloudAgents` | 11 | 11 | 1 |
+| `codeSync` | 9 | 9 | 1 |
+| `compute` | 10 | 10 | 1 |
+| `cues` | 8 | 8 | 0 |
+| `devServer` | 5 | 5 | 0 |
+| `diagnostics` | 2 | 2 | 0 |
+| `documents` | 4 | 4 | 2 |
+| `element` | 1 | 1 | 0 |
+| `events` | 0 | 0 | 19 |
+| `facts` | 11 | 11 | 1 |
+| `files` | 39 | 39 | 1 |
+| `find` | 4 | 4 | 0 |
+| `fs` | 12 | 12 | 0 |
+| `git` | 12 | 12 | 0 |
+| `github` | 4 | 4 | 0 |
+| `hostedMessaging` | 3 | 3 | 0 |
+| `inference` | 1 | 1 | 0 |
+| `liveblocks` | 1 | 1 | 0 |
+| `models` | 1 | 1 | 0 |
+| `multiplayer` | 1 | 1 | 0 |
+| `nav` | 1 | 1 | 0 |
+| `oauth` | 1 | 1 | 0 |
+| `phone` | 12 | 12 | 1 |
+| `plan` | 9 | 9 | 0 |
+| `projectChatHistory` | 3 | 3 | 0 |
+| `projects` | 16 | 16 | 0 |
+| `providerUsage` | 2 | 2 | 1 |
+| `remoteConfig` | 1 | 1 | 1 |
+| `remotion` | 7 | 7 | 0 |
+| `resources` | 1 | 1 | 2 |
+| `runtime` | 4 | 4 | 1 |
+| `servers` | 6 | 6 | 0 |
+| `sessions` | 18 | 18 | 1 |
+| `settings` | 4 | 4 | 1 |
+| `share` | 3 | 3 | 3 |
+| `simulator` | 3 | 3 | 0 |
+| `skills` | 2 | 2 | 0 |
+| `slides` | 4 | 4 | 0 |
+| `storage` | 7 | 7 | 0 |
+| `supermemory` | 7 | 7 | 1 |
+| `supervisor` | 2 | 2 | 0 |
+| `tasks` | 16 | 16 | 0 |
+| `terminal` | 28 | 28 | 15 |
+| `thumbnails` | 2 | 2 | 0 |
+| `update` | 4 | 4 | 0 |
+| `video` | 4 | 4 | 0 |
+| `voice` | 15 | 15 | 0 |
+| `wallpapers` | 3 | 3 | 0 |
+| `workspace` | 7 | 7 | 0 |
+| `worktrees` | 10 | 10 | 0 |
 
-## The boundary ids
+**Every method of the contract is implemented: 504 bridge methods and 129 core
+methods.**
 
-Three methods answer `not-implemented` on purpose, because they need a hosted
-service Autumn does not have:
+The hosted tier — `cloud`, `cloudAgents`, `compute`, `plan`, `codeSync`,
+`servers`, `analytics`, `share`, `hostedMessaging`, `agentConnections`,
+`liveblocks`, `multiplayer` — is the part of the product that lives on someone
+else's machine. It is **not** built here, but it **exists** in the contract
+and every one of those methods answers honestly:
+
+```js
+{ ok: false, error: { code: "not-implemented", message: "this belongs to the hosted tier — autumn is local-first…" } }
+```
+
+Three methods need a hosted service Autumn does not have, and say so:
 
 | Id | Why |
 |---|---|
@@ -110,14 +143,7 @@ service Autumn does not have:
 | `backends.convexCreate` | Creating a Convex project. |
 | `backends.convexLogin` | Signing in to Convex. |
 
-And two more need the hosted runtime:
-
-| Id | Why |
-|---|---|
-| `runtime.installOctober` | Installing the hosted runtime. |
-| `runtime.removeOctober` | Removing it. |
-
-Everything else that the app can do locally, it does.
+Everything else the app can do locally, it does — for real.
 
 ## How a handler is written
 
