@@ -17,7 +17,7 @@ const { useTempUserData } = require("./store.ts");
 
 const { makeProjectsHandlers, scanRoutes, detectProjectKind, discoverApps } = require("./projects.ts");
 const { makeLocalSurfaceHandlers } = require("./app-surface.ts");
-const { makeLocalExtrasHandlers } = require("./local-extras.ts");
+const { makeLocalExtrasHandlers } = require("./extras.ts");
 const { makeHostedHandlers } = require("./hosted.ts");
 
 function build(overrides = {}) {
